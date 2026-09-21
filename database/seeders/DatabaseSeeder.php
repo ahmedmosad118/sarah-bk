@@ -2,24 +2,30 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Central\Tenant;
+use App\Services\Tenant\TenantProvisioningService;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * Seed the application's database with demo tenant.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        if (!Tenant::where('slug', 'demo')->exists()) {
+            app(TenantProvisioningService::class)->provision([
+                'name' => 'شركة الصرح للمقاولات والتشطيبات',
+                'slug' => 'demo',
+                'company_code' => 'SARH-DEMO',
+                'domain' => 'demo.localhost',
+                'plan' => 'enterprise',
+            ], [
+                'name' => 'المهندس أحمد علي (مالك المنشأة)',
+                'email' => 'owner@sarh.app',
+                'phone' => '01000000000',
+                'password' => 'password123',
+            ]);
+        }
     }
 }

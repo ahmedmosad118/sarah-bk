@@ -1,11 +1,47 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+@source '../**/*.vue';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Cairo', 'Outfit', ui-sans-serif, system-ui, sans-serif;
+    --color-sarh: #00C896;
+    --color-sarh-dark: #00A87E;
+    --color-sarh-light: #E6FBF5;
+    --color-sarh-darkbg: #0C1315;
+    --color-brand-50: #e6fbf5;
+    --color-brand-100: #ccf7eb;
+    --color-brand-200: #99efd7;
+    --color-brand-300: #66e7c3;
+    --color-brand-400: #33dfaf;
+    --color-brand-500: #00c896;
+    --color-brand-600: #00b386;
+    --color-brand-700: #009973;
+    --color-brand-800: #008060;
+    --color-brand-900: #00664d;
+    --color-brand-950: #0c1315;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.5);
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(107, 114, 128, 0.8);
 }
