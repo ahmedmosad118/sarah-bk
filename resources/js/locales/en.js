@@ -188,6 +188,7 @@ export default {
     allRightsReserved: 'All rights reserved.',
   },
   profile: {
+    pageTitle: 'User Profile & Account Settings',
     modalTitle: 'User Profile & Account Settings',
     personalInfo: 'Personal Information',
     name: 'Full Name',

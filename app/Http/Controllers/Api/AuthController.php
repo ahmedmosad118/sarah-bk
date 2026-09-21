@@ -241,8 +241,9 @@ class AuthController extends Controller
             $media = $user->addMediaFromRequest('avatar')
                 ->toMediaCollection('avatar');
 
-            $user->avatar = $media->getUrl();
+            $user->avatar = 'storage/' . $media->id . '/' . $media->file_name;
             $user->save();
+            $user->refresh();
 
             activity('auth')
                 ->performedOn($user)

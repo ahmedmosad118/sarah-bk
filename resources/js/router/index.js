@@ -11,6 +11,7 @@ import JobTitlesView from '../views/team/JobTitlesView.vue';
 import RolesView from '../views/team/RolesView.vue';
 import ActivityLogView from '../views/activities/ActivityLogView.vue';
 import SettingsView from '../views/settings/SettingsView.vue';
+import ProfileView from '../views/profile/ProfileView.vue';
 
 const routes = [
   // Auth Public Routes
@@ -41,6 +42,11 @@ const routes = [
         path: 'dashboard',
         name: 'dashboard',
         component: DashboardView,
+      },
+      {
+        path: 'profile',
+        name: 'profile',
+        component: ProfileView,
       },
       {
         path: 'team/users',

@@ -57,17 +57,21 @@ class User extends Authenticatable implements HasMedia
 
     public function getAvatarUrlAttribute(): ?string
     {
-        if ($this->avatar) {
-            return $this->avatar;
-        }
-
-        $media = $this->getFirstMediaUrl('avatar');
+        $media = $this->getFirstMedia('avatar');
         if ($media) {
-            return $media;
+            return asset('storage/' . $media->id . '/' . $media->file_name);
         }
 
-        $name = urlencode($this->name ?: 'User');
-        return "https://ui-avatars.com/api/?name={$name}&background=00C896&color=0C1315&size=128&bold=true";
+        if (!empty($this->avatar)) {
+            if (str_starts_with($this->avatar, 'http://') || str_starts_with($this->avatar, 'https://') || str_starts_with($this->avatar, 'data:')) {
+                return $this->avatar;
+            }
+            return asset(ltrim($this->avatar, '/'));
+        }
+
+        // Beautiful SVG avatar with user initials in Arabic/English with #00C896 and #0C1315
+        $initial = mb_substr(trim($this->name ?: 'U'), 0, 1, 'UTF-8');
+        return "data:image/svg+xml;utf8," . rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128"><rect width="128" height="128" rx="36" fill="#0C1315"/><rect x="4" y="4" width="120" height="120" rx="32" fill="none" stroke="#00C896" stroke-width="3" stroke-opacity="0.5"/><text x="50%" y="54%" font-family="Cairo, Outfit, sans-serif" font-weight="900" font-size="54" fill="#00C896" dominant-baseline="middle" text-anchor="middle">' . $initial . '</text></svg>');
     }
 
     public function getActivitylogOptions(): LogOptions

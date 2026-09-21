@@ -188,6 +188,7 @@ export default {
     allRightsReserved: 'جميع الحقوق محفوظة.',
   },
   profile: {
+    pageTitle: 'الملف الشخصي وإعدادات الحساب',
     modalTitle: 'الملف الشخصي وإعدادات الحساب',
     personalInfo: 'المعلومات الشخصية',
     name: 'الاسم الكامل',
