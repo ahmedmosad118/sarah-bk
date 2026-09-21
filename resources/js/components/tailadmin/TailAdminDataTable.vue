@@ -29,7 +29,7 @@
         <button
           v-if="allowCreate"
           @click="$emit('create')"
-          class="flex items-center gap-2 rounded-xl bg-[#00C896] hover:bg-[#00B386] px-4 py-2.5 text-xs font-black text-[#0C1315] transition-colors shadow-sm shadow-[#00C896]/20"
+          class="flex items-center gap-2 rounded-xl bg-[#00C896] hover:bg-[#00B386] px-4 py-2.5 text-xs font-black text-gray-950 transition-colors shadow-sm shadow-[#00C896]/20"
         >
           <Plus class="h-4 w-4" />
           <span>{{ createButtonText || $t('common.createRecord') }}</span>

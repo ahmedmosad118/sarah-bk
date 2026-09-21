@@ -1,19 +1,23 @@
 <template>
   <div class="space-y-6">
     <!-- Welcome Header Banner -->
-    <div class="rounded-3xl bg-gradient-to-r from-[#0C1315] via-[#101E21] to-[#0A1113] border border-[#00C896]/25 p-6 sm:p-8 text-white shadow-xl shadow-black/25">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-emerald-500/10 dark:from-slate-900 dark:via-[#112325] dark:to-slate-900 border border-emerald-200/80 dark:border-emerald-500/20 p-6 sm:p-8 text-gray-900 dark:text-white shadow-xs">
+      <!-- Ambient Glow Accents -->
+      <div class="absolute -top-24 -left-24 h-56 w-56 rounded-full bg-[#00C896]/15 dark:bg-[#00C896]/20 blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -right-24 h-56 w-56 rounded-full bg-[#00C896]/10 dark:bg-[#00C896]/15 blur-3xl pointer-events-none"></div>
+
+      <div class="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div class="inline-flex items-center gap-2 rounded-full bg-[#00C896]/15 text-[#00C896] border border-[#00C896]/30 px-3 py-1 text-xs font-bold backdrop-blur-md mb-3">
-            <Building2 class="h-3.5 w-3.5" />
+          <div class="inline-flex items-center gap-2 rounded-full bg-[#00C896]/15 text-emerald-800 dark:text-[#00C896] border border-[#00C896]/30 px-3 py-1 text-xs font-bold backdrop-blur-md mb-3">
+            <Building2 class="h-3.5 w-3.5 text-[#00C896]" />
             <span>{{ authStore.tenant?.name || $t('common.system') }}</span>
             <span>•</span>
             <span class="font-mono">{{ authStore.tenant?.company_code }}</span>
           </div>
-          <h1 class="text-xl sm:text-2xl font-black text-white">
+          <h1 class="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">
             {{ $t('dashboard.welcome', { name: authStore.user?.name || '' }) }}
           </h1>
-          <p class="text-xs text-gray-300 mt-1 max-w-xl">
+          <p class="text-xs text-gray-500 dark:text-gray-300 mt-1 max-w-xl">
             {{ $t('dashboard.tenantSubtitle') }}
           </p>
         </div>
@@ -21,7 +25,7 @@
         <div class="flex items-center gap-3">
           <router-link
             to="/team/users"
-            class="flex items-center gap-1.5 rounded-xl bg-[#00C896] hover:bg-[#00B386] px-4 py-2.5 text-xs font-black text-[#0C1315] transition-colors shadow-sm"
+            class="flex items-center gap-1.5 rounded-xl bg-[#00C896] hover:bg-[#00B386] px-4 py-2.5 text-xs font-black text-gray-950 transition-colors shadow-md shadow-[#00C896]/20"
           >
             <Users class="h-4 w-4" />
             <span>{{ $t('dashboard.manageUsers') }}</span>

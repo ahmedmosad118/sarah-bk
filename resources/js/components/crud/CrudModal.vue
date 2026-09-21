@@ -41,9 +41,9 @@
             type="button"
             :disabled="loading"
             @click="$emit('save')"
-            class="flex items-center gap-2 rounded-xl bg-[#00C896] hover:bg-[#00B386] px-5 py-2.5 text-xs font-black text-[#0C1315] disabled:opacity-50 transition-colors shadow-sm shadow-[#00C896]/20"
+            class="flex items-center gap-2 rounded-xl bg-[#00C896] hover:bg-[#00B386] px-5 py-2.5 text-xs font-black text-gray-950 disabled:opacity-50 transition-colors shadow-sm shadow-[#00C896]/20"
           >
-            <span v-if="loading" class="h-4 w-4 animate-spin rounded-full border-2 border-[#0C1315] border-t-transparent"></span>
+            <span v-if="loading" class="h-4 w-4 animate-spin rounded-full border-2 border-gray-950 border-t-transparent"></span>
             <span>{{ $t('common.save') }}</span>
           </button>
         </div>

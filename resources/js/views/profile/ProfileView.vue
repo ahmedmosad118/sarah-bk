@@ -4,16 +4,16 @@
     <BreadcrumbDefault :pageTitle="$t('profile.pageTitle')" />
 
     <!-- User Profile Hero Card Banner -->
-    <div class="relative overflow-hidden rounded-3xl bg-[#0C1315] border border-gray-800 p-6 sm:p-8 text-white shadow-xl">
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-emerald-500/10 dark:from-slate-900 dark:via-[#112325] dark:to-slate-900 border border-emerald-200/80 dark:border-emerald-500/20 p-6 sm:p-8 text-gray-900 dark:text-white shadow-xs">
       <!-- Ambient Glow Accents -->
-      <div class="absolute -top-24 -left-24 h-56 w-56 rounded-full bg-[#00C896]/15 blur-3xl pointer-events-none"></div>
-      <div class="absolute -bottom-24 -right-24 h-56 w-56 rounded-full bg-[#00C896]/10 blur-3xl pointer-events-none"></div>
+      <div class="absolute -top-24 -left-24 h-56 w-56 rounded-full bg-[#00C896]/15 dark:bg-[#00C896]/20 blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -right-24 h-56 w-56 rounded-full bg-[#00C896]/10 dark:bg-[#00C896]/15 blur-3xl pointer-events-none"></div>
 
       <div class="relative flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
         <div class="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-right" :class="$i18n.locale === 'ar' ? 'sm:text-right' : 'sm:text-left'">
           <!-- Avatar with camera upload overlay -->
           <div class="relative group cursor-pointer shrink-0" @click="triggerFileInput" title="انقر لتغيير الصورة الشخصية">
-            <div class="relative h-28 w-28 rounded-3xl overflow-hidden ring-4 ring-[#00C896]/40 shadow-2xl bg-[#0C1315]">
+            <div class="relative h-28 w-28 rounded-3xl overflow-hidden ring-4 ring-[#00C896]/40 shadow-xl bg-white dark:bg-slate-800">
               <img
                 :src="currentAvatarUrl"
                 @error="handleAvatarError"
@@ -33,7 +33,7 @@
             <!-- Floating Action Button -->
             <button
               type="button"
-              class="absolute -bottom-1.5 -left-1.5 flex h-8 w-8 items-center justify-center rounded-xl bg-[#00C896] text-[#0C1315] shadow-lg hover:bg-[#00B386] transition-transform hover:scale-110"
+              class="absolute -bottom-1.5 -left-1.5 flex h-8 w-8 items-center justify-center rounded-xl bg-[#00C896] text-gray-950 shadow-lg hover:bg-[#00B386] transition-transform hover:scale-110"
             >
               <Camera class="h-4 w-4" />
             </button>
@@ -50,29 +50,29 @@
           <!-- User Info Headline -->
           <div>
             <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 mb-1.5">
-              <h1 class="text-xl sm:text-2xl font-black text-white">
+              <h1 class="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">
                 {{ authStore.user?.name }}
               </h1>
-              <span class="inline-flex items-center gap-1 rounded-full bg-[#00C896]/15 border border-[#00C896]/30 px-2.5 py-0.5 text-xs font-bold text-[#00C896]">
+              <span class="inline-flex items-center gap-1 rounded-full bg-[#00C896]/15 border border-[#00C896]/30 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:text-[#00C896]">
                 <span class="h-1.5 w-1.5 rounded-full bg-[#00C896]"></span>
                 {{ $t('common.active') }}
               </span>
             </div>
 
-            <p class="text-xs text-gray-300 font-mono">
+            <p class="text-xs text-gray-500 dark:text-gray-300 font-mono">
               {{ authStore.user?.email }}
             </p>
 
             <div class="mt-3 flex flex-wrap items-center justify-center sm:justify-start gap-2">
-              <span class="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1 text-xs font-bold text-gray-200">
-                <Tag class="h-3.5 w-3.5 text-amber-400" />
+              <span class="inline-flex items-center gap-1.5 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 px-3 py-1 text-xs font-bold text-amber-800 dark:text-amber-300">
+                <Tag class="h-3.5 w-3.5 text-amber-500" />
                 <span>{{ authStore.user?.job_title || 'Owner' }}</span>
               </span>
 
               <span
                 v-for="role in authStore.roles"
                 :key="role"
-                class="rounded-xl bg-[#00C896]/15 px-3 py-1 text-xs font-bold text-[#00C896] border border-[#00C896]/30"
+                class="rounded-xl bg-[#00C896]/15 px-3 py-1 text-xs font-bold text-emerald-800 dark:text-[#00C896] border border-[#00C896]/30"
               >
                 {{ role }}
               </span>
@@ -85,7 +85,7 @@
           type="button"
           @click="triggerFileInput"
           :disabled="uploadingAvatar"
-          class="flex items-center gap-2 rounded-2xl bg-[#00C896] hover:bg-[#00B386] px-5 py-2.5 text-xs font-black text-[#0C1315] shadow-lg shadow-[#00C896]/20 transition-all cursor-pointer"
+          class="flex items-center gap-2 rounded-2xl bg-[#00C896] hover:bg-[#00B386] px-5 py-2.5 text-xs font-black text-gray-950 shadow-md shadow-[#00C896]/20 transition-all cursor-pointer"
         >
           <Upload class="h-4 w-4" />
           <span>{{ uploadingAvatar ? $t('profile.uploadingAvatar') : $t('profile.avatarUpload') }}</span>
@@ -103,7 +103,7 @@
             type="button"
             @click="activeTab = 'info'"
             class="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer"
-            :class="activeTab === 'info' ? 'bg-[#00C896] text-[#0C1315] shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/60'"
+            :class="activeTab === 'info' ? 'bg-[#00C896] text-gray-950 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/60'"
           >
             <User class="h-4 w-4" />
             <span>{{ $t('profile.personalInfo') }}</span>
@@ -113,7 +113,7 @@
             type="button"
             @click="activeTab = 'security'"
             class="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer"
-            :class="activeTab === 'security' ? 'bg-[#00C896] text-[#0C1315] shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/60'"
+            :class="activeTab === 'security' ? 'bg-[#00C896] text-gray-950 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/60'"
           >
             <KeyRound class="h-4 w-4" />
             <span>{{ $t('profile.security') }}</span>
@@ -123,7 +123,7 @@
             type="button"
             @click="activeTab = 'preferences'"
             class="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer"
-            :class="activeTab === 'preferences' ? 'bg-[#00C896] text-[#0C1315] shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/60'"
+            :class="activeTab === 'preferences' ? 'bg-[#00C896] text-gray-950 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/60'"
           >
             <Palette class="h-4 w-4" />
             <span>{{ $t('profile.preferences') }}</span>
@@ -233,9 +233,9 @@
               <button
                 type="submit"
                 :disabled="savingProfile"
-                class="flex items-center gap-2 rounded-xl bg-[#00C896] hover:bg-[#00B386] px-6 py-2.5 text-xs font-black text-[#0C1315] disabled:opacity-50 transition-colors shadow-sm shadow-[#00C896]/20 cursor-pointer"
+                class="flex items-center gap-2 rounded-xl bg-[#00C896] hover:bg-[#00B386] px-6 py-2.5 text-xs font-black text-gray-950 disabled:opacity-50 transition-colors shadow-sm shadow-[#00C896]/20 cursor-pointer"
               >
-                <span v-if="savingProfile" class="h-4 w-4 animate-spin rounded-full border-2 border-[#0C1315] border-t-transparent"></span>
+                <span v-if="savingProfile" class="h-4 w-4 animate-spin rounded-full border-2 border-gray-950 border-t-transparent"></span>
                 <Check v-else class="h-4 w-4" />
                 <span>{{ $t('profile.saveProfile') }}</span>
               </button>
@@ -343,9 +343,9 @@
               <button
                 type="submit"
                 :disabled="savingPassword"
-                class="flex items-center gap-2 rounded-xl bg-[#00C896] hover:bg-[#00B386] px-6 py-2.5 text-xs font-black text-[#0C1315] disabled:opacity-50 transition-colors shadow-sm shadow-[#00C896]/20 cursor-pointer"
+                class="flex items-center gap-2 rounded-xl bg-[#00C896] hover:bg-[#00B386] px-6 py-2.5 text-xs font-black text-gray-950 disabled:opacity-50 transition-colors shadow-sm shadow-[#00C896]/20 cursor-pointer"
               >
-                <span v-if="savingPassword" class="h-4 w-4 animate-spin rounded-full border-2 border-[#0C1315] border-t-transparent"></span>
+                <span v-if="savingPassword" class="h-4 w-4 animate-spin rounded-full border-2 border-gray-950 border-t-transparent"></span>
                 <KeyRound v-else class="h-4 w-4" />
                 <span>{{ $t('profile.savePassword') }}</span>
               </button>
@@ -388,7 +388,7 @@
                     <span class="text-[11px] text-gray-400">واجهة مضيئة واضحة</span>
                   </div>
                 </div>
-                <div v-if="!themeStore.isDark" class="flex h-6 w-6 items-center justify-center rounded-full bg-[#00C896] text-[#0C1315] shadow-xs">
+                <div v-if="!themeStore.isDark" class="flex h-6 w-6 items-center justify-center rounded-full bg-[#00C896] text-gray-950 shadow-xs">
                   <Check class="h-4 w-4 stroke-[3]" />
                 </div>
               </button>
@@ -401,7 +401,7 @@
                 :class="themeStore.isDark ? 'border-[#00C896] bg-[#00C896]/5 shadow-sm' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'"
               >
                 <div class="flex items-center gap-3.5">
-                  <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0C1315] text-[#00C896] border border-gray-800 shadow-xs">
+                  <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-[#00C896] border border-slate-700 shadow-xs">
                     <Moon class="h-6 w-6" />
                   </div>
                   <div>
@@ -409,7 +409,7 @@
                     <span class="text-[11px] text-gray-400">نمط داكن أنيق ومريح للعين</span>
                   </div>
                 </div>
-                <div v-if="themeStore.isDark" class="flex h-6 w-6 items-center justify-center rounded-full bg-[#00C896] text-[#0C1315] shadow-xs">
+                <div v-if="themeStore.isDark" class="flex h-6 w-6 items-center justify-center rounded-full bg-[#00C896] text-gray-950 shadow-xs">
                   <Check class="h-4 w-4 stroke-[3]" />
                 </div>
               </button>

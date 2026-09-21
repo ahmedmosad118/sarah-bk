@@ -8,7 +8,7 @@
         :src="currentAvatarUrl"
         @error="handleAvatarError"
         alt="User"
-        class="h-9 w-9 rounded-xl object-cover ring-2 ring-[#00C896]/40 bg-[#0C1315]"
+        class="h-9 w-9 rounded-xl object-cover ring-2 ring-[#00C896]/40 bg-emerald-50 dark:bg-slate-800"
       />
       <div class="hidden lg:block" :class="$i18n.locale === 'ar' ? 'text-right' : 'text-left'">
         <span class="block text-xs font-bold text-gray-900 dark:text-white">
