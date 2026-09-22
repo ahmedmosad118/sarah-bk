@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\JobTitleController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SettingController;
@@ -54,6 +55,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('/{id}', [UserController::class, 'update']);
         Route::delete('/{ids}', [UserController::class, 'destroy']);
         Route::post('/{id}/toggle-status', [UserController::class, 'toggleStatus']);
+    });
+
+    // Customers Management (Commercial Foundation)
+    Route::prefix('customers')->group(function () {
+        Route::get('/schema', [CustomerController::class, 'schema']);
+        Route::get('/', [CustomerController::class, 'index']);
+        Route::post('/', [CustomerController::class, 'store']);
+        Route::get('/{id}', [CustomerController::class, 'show']);
+        Route::put('/{id}', [CustomerController::class, 'update']);
+        Route::delete('/{ids}', [CustomerController::class, 'destroy']);
     });
 
     // Roles & Permissions Management

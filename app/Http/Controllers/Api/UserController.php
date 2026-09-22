@@ -25,20 +25,20 @@ class UserController extends CRUDController
     protected function inputMaker(): InputMaker
     {
         return InputMaker::make()
-            ->title('فريق العمل والمستخدمين')
-            ->singularTitle('عضو فريق')
+            ->title('users.title')
+            ->singularTitle('header.member')
             ->model(User::class)
             ->fields([
-                Field::text('name', 'الاسم الثلاثي')->required()->col(6),
-                Field::email('email', 'البريد الإلكتروني')->required()->rules('email')->col(6),
-                Field::tel('phone', 'رقم الهاتف / الجوال')->col(6),
-                Field::relation('job_title_id', 'المسمى الوظيفي (Job Title)', 'jobTitle', 'name', 'id')->required()->col(6),
-                Field::select('status', 'حالة الحساب', [
-                    ['value' => 'active', 'label' => 'نشط ومفعل'],
-                    ['value' => 'inactive', 'label' => 'معطل مؤقتاً'],
+                Field::text('name', 'common.name')->required()->col(6),
+                Field::email('email', 'auth.email')->required()->rules('email')->col(6),
+                Field::tel('phone', 'users.phoneCol')->col(6),
+                Field::relation('job_title_id', 'jobTitles.title', 'jobTitle', 'name', 'id')->required()->col(6),
+                Field::select('status', 'common.status', [
+                    ['value' => 'active', 'label' => 'common.active'],
+                    ['value' => 'inactive', 'label' => 'common.inactive'],
                 ])->default('active')->required()->col(6),
-                Field::date('joining_date', 'تاريخ الانضمام')->col(6),
-                Field::password('password', 'كلمة المرور')->placeholder('8 أحرف على الأقل (افتراضي 12345678)')->col(6),
+                Field::date('joining_date', 'users.joiningDateCol')->col(6),
+                Field::password('password', 'auth.password')->col(6),
             ]);
     }
 

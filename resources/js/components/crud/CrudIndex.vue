@@ -91,11 +91,15 @@ const props = defineProps({
     type: Object,
     default: () => ({}),
   },
+  extraParams: {
+    type: Object,
+    default: () => ({}),
+  },
 });
 
 const emit = defineEmits(['loaded', 'record-saved', 'record-deleted', 'open-modal']);
 
-const { t, locale } = useI18n();
+const { t, te, locale } = useI18n();
 const notificationStore = useNotificationStore();
 const schema = ref(null);
 const items = ref([]);
@@ -110,18 +114,23 @@ const activeRecordId = ref(null);
 const currentSearch = ref('');
 const currentPage = ref(1);
 
+const formatKey = (key) => {
+  if (!key) return '';
+  return te(key) ? t(key) : key;
+};
+
 const createButtonTextComputed = computed(() => {
-  const singular = schema.value?.singular_title;
+  const singular = formatKey(schema.value?.singular_title);
   return singular ? `${t('common.create')} ${singular}` : t('common.createRecord');
 });
 
 const searchPlaceholderComputed = computed(() => {
-  const title = schema.value?.title || props.title;
+  const title = formatKey(schema.value?.title || props.title);
   return title ? `${t('common.search')} ${title}...` : t('common.searchPlaceholder');
 });
 
 const modalTitleComputed = computed(() => {
-  const singular = schema.value?.singular_title || '';
+  const singular = formatKey(schema.value?.singular_title || '');
   if (modalMode.value === 'create') {
     return `${t('common.create')} ${singular}`;
   }
@@ -130,7 +139,10 @@ const modalTitleComputed = computed(() => {
 
 const tableColumns = computed(() => {
   if (props.customColumns) {
-    return props.customColumns;
+    return props.customColumns.map((col) => ({
+      ...col,
+      label: formatKey(col.label),
+    }));
   }
   if (!schema.value?.fields) {
     return [{ name: 'id', label: '#' }, { name: 'name', label: t('common.name') }];
@@ -139,7 +151,7 @@ const tableColumns = computed(() => {
     .filter((f) => !f.hidden_in_table && f.type !== 'hidden')
     .map((f) => ({
       name: f.name,
-      label: f.label,
+      label: formatKey(f.label),
     }));
 });
 
@@ -150,7 +162,7 @@ const loadData = async (page = 1, search = '') => {
 
   try {
     const res = await api.get(props.endpoint, {
-      params: { page, search },
+      params: { page, search, ...props.extraParams },
     });
     items.value = res.data.data;
     meta.value = res.data.meta;

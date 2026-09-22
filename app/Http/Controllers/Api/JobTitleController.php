@@ -20,15 +20,15 @@ class JobTitleController extends CRUDController
     protected function inputMaker(): InputMaker
     {
         return InputMaker::make()
-            ->title('المسميات الوظيفية')
-            ->singularTitle('مسمى وظيفي')
+            ->title('jobTitles.title')
+            ->singularTitle('jobTitles.nameCol')
             ->model(JobTitle::class)
             ->fields([
-                Field::text('name_ar', 'المسمى بالعربية (Arabic Title)')->required()->col(6),
-                Field::text('name_en', 'المسمى بالإنجليزية (English Title)')->required()->col(6),
-                Field::text('code', 'الكود المختصر (Code)')->placeholder('مثل: SE, PM, ACC')->col(6),
-                Field::textarea('description', 'الوصف الوظيفي والمهام')->col(12),
-                Field::boolean('is_active', 'مُفعل ومتاح للاستخدام')->default(true)->col(6),
+                Field::text('name_ar', 'jobTitles.nameCol')->required()->col(6),
+                Field::text('name_en', 'jobTitles.nameCol')->required()->col(6),
+                Field::text('code', 'jobTitles.codeCol')->col(6),
+                Field::textarea('description', 'jobTitles.descCol')->col(12),
+                Field::boolean('is_active', 'common.active')->default(true)->col(6),
             ]);
     }
 

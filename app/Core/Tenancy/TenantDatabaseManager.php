@@ -88,6 +88,9 @@ class TenantDatabaseManager
         // Set in memory context
         TenantContext::setTenant($tenant);
 
+        // Isolate permission cache key per tenant
+        Config::set('permission.cache.key', 'spatie.permission.cache.tenant.' . $tenant->id);
+
         // Reset permission cache for current tenant database
         try {
             app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
@@ -102,6 +105,7 @@ class TenantDatabaseManager
     public static function switchToCentral(): void
     {
         DB::setDefaultConnection('central');
+        Config::set('permission.cache.key', 'spatie.permission.cache.central');
         TenantContext::clear();
     }
 

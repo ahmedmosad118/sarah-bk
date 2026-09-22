@@ -44,9 +44,9 @@ class IdentifyTenant
             }
         }
 
-        // 3. Custom Headers (X-Tenant-Slug / X-Tenant-Domain / X-Tenant-Id)
-        if (!$tenant && $request->hasHeader('X-Tenant-Slug')) {
-            $slugHeader = $request->header('X-Tenant-Slug');
+        // 3. Custom Headers (X-Tenant-Slug / X-Tenant / X-Tenant-Domain / X-Tenant-Id)
+        if (!$tenant && ($request->hasHeader('X-Tenant-Slug') || $request->hasHeader('X-Tenant'))) {
+            $slugHeader = $request->header('X-Tenant-Slug') ?: $request->header('X-Tenant');
             $tenant = Tenant::where('slug', $slugHeader)->orWhere('slug', \Illuminate\Support\Str::slug($slugHeader))->first();
         } elseif (!$tenant && $request->hasHeader('X-Tenant-Domain')) {
             $domainRecord = Domain::where('domain', $request->header('X-Tenant-Domain'))->with('tenant')->first();
@@ -57,17 +57,21 @@ class IdentifyTenant
             $tenant = Tenant::find((int) $request->header('X-Tenant-Id'));
         }
 
-        // 4. Query Parameter Fallback (useful for API testing / dev tools)
-        if (!$tenant && $request->has('tenant')) {
-            $paramSlug = $request->get('tenant');
-            $tenant = Tenant::where('slug', $paramSlug)->orWhere('slug', \Illuminate\Support\Str::slug($paramSlug))->first();
-        } elseif (!$tenant && $request->has('tenant_id')) {
-            $tenant = Tenant::find((int) $request->get('tenant_id'));
+        // 4. Query Parameter Fallback (Allowed in non-production or testing environments)
+        if (!$tenant && !app()->isProduction()) {
+            if ($request->has('tenant')) {
+                $paramSlug = $request->get('tenant');
+                $tenant = Tenant::where('slug', $paramSlug)->orWhere('slug', \Illuminate\Support\Str::slug($paramSlug))->first();
+            } elseif ($request->has('tenant_id')) {
+                $tenant = Tenant::find((int) $request->get('tenant_id'));
+            }
         }
 
-        // 5. Seamless Fallback for localhost / direct login without domain requirement
-        if (!$tenant && ($host === 'localhost' || $host === '127.0.0.1' || str_ends_with($host, '.localhost') || $request->is('api/auth/login'))) {
-            $tenant = Tenant::where('slug', 'demo')->first() ?? Tenant::where('status', 'active')->first();
+        // 5. Seamless Fallback for localhost / local dev / direct demo login
+        if (!$tenant && (!app()->isProduction() || $host === 'localhost' || $host === '127.0.0.1' || str_ends_with($host, '.localhost'))) {
+            if ($host === 'localhost' || $host === '127.0.0.1' || str_ends_with($host, '.localhost') || $request->is('api/auth/login')) {
+                $tenant = Tenant::where('slug', 'demo')->first() ?? Tenant::where('status', 'active')->first();
+            }
         }
 
         if ($tenant) {

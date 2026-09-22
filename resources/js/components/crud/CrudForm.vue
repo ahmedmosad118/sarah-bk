@@ -1,6 +1,6 @@
 <template>
-  <form @submit.prevent="$emit('submit')" class="space-y-4">
-    <div class="grid grid-cols-12 gap-4">
+  <form @submit.prevent="$emit('submit')">
+    <div class="grid grid-cols-12 gap-x-4 gap-y-1">
       <InputMakerField
         v-for="field in visibleFields"
         :key="field.name"
@@ -10,9 +10,11 @@
         :options-list="relatedOptions[field.name]"
         @update:model-value="updateField(field.name, $event)"
       />
-    </div>
 
-    <slot name="extra-fields" />
+      <div class="col-span-12">
+        <slot name="extra-fields" />
+      </div>
+    </div>
   </form>
 </template>
 

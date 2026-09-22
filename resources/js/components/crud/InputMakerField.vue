@@ -1,7 +1,7 @@
 <template>
-  <div :class="[colClass, $i18n.locale === 'ar' ? 'text-right' : 'text-left']" class="mb-4">
+  <div :class="[colClass, $i18n.locale === 'ar' ? 'text-right' : 'text-left']" class="mb-3.5">
     <label v-if="field.type !== 'boolean'" class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-      {{ field.label }}
+      {{ formatLabel(field.label) }}
       <span v-if="field.required" class="text-rose-500 font-bold">*</span>
     </label>
 
@@ -11,10 +11,10 @@
         :type="field.type"
         :value="modelValue"
         @input="$emit('update:modelValue', $event.target.value)"
-        :placeholder="field.placeholder || field.label"
+        :placeholder="formatLabel(field.placeholder) || formatLabel(field.label)"
         :required="field.required"
         :disabled="field.readonly"
-        class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-4 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white dark:focus:border-[#00C896] transition-colors"
+        class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white focus:ring-2 focus:ring-[#00C896]/20 dark:border-gray-700 dark:bg-gray-900/40 dark:text-white dark:focus:border-[#00C896] transition-all"
       />
     </div>
 
@@ -23,11 +23,11 @@
       <textarea
         :value="modelValue"
         @input="$emit('update:modelValue', $event.target.value)"
-        :placeholder="field.placeholder || field.label"
+        :placeholder="formatLabel(field.placeholder) || formatLabel(field.label)"
         :rows="3"
         :required="field.required"
         :disabled="field.readonly"
-        class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-4 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white dark:focus:border-[#00C896] transition-colors"
+        class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white focus:ring-2 focus:ring-[#00C896]/20 dark:border-gray-700 dark:bg-gray-900/40 dark:text-white dark:focus:border-[#00C896] transition-all"
       ></textarea>
     </div>
 
@@ -38,10 +38,10 @@
         :step="field.step || (field.type === 'currency' ? '0.01' : 'any')"
         :value="modelValue"
         @input="$emit('update:modelValue', $event.target.value === '' ? null : Number($event.target.value))"
-        :placeholder="field.placeholder || '0'"
+        :placeholder="formatLabel(field.placeholder) || '0'"
         :required="field.required"
         :disabled="field.readonly"
-        class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-4 text-xs font-bold text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white dark:focus:border-[#00C896] transition-colors text-left"
+        class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-bold text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white focus:ring-2 focus:ring-[#00C896]/20 dark:border-gray-700 dark:bg-gray-900/40 dark:text-white dark:focus:border-[#00C896] transition-all text-left"
         dir="ltr"
       />
       <span
@@ -60,37 +60,25 @@
       </span>
     </div>
 
-    <!-- 4. Select / Relation Dropdown -->
+    <!-- 4. Select / Relation Dropdown (Select2 Searchable Component) -->
     <div v-else-if="['select', 'relation'].includes(field.type)" class="relative">
-      <select
-        :value="modelValue"
-        @change="$emit('update:modelValue', $event.target.value)"
-        :required="field.required"
+      <SearchableSelect
+        :model-value="modelValue"
+        :options="computedOptions"
+        :placeholder="formatLabel(field.placeholder) || formatLabel(field.label)"
+        :search-placeholder="$t('common.search')"
         :disabled="field.readonly"
-        class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-4 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white dark:focus:border-[#00C896] transition-colors appearance-none cursor-pointer"
-      >
-        <option value="">{{ field.placeholder || '— ' + field.label + ' —' }}</option>
-        <option
-          v-for="opt in computedOptions"
-          :key="opt.value"
-          :value="opt.value"
-        >
-          {{ opt.label }}
-        </option>
-      </select>
-      <div
-        class="pointer-events-none absolute top-3 text-gray-400"
-        :class="$i18n.locale === 'ar' ? 'left-3.5' : 'right-3.5'"
-      >
-        <ChevronDown class="h-4 w-4" />
-      </div>
+        :clearable="!field.required"
+        :allow-empty="!field.required"
+        @update:model-value="$emit('update:modelValue', $event)"
+      />
     </div>
 
     <!-- 5. Boolean Toggle / Switch -->
     <div v-else-if="['boolean', 'switch'].includes(field.type)" class="flex items-center justify-between p-3 rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40">
       <div>
-        <label class="block text-xs font-bold text-gray-900 dark:text-white">{{ field.label }}</label>
-        <span v-if="field.help_text" class="text-[11px] text-gray-400">{{ field.help_text }}</span>
+        <label class="block text-xs font-bold text-gray-900 dark:text-white">{{ formatLabel(field.label) }}</label>
+        <span v-if="field.help_text" class="text-[11px] text-gray-400">{{ formatLabel(field.help_text) }}</span>
       </div>
       <label class="relative inline-flex items-center cursor-pointer">
         <input
@@ -111,7 +99,7 @@
         @input="$emit('update:modelValue', $event.target.value)"
         :required="field.required"
         :disabled="field.readonly"
-        class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-4 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white dark:focus:border-[#00C896] transition-colors"
+        class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white focus:ring-2 focus:ring-[#00C896]/20 dark:border-gray-700 dark:bg-gray-900/40 dark:text-white dark:focus:border-[#00C896] transition-all"
       />
     </div>
 
@@ -124,7 +112,8 @@
 
 <script setup>
 import { computed } from 'vue';
-import { ChevronDown } from 'lucide-vue-next';
+import { useI18n } from 'vue-i18n';
+import SearchableSelect from '../common/SearchableSelect.vue';
 
 const props = defineProps({
   field: {
@@ -132,7 +121,7 @@ const props = defineProps({
     required: true,
   },
   modelValue: {
-    type: [String, Number, Boolean, Array, Object],
+    type: [String, Number, Boolean, Array, Object, null],
     default: null,
   },
   error: {
@@ -147,9 +136,30 @@ const props = defineProps({
 
 defineEmits(['update:modelValue']);
 
+const { t, te } = useI18n();
+
+const formatLabel = (key) => {
+  if (!key) return '';
+  return te(key) ? t(key) : key;
+};
+
 const colClass = computed(() => {
-  const col = props.field.col || 12;
-  return `col-span-12 sm:col-span-${col}`;
+  const col = Number(props.field.col) || 12;
+  const colSpanMap = {
+    1: 'col-span-12 sm:col-span-1',
+    2: 'col-span-12 sm:col-span-2',
+    3: 'col-span-12 sm:col-span-3',
+    4: 'col-span-12 sm:col-span-4',
+    5: 'col-span-12 sm:col-span-5',
+    6: 'col-span-12 sm:col-span-6',
+    7: 'col-span-12 sm:col-span-7',
+    8: 'col-span-12 sm:col-span-8',
+    9: 'col-span-12 sm:col-span-9',
+    10: 'col-span-12 sm:col-span-10',
+    11: 'col-span-12 sm:col-span-11',
+    12: 'col-span-12 sm:col-span-12',
+  };
+  return colSpanMap[col] || 'col-span-12 sm:col-span-12';
 });
 
 const computedOptions = computed(() => {

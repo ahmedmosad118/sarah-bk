@@ -17,6 +17,8 @@ class User extends Authenticatable implements HasMedia
 {
     use HasApiTokens, HasFactory, Notifiable, HasRoles, LogsActivity, InteractsWithMedia;
 
+    protected string $guard_name = 'web';
+
     protected $fillable = [
         'name',
         'email',
@@ -59,11 +61,15 @@ class User extends Authenticatable implements HasMedia
     {
         $media = $this->getFirstMedia('avatar');
         if ($media) {
-            return asset('storage/' . $media->id . '/' . $media->file_name);
+            return $media->getUrl();
         }
 
         if (!empty($this->avatar)) {
             if (str_starts_with($this->avatar, 'http://') || str_starts_with($this->avatar, 'https://') || str_starts_with($this->avatar, 'data:')) {
+                if (str_contains($this->avatar, 'storage/tenants/')) {
+                    $relativePath = substr($this->avatar, strpos($this->avatar, 'storage/tenants/'));
+                    return asset($relativePath);
+                }
                 return $this->avatar;
             }
             return asset(ltrim($this->avatar, '/'));

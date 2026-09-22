@@ -45,6 +45,25 @@
         </ul>
       </div>
 
+      <!-- Commercial & CRM Group -->
+      <div>
+        <h3 class="mb-2.5 px-3 text-[11px] font-black uppercase text-gray-400 tracking-wider">
+          {{ $t('nav.commercial') }}
+        </h3>
+        <ul class="space-y-1">
+          <li>
+            <router-link
+              to="/customers"
+              active-class="bg-[#00C896]/10 text-[#00A87E] dark:bg-[#00C896]/15 dark:text-[#00C896] font-bold shadow-xs"
+              class="group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800/60 transition-colors"
+            >
+              <UserCheck class="h-4 w-4 shrink-0 text-[#00C896]" />
+              <span>{{ $t('nav.customers') }}</span>
+            </router-link>
+          </li>
+        </ul>
+      </div>
+
       <!-- Team & Foundation Group -->
       <div>
         <h3 class="mb-2.5 px-3 text-[11px] font-black uppercase text-gray-400 tracking-wider">
@@ -129,6 +148,7 @@ import { useI18n } from 'vue-i18n';
 import BrandLogo from '../common/BrandLogo.vue';
 import {
   LayoutDashboard,
+  UserCheck,
   Users,
   Tag,
   ShieldCheck,
