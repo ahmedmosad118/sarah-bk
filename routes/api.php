@@ -27,7 +27,7 @@ Route::prefix('central')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 });
 
 /*
@@ -35,7 +35,7 @@ Route::prefix('auth')->group(function () {
 | Tenant Protected API Routes (Requires Authenticated Tenant User)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
     // Auth Profile
     Route::prefix('auth')->group(function () {
@@ -43,7 +43,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::post('/change-password', [AuthController::class, 'changePassword']);
         Route::put('/profile', [AuthController::class, 'updateProfile']);
-        Route::post('/profile/avatar', [AuthController::class, 'uploadAvatar']);
+        Route::post('/profile/avatar', [AuthController::class, 'uploadAvatar'])->middleware('throttle:uploads');
     });
 
     // Users Management

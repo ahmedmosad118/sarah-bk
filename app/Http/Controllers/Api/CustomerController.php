@@ -76,12 +76,18 @@ class CustomerController extends CRUDController
             $query->where('status', $request->status);
         }
 
-        // 4. Sorting
-        $sortBy = $request->input('sort_by', $this->defaultSortBy);
-        $sortOrder = $request->input('sort_order', $this->defaultSortOrder);
+        // 4. Sorting (SQL Injection Whitelisting & Protection)
+        $rawSortBy = (string) $request->input('sort_by', $this->defaultSortBy);
+        $sortBy = preg_match('/^[a-zA-Z0-9_]+$/', $rawSortBy) ? $rawSortBy : $this->defaultSortBy;
+
+        $rawSortOrder = strtolower((string) $request->input('sort_order', $this->defaultSortOrder));
+        $sortOrder = in_array($rawSortOrder, ['asc', 'desc'], true) ? $rawSortOrder : 'desc';
+
         $query->orderBy($sortBy, $sortOrder);
 
-        $perPage = (int) $request->input('per_page', 15);
+        // 5. Pagination (DOS Protection: Capped 1 - 100)
+        $rawPerPage = (int) $request->input('per_page', 15);
+        $perPage = min(max($rawPerPage, 1), 100);
         $paginated = $query->paginate($perPage);
 
         // Stats Summary
@@ -144,6 +150,8 @@ class CustomerController extends CRUDController
             'address' => ['nullable', 'string', 'max:1000'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'status' => ['required', 'string', 'in:active,inactive'],
+            'documents' => ['nullable'],
+            'documents.*' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp', 'max:5120'],
         ];
     }
 
@@ -153,6 +161,11 @@ class CustomerController extends CRUDController
         if ($request->hasFile('documents')) {
             $files = is_array($request->file('documents')) ? $request->file('documents') : [$request->file('documents')];
             foreach ($files as $file) {
+                // Ensure extension is not dangerous
+                $ext = strtolower($file->getClientOriginalExtension());
+                if (in_array($ext, ['php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'phar', 'pht', 'exe', 'sh', 'bat', 'cmd'], true)) {
+                    continue;
+                }
                 $model->addMedia($file)->toMediaCollection('documents');
             }
         }

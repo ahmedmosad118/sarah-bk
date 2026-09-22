@@ -83,13 +83,18 @@ abstract class CRUDController extends Controller
             }
         }
 
-        // 3. Sorting
-        $sortBy = $request->input('sort_by', $this->defaultSortBy);
-        $sortOrder = $request->input('sort_order', $this->defaultSortOrder);
+        // 3. Sorting (SQL Injection Whitelisting & Protection)
+        $rawSortBy = (string) $request->input('sort_by', $this->defaultSortBy);
+        $sortBy = preg_match('/^[a-zA-Z0-9_]+$/', $rawSortBy) ? $rawSortBy : $this->defaultSortBy;
+
+        $rawSortOrder = strtolower((string) $request->input('sort_order', $this->defaultSortOrder));
+        $sortOrder = in_array($rawSortOrder, ['asc', 'desc'], true) ? $rawSortOrder : 'desc';
+
         $query->orderBy($sortBy, $sortOrder);
 
-        // 4. Pagination
-        $perPage = (int) $request->input('per_page', 15);
+        // 4. Pagination (DOS Protection: Capped between 1 and 100)
+        $rawPerPage = (int) $request->input('per_page', 15);
+        $perPage = min(max($rawPerPage, 1), 100);
         $paginated = $query->paginate($perPage);
 
         return response()->json([

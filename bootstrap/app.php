@@ -14,12 +14,16 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'identify.tenant' => \App\Core\Tenancy\IdentifyTenant::class,
+            'security.headers' => \App\Http\Middleware\SecurityHeadersMiddleware::class,
+            'sanitize.input' => \App\Http\Middleware\SanitizeInputMiddleware::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
 
         $middleware->prependToGroup('api', \App\Core\Tenancy\IdentifyTenant::class);
+        $middleware->appendToGroup('api', \App\Http\Middleware\SecurityHeadersMiddleware::class);
+        $middleware->appendToGroup('api', \App\Http\Middleware\SanitizeInputMiddleware::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
