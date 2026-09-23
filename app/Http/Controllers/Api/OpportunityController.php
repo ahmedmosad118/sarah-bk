@@ -21,7 +21,15 @@ class OpportunityController extends CRUDController
 {
     protected string $model = Opportunity::class;
     protected array $searchable = ['title', 'description', 'notes'];
-    protected array $with = ['customer', 'lead', 'assignedUser', 'creator'];
+    protected array $with = [
+        'customer',
+        'lead',
+        'assignedUser',
+        'creator',
+        'siteVisits.assignedUser',
+        'siteVisits.rooms',
+        'measurements.measuredUser',
+    ];
     protected string $defaultSortBy = 'id';
     protected string $defaultSortOrder = 'desc';
 

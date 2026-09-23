@@ -273,10 +273,33 @@ onMounted(() => {
   loadData();
 });
 
+const setFieldValue = (fieldName, value) => {
+  if (formData.value) {
+    formData.value[fieldName] = value;
+  }
+};
+
+const appendOption = (fieldName, option) => {
+  const field = schema.value?.fields?.find((f) => f.name === fieldName);
+  if (field) {
+    if (!field.options) field.options = [];
+    // Check if option already exists
+    const exists = field.options.some((o) => o.value === option.value);
+    if (!exists) {
+      field.options.unshift(option);
+    }
+  }
+};
+
 defineExpose({
   loadData,
   fetchData: loadData,
   openCreateModal,
   openEditModal,
+  formData,
+  schema,
+  formErrors,
+  setFieldValue,
+  appendOption,
 });
 </script>

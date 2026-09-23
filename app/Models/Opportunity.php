@@ -81,6 +81,14 @@ class Opportunity extends Model implements HasMedia
     }
 
     /**
+     * Engineering measurements conducted for this opportunity.
+     */
+    public function measurements(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Measurement::class);
+    }
+
+    /**
      * Scope query by stage.
      */
     public function scopeStage(Builder $query, string $stage): Builder

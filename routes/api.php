@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\JobTitleController;
 use App\Http\Controllers\Api\LeadController;
+use App\Http\Controllers\Api\MeasurementController;
 use App\Http\Controllers\Api\OpportunityController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SettingController;
@@ -116,6 +117,21 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/{id}/complete', [SiteVisitController::class, 'complete']);
         Route::post('/{id}/cancel', [SiteVisitController::class, 'cancel']);
         Route::post('/{id}/photos', [SiteVisitController::class, 'uploadPhotos']);
+    });
+
+    // Measurements Management (Phase 7 - Quantity Surveying)
+    Route::prefix('measurements')->group(function () {
+        Route::get('/schema', [MeasurementController::class, 'schema']);
+        Route::get('/', [MeasurementController::class, 'index']);
+        Route::post('/', [MeasurementController::class, 'store']);
+        Route::post('/from-opportunity/{opportunityId}', [MeasurementController::class, 'createFromOpportunity']);
+        Route::post('/import-from-site-visit/{siteVisitId}', [MeasurementController::class, 'importFromSiteVisit']);
+        Route::get('/{id}', [MeasurementController::class, 'show']);
+        Route::put('/{id}', [MeasurementController::class, 'update']);
+        Route::delete('/{ids}', [MeasurementController::class, 'destroy']);
+        Route::post('/{id}/submit-review', [MeasurementController::class, 'submitReview']);
+        Route::post('/{id}/approve', [MeasurementController::class, 'approve']);
+        Route::post('/{id}/create-revision', [MeasurementController::class, 'createRevision']);
     });
 
     // Roles & Permissions Management

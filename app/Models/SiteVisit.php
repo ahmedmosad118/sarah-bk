@@ -86,6 +86,14 @@ class SiteVisit extends Model implements HasMedia
     }
 
     /**
+     * Engineering measurements associated with this site visit.
+     */
+    public function measurements(): HasMany
+    {
+        return $this->hasMany(Measurement::class);
+    }
+
+    /**
      * Scope query by status.
      */
     public function scopeStatus(Builder $query, string $status): Builder

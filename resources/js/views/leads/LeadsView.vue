@@ -260,115 +260,11 @@
     </CrudIndex>
 
     <!-- 1. Quick Customer Creation Modal -->
-    <CrudModal
+    <QuickCustomerModal
       :show="showQuickCustomerModal"
-      :title="$t('leads.quickAddCustomerTitle')"
-      :loading="quickCustomerLoading"
-      @close="closeQuickCustomerModal"
-      @save="saveQuickCustomer"
-    >
-      <div class="space-y-4">
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          {{ $t('leads.quickAddCustomerDesc') }}
-        </p>
-
-        <!-- Customer Type Radio/Pills -->
-        <div>
-          <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-            {{ $t('customers.customerType') }} <span class="text-rose-500">*</span>
-          </label>
-          <div class="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              @click="quickCustomerForm.customer_type = 'individual'"
-              class="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer"
-              :class="quickCustomerForm.customer_type === 'individual' ? 'border-[#00C896] bg-[#00C896]/10 text-[#00A87E] dark:bg-[#00C896]/20 dark:text-[#00C896]' : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400'"
-            >
-              <User class="h-4 w-4" />
-              <span>{{ $t('customers.individual') }}</span>
-            </button>
-            <button
-              type="button"
-              @click="quickCustomerForm.customer_type = 'company'"
-              class="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer"
-              :class="quickCustomerForm.customer_type === 'company' ? 'border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400'"
-            >
-              <Building2 class="h-4 w-4" />
-              <span>{{ $t('customers.company') }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Name & Company Name -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-              {{ $t('customers.name') }} <span class="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              v-model="quickCustomerForm.name"
-              required
-              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-            />
-            <p v-if="quickCustomerErrors.name" class="mt-1 text-[11px] text-rose-500 font-bold">
-              {{ quickCustomerErrors.name[0] }}
-            </p>
-          </div>
-
-          <div v-if="quickCustomerForm.customer_type === 'company'">
-            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-              {{ $t('customers.companyName') }}
-            </label>
-            <input
-              type="text"
-              v-model="quickCustomerForm.company_name"
-              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-            />
-          </div>
-        </div>
-
-        <!-- Phone & WhatsApp -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-              {{ $t('customers.phone') }}
-            </label>
-            <input
-              type="tel"
-              v-model="quickCustomerForm.phone"
-              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-              dir="ltr"
-            />
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-              {{ $t('customers.whatsapp') }}
-            </label>
-            <input
-              type="tel"
-              v-model="quickCustomerForm.whatsapp"
-              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-              dir="ltr"
-            />
-          </div>
-        </div>
-
-        <!-- Email -->
-        <div>
-          <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-            {{ $t('customers.email') }}
-          </label>
-          <input
-            type="email"
-            v-model="quickCustomerForm.email"
-            class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-            dir="ltr"
-          />
-        </div>
-      </div>
-    </CrudModal>
+      @close="showQuickCustomerModal = false"
+      @customer-created="onQuickCustomerCreated"
+    />
 
     <!-- 2. Lead View / Details & Progressive Qualification Modal -->
     <CrudModal
@@ -830,6 +726,7 @@ import alertService from '../../services/alert';
 import { useNotificationStore } from '../../stores/notification';
 import CrudIndex from '../../components/crud/CrudIndex.vue';
 import CrudModal from '../../components/crud/CrudModal.vue';
+import QuickCustomerModal from '../../components/common/QuickCustomerModal.vue';
 import SearchableSelect from '../../components/common/SearchableSelect.vue';
 import {
   Sparkles,
@@ -906,17 +803,6 @@ const qualificationForm = reactive({
 
 // Quick Customer Creation Modal State
 const showQuickCustomerModal = ref(false);
-const quickCustomerLoading = ref(false);
-const quickCustomerErrors = ref({});
-const quickCustomerForm = reactive({
-  customer_type: 'individual',
-  name: '',
-  company_name: '',
-  phone: '',
-  whatsapp: '',
-  email: '',
-  status: 'active',
-});
 
 // Convert Lead to Opportunity Modal State
 const showConvertOpportunityModal = ref(false);
@@ -1080,61 +966,30 @@ const submitConvertToOpportunity = async () => {
 
 const onFieldAction = (fieldName) => {
   if (fieldName === 'customer_id') {
-    openQuickCustomerModal();
+    showQuickCustomerModal.value = true;
   }
 };
 
-// Quick Customer Modal Handlers
-const openQuickCustomerModal = () => {
-  quickCustomerForm.customer_type = 'individual';
-  quickCustomerForm.name = '';
-  quickCustomerForm.company_name = '';
-  quickCustomerForm.phone = '';
-  quickCustomerForm.whatsapp = '';
-  quickCustomerForm.email = '';
-  quickCustomerErrors.value = {};
-  showQuickCustomerModal.value = true;
-};
+const onQuickCustomerCreated = (newCustomer) => {
+  const optionLabel = newCustomer.company_name
+    ? `${newCustomer.name} (${newCustomer.company_name})`
+    : newCustomer.name;
 
-const closeQuickCustomerModal = () => {
-  showQuickCustomerModal.value = false;
-};
+  const newOption = {
+    value: newCustomer.id,
+    label: optionLabel,
+  };
 
-const saveQuickCustomer = async () => {
-  quickCustomerLoading.value = true;
-  quickCustomerErrors.value = {};
+  // 1. Add to local options list
+  customerOptions.value.unshift(newOption);
 
-  try {
-    const res = await api.post('/customers', quickCustomerForm);
-    if (res.data?.success && res.data?.data) {
-      const newCustomer = res.data.data;
-      notify.success(t('customers.savedSuccessfully'));
+  // 2. Append option in CrudIndex schema
+  crudRef.value?.appendOption('customer_id', newOption);
 
-      // Add to options list
-      const optionLabel = newCustomer.company_name
-        ? `${newCustomer.name} (${newCustomer.company_name})`
-        : newCustomer.name;
-
-      customerOptions.value.unshift({
-        value: newCustomer.id,
-        label: optionLabel,
-      });
-
-      // Auto-select in current Lead form
-      if (crudRef.value?.formData) {
-        crudRef.value.formData.customer_id = newCustomer.id;
-      }
-
-      showQuickCustomerModal.value = false;
-    }
-  } catch (err) {
-    if (err.response?.status === 422 && err.response.data?.errors) {
-      quickCustomerErrors.value = err.response.data.errors;
-    } else {
-      notify.error(err.response?.data?.message || 'Error saving customer');
-    }
-  } finally {
-    quickCustomerLoading.value = false;
+  // 3. Auto-select in current Lead form
+  crudRef.value?.setFieldValue('customer_id', newCustomer.id);
+  if (crudRef.value?.formData) {
+    crudRef.value.formData.customer_id = newCustomer.id;
   }
 };
 

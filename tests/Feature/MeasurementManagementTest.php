@@ -1,0 +1,698 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Core\Tenancy\TenantDatabaseManager;
+use App\Models\Central\Tenant;
+use App\Models\Customer;
+use App\Models\Lead;
+use App\Models\Measurement;
+use App\Models\MeasurementItem;
+use App\Models\Opportunity;
+use App\Models\SiteVisit;
+use App\Models\SiteVisitRoom;
+use App\Models\User;
+use App\Services\Tenant\TenantProvisioningService;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Artisan;
+use Spatie\Activitylog\Models\Activity;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+class MeasurementManagementTest extends TestCase
+{
+    protected TenantProvisioningService $provisioningService;
+    protected Tenant $tenantA;
+    protected Tenant $tenantB;
+    protected User $ownerA;
+    protected User $ownerB;
+    protected string $slugA;
+    protected string $slugB;
+    protected string $tokenA;
+    protected string $tokenB;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Artisan::call('migrate', [
+            '--database' => 'central',
+            '--path' => 'database/migrations/central',
+            '--force' => true,
+        ]);
+
+        $this->provisioningService = app(TenantProvisioningService::class);
+
+        $this->slugA = 'meas-alpha-' . time() . '-' . rand(10, 99);
+        $this->slugB = 'meas-beta-' . time() . '-' . rand(10, 99);
+
+        // Provision Tenant A
+        $resA = $this->provisioningService->provision([
+            'name' => 'Alpha Quantity Surveying Corp',
+            'slug' => $this->slugA,
+            'company_code' => 'ALPH-' . uniqid(),
+            'domain' => $this->slugA . '.localhost',
+        ], [
+            'name' => 'Alpha Owner',
+            'email' => "owner@{$this->slugA}.test",
+            'password' => 'AlphaPass123!',
+        ]);
+
+        $this->tenantA = $resA['tenant'];
+        $this->ownerA = $resA['owner'];
+
+        // Provision Tenant B
+        $resB = $this->provisioningService->provision([
+            'name' => 'Beta Quantity Surveying Corp',
+            'slug' => $this->slugB,
+            'company_code' => 'BETA-' . uniqid(),
+            'domain' => $this->slugB . '.localhost',
+        ], [
+            'name' => 'Beta Owner',
+            'email' => "owner@{$this->slugB}.test",
+            'password' => 'BetaPass456!',
+        ]);
+
+        $this->tenantB = $resB['tenant'];
+        $this->ownerB = $resB['owner'];
+
+        // Issue tokens
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+        $this->tokenA = $this->ownerA->createToken('token_a')->plainTextToken;
+
+        TenantDatabaseManager::switchToTenant($this->tenantB);
+        $this->tokenB = $this->ownerB->createToken('token_b')->plainTextToken;
+    }
+
+    protected function tearDown(): void
+    {
+        try {
+            if (isset($this->tenantA)) {
+                TenantDatabaseManager::purgeTenantConnection($this->tenantA);
+            }
+            if (isset($this->tenantB)) {
+                TenantDatabaseManager::purgeTenantConnection($this->tenantB);
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
+        parent::tearDown();
+    }
+
+    /**
+     * SCENARIO 1: Opportunity without Site Visit -> Create Measurement -> Add items -> Approve.
+     */
+    public function test_can_create_measurement_for_opportunity_without_site_visit_and_approve(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Architectural Client',
+            'customer_type' => 'individual',
+            'phone' => '01011112222',
+            'status' => 'active',
+        ]);
+
+        $opportunity = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Commercial Mall Finishing (From CAD)',
+            'stage' => 'Qualified',
+            'estimated_value' => 500000.00,
+        ]);
+
+        $engineer = User::create([
+            'name' => 'Eng. Senior QS',
+            'email' => 'qs@alpha.test',
+            'password' => bcrypt('password'),
+            'status' => 'active',
+        ]);
+
+        // Create measurement without site visit
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson('/api/measurements', [
+            'opportunity_id' => $opportunity->id,
+            'site_visit_id' => null,
+            'measured_by' => $engineer->id,
+            'measured_at' => '2026-11-10',
+            'notes' => 'Takeoffs extracted from AutoCAD revision 4.',
+            'items' => [
+                [
+                    'room_name' => 'Zone A - Retail Hall',
+                    'item_name' => 'Gypsum Board Ceiling',
+                    'unit' => 'm2',
+                    'count' => 2,
+                    'length' => 10,
+                    'width' => 8,
+                    'deductions' => 10,
+                    'notes' => 'Deduction for skylight opening.',
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.opportunity_id', $opportunity->id)
+            ->assertJsonPath('data.status', 'Draft');
+
+        $measurementId = $response->json('data.id');
+
+        // Verify Gross (2 * 10 * 8 = 160) and Net (160 - 10 = 150)
+        $this->assertEquals(150.00, (float) $response->json('data.total_area'));
+
+        // Approve measurement
+        $approveResponse = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/measurements/{$measurementId}/approve");
+
+        $approveResponse->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', 'Approved');
+
+        $this->assertDatabaseHas('measurements', [
+            'id' => $measurementId,
+            'status' => 'Approved',
+            'total_area' => 150.00,
+        ]);
+    }
+
+    /**
+     * SCENARIO 2: Opportunity with completed Site Visit -> Import rooms -> Modify measurements -> Approve.
+     */
+    public function test_can_create_measurement_from_site_visit_import_and_approve(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Villa Owner Client',
+            'customer_type' => 'individual',
+            'phone' => '01033334444',
+            'status' => 'active',
+        ]);
+
+        $opportunity = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Villa Full Renovation',
+            'stage' => 'Proposal',
+        ]);
+
+        $siteVisit = SiteVisit::create([
+            'customer_id' => $customer->id,
+            'opportunity_id' => $opportunity->id,
+            'status' => 'Completed',
+            'visit_date' => '2026-11-01',
+            'general_assessment' => 'Site ready for fit-out.',
+        ]);
+
+        $siteVisit->rooms()->create([
+            'room_name' => 'Grand Salon',
+            'estimated_area' => 45.00,
+            'notes' => 'High ceiling.',
+        ]);
+
+        $siteVisit->rooms()->create([
+            'room_name' => 'Master Bedroom Suite',
+            'estimated_area' => 28.00,
+        ]);
+
+        // Import from site visit
+        $importResponse = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/measurements/import-from-site-visit/{$siteVisit->id}");
+
+        $importResponse->assertStatus(201)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', 'Draft')
+            ->assertJsonPath('data.site_visit_id', $siteVisit->id);
+
+        $measurementId = $importResponse->json('data.id');
+        $this->assertCount(2, $importResponse->json('data.items'));
+
+        // Update items with exact dimensions
+        $updateResponse = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->putJson("/api/measurements/{$measurementId}", [
+            'items' => [
+                [
+                    'room_name' => 'Grand Salon',
+                    'item_name' => 'Wall Emulsion Paint',
+                    'unit' => 'm2',
+                    'count' => 1,
+                    'length' => 9.00,
+                    'width' => 5.00,
+                    'deductions' => 3.00, // 45 - 3 = 42
+                ],
+                [
+                    'room_name' => 'Master Bedroom Suite',
+                    'item_name' => 'Parquet Flooring',
+                    'unit' => 'm2',
+                    'count' => 1,
+                    'length' => 7.00,
+                    'width' => 4.00,
+                    'deductions' => 0.00, // 28
+                ],
+            ],
+        ]);
+
+        $updateResponse->assertStatus(200)
+            ->assertJsonPath('success', true);
+
+        // Total Area = 42 + 28 = 70.00
+        $this->assertEquals(70.00, (float) $updateResponse->json('data.total_area'));
+
+        // Approve
+        $approveResponse = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/measurements/{$measurementId}/approve");
+
+        $approveResponse->assertStatus(200)
+            ->assertJsonPath('data.status', 'Approved');
+    }
+
+    /**
+     * SCENARIO 3: Site Visit contains rough estimated_area -> Verify it does NOT automatically become approved quantity.
+     */
+    public function test_site_visit_rough_area_does_not_become_approved_quantity_automatically(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Test Client Rough Area',
+            'customer_type' => 'individual',
+            'phone' => '01055556666',
+            'status' => 'active',
+        ]);
+
+        $opportunity = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Rough Area Verification',
+            'stage' => 'New',
+        ]);
+
+        $siteVisit = SiteVisit::create([
+            'customer_id' => $customer->id,
+            'opportunity_id' => $opportunity->id,
+            'status' => 'Completed',
+        ]);
+
+        $siteVisit->rooms()->create([
+            'room_name' => 'Reception Area',
+            'estimated_area' => 88.50, // Rough field guess
+        ]);
+
+        // Import
+        $importResponse = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/measurements/import-from-site-visit/{$siteVisit->id}");
+
+        $importResponse->assertStatus(201);
+        $measurementId = $importResponse->json('data.id');
+
+        // At import, net_quantity is 0.00 (not 88.50) because dimensions were not measured yet
+        $this->assertEquals(0.00, (float) $importResponse->json('data.total_area'));
+        $this->assertEquals(0.00, (float) $importResponse->json('data.items.0.net_quantity'));
+
+        // Historical SiteVisitRoom still has its original rough estimate
+        $this->assertEquals(88.50, (float) SiteVisitRoom::where('site_visit_id', $siteVisit->id)->first()->estimated_area);
+    }
+
+    /**
+     * SCENARIO 4: Approved Measurement cannot be casually edited.
+     */
+    public function test_approved_measurement_cannot_be_modified(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Immutable Measurement Customer',
+            'customer_type' => 'company',
+            'phone' => '01077778888',
+            'status' => 'active',
+        ]);
+
+        $opportunity = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Immutable Project',
+            'stage' => 'Won',
+        ]);
+
+        $measurement = Measurement::create([
+            'opportunity_id' => $opportunity->id,
+            'measurement_number' => 'M-LOCK-001',
+            'version' => 1,
+            'status' => 'Approved',
+            'total_area' => 100.00,
+        ]);
+
+        $measurement->items()->create([
+            'room_name' => 'Room 1',
+            'item_name' => 'Approved Item',
+            'unit' => 'm2',
+            'count' => 1,
+            'length' => 10,
+            'width' => 10,
+            'gross_quantity' => 100.00,
+            'net_quantity' => 100.00,
+        ]);
+
+        // Attempting to update approved measurement -> MUST return 422
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->putJson("/api/measurements/{$measurement->id}", [
+            'notes' => 'Attempting unauthorized modification.',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['status']);
+    }
+
+    /**
+     * SCENARIO 5: Approved Measurement -> Create Revision -> Approve Revision -> Version 1 becomes Superseded.
+     */
+    public function test_can_create_revision_from_approved_measurement_and_preserve_history(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Revision Client',
+            'customer_type' => 'company',
+            'phone' => '01099990000',
+            'status' => 'active',
+        ]);
+
+        $opportunity = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Multi-Revision Building',
+            'stage' => 'Negotiation',
+        ]);
+
+        // Version 1 (Approved)
+        $v1 = Measurement::create([
+            'opportunity_id' => $opportunity->id,
+            'measurement_number' => 'M-BLD-001',
+            'version' => 1,
+            'status' => 'Approved',
+            'total_area' => 50.00,
+            'approved_at' => Carbon::yesterday(),
+        ]);
+
+        $v1->items()->create([
+            'room_name' => 'Unit 101',
+            'item_name' => 'Plaster Works',
+            'unit' => 'm2',
+            'count' => 1,
+            'length' => 10,
+            'width' => 5,
+            'gross_quantity' => 50.00,
+            'net_quantity' => 50.00,
+        ]);
+
+        // Create Revision via API
+        $revResponse = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/measurements/{$v1->id}/create-revision");
+
+        $revResponse->assertStatus(201)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.version', 2)
+            ->assertJsonPath('data.status', 'Draft')
+            ->assertJsonPath('data.measurement_number', 'M-BLD-001-V2');
+
+        $v2Id = $revResponse->json('data.id');
+
+        // Version 1 is still Approved while Version 2 is Draft
+        $this->assertEquals('Approved', $v1->fresh()->status);
+
+        // Update Version 2 with new quantity
+        $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->putJson("/api/measurements/{$v2Id}", [
+            'items' => [
+                [
+                    'room_name' => 'Unit 101',
+                    'item_name' => 'Plaster Works',
+                    'unit' => 'm2',
+                    'count' => 1,
+                    'length' => 12,
+                    'width' => 5,
+                    'deductions' => 0, // 60.00
+                ],
+            ],
+        ]);
+
+        // Approve Version 2
+        $approveV2 = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/measurements/{$v2Id}/approve");
+
+        $approveV2->assertStatus(200)
+            ->assertJsonPath('data.status', 'Approved');
+
+        // Version 1 is now Superseded, Version 2 is Approved
+        $this->assertEquals('Superseded', $v1->fresh()->status);
+        $this->assertEquals('Approved', Measurement::find($v2Id)->status);
+    }
+
+    /**
+     * SCENARIOS 6 & 7: Tenant Isolation & IDOR Protection across Tenants.
+     */
+    public function test_tenant_isolation_and_cross_tenant_access_protection(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantB);
+
+        $customerB = Customer::create([
+            'name' => 'Beta Tenant Customer',
+            'customer_type' => 'company',
+            'phone' => '01122223333',
+            'status' => 'active',
+        ]);
+
+        $opportunityB = Opportunity::create([
+            'customer_id' => $customerB->id,
+            'title' => 'Beta Opportunity',
+            'stage' => 'Qualified',
+        ]);
+
+        $measurementB = Measurement::create([
+            'opportunity_id' => $opportunityB->id,
+            'measurement_number' => 'M-BETA-999',
+            'status' => 'Draft',
+        ]);
+
+        $siteVisitB = SiteVisit::create([
+            'customer_id' => $customerB->id,
+            'opportunity_id' => $opportunityB->id,
+            'status' => 'Completed',
+        ]);
+
+        // Tenant A attempts to view Tenant B's measurement -> 404
+        $viewResponse = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->getJson("/api/measurements/{$measurementB->id}");
+
+        $viewResponse->assertStatus(404);
+
+        // Tenant A attempts to import Tenant B's site visit -> 404
+        $importResponse = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/measurements/import-from-site-visit/{$siteVisitB->id}");
+
+        $importResponse->assertStatus(404);
+
+        // Tenant A attempts to approve Tenant B's measurement -> 404
+        $approveResponse = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/measurements/{$measurementB->id}/approve");
+
+        $approveResponse->assertStatus(404);
+    }
+
+    /**
+     * SCENARIOS 8, 9, 10, 11: Exact Mathematical Formulas for AREA, VOLUME, LINEAR, and COUNT.
+     */
+    public function test_mathematical_calculation_formulas(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Math Formulas Client',
+            'customer_type' => 'individual',
+            'phone' => '01088887777',
+            'status' => 'active',
+        ]);
+
+        $opportunity = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Math Engine Validation',
+            'stage' => 'Proposal',
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson('/api/measurements', [
+            'opportunity_id' => $opportunity->id,
+            'items' => [
+                // Scenario 8: AREA -> 2 * 5 * 4 - 2 = 38 m2
+                [
+                    'room_name' => 'Room Area',
+                    'item_name' => 'Area Item',
+                    'unit' => 'm2',
+                    'count' => 2,
+                    'length' => 5,
+                    'width' => 4,
+                    'deductions' => 2,
+                ],
+                // Scenario 9: VOLUME -> 1 * 5 * 4 * 3 - 2 = 58 m3
+                [
+                    'room_name' => 'Room Volume',
+                    'item_name' => 'Volume Item',
+                    'unit' => 'm3',
+                    'count' => 1,
+                    'length' => 5,
+                    'width' => 4,
+                    'height' => 3,
+                    'deductions' => 2,
+                ],
+                // Scenario 10: LINEAR -> 3 * 4 - 1 = 11 lm
+                [
+                    'room_name' => 'Room Linear',
+                    'item_name' => 'Linear Item',
+                    'unit' => 'lm',
+                    'count' => 3,
+                    'length' => 4,
+                    'deductions' => 1,
+                ],
+                // Scenario 11: COUNT -> 10 - 2 = 8 pcs
+                [
+                    'room_name' => 'Room Count',
+                    'item_name' => 'Count Item',
+                    'unit' => 'pcs',
+                    'count' => 10,
+                    'deductions' => 2,
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('success', true);
+
+        $items = $response->json('data.items');
+
+        // Item 0 (Area): Net = 38
+        $this->assertEquals('m2', $items[0]['unit']);
+        $this->assertEquals(40.00, (float) $items[0]['gross_quantity']);
+        $this->assertEquals(38.00, (float) $items[0]['net_quantity']);
+
+        // Item 1 (Volume): Net = 58
+        $this->assertEquals('m3', $items[1]['unit']);
+        $this->assertEquals(60.00, (float) $items[1]['gross_quantity']);
+        $this->assertEquals(58.00, (float) $items[1]['net_quantity']);
+
+        // Item 2 (Linear): Net = 11
+        $this->assertEquals('lm', $items[2]['unit']);
+        $this->assertEquals(12.00, (float) $items[2]['gross_quantity']);
+        $this->assertEquals(11.00, (float) $items[2]['net_quantity']);
+
+        // Item 3 (Count): Net = 8
+        $this->assertEquals('pcs', $items[3]['unit']);
+        $this->assertEquals(10.00, (float) $items[3]['gross_quantity']);
+        $this->assertEquals(8.00, (float) $items[3]['net_quantity']);
+
+        // Summary Aggregates
+        $this->assertEquals(38.00, (float) $response->json('data.total_area'));
+        $this->assertEquals(58.00, (float) $response->json('data.total_volume'));
+        $this->assertEquals(11.00, (float) $response->json('data.total_linear'));
+        $this->assertEquals(8.00, (float) $response->json('data.total_count'));
+    }
+
+    /**
+     * Test Cannot Approve Empty Measurement or Delete Approved Measurement.
+     */
+    public function test_cannot_approve_empty_measurement_or_delete_approved(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Edge Cases Client',
+            'customer_type' => 'individual',
+            'phone' => '01011119999',
+            'status' => 'active',
+        ]);
+
+        $opportunity = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Edge Cases Project',
+            'stage' => 'Proposal',
+        ]);
+
+        $emptyMeasurement = Measurement::create([
+            'opportunity_id' => $opportunity->id,
+            'measurement_number' => 'M-EMPTY-001',
+            'status' => 'Draft',
+        ]);
+
+        // Attempting to approve empty measurement -> 422
+        $approveResponse = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/measurements/{$emptyMeasurement->id}/approve");
+
+        $approveResponse->assertStatus(422)
+            ->assertJsonValidationErrors(['items']);
+
+        // Draft can be deleted
+        $deleteDraft = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->deleteJson("/api/measurements/{$emptyMeasurement->id}");
+
+        $deleteDraft->assertStatus(200);
+
+        // Create approved measurement and attempt deleting
+        $approvedM = Measurement::create([
+            'opportunity_id' => $opportunity->id,
+            'measurement_number' => 'M-APP-001',
+            'status' => 'Approved',
+        ]);
+
+        $deleteApproved = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->deleteJson("/api/measurements/{$approvedM->id}");
+
+        $deleteApproved->assertStatus(422)
+            ->assertJsonValidationErrors(['status']);
+    }
+}

@@ -58,6 +58,22 @@ return [
     'site_visit_cancelled_success' => 'تم إلغاء موعد المعاينة بنجاح',
     'site_visit_photos_uploaded_success' => 'تم رفع صور الموقع بنجاح',
 
+    // Measurements (Phase 7)
+    'measurement_created_success' => 'تم إنشاء المقايسة بنجاح',
+    'measurement_updated_success' => 'تم تحديث بيانات وبنود المقايسة بنجاح',
+    'measurement_deleted_success' => 'تم حذف المقايسة بنجاح',
+    'measurement_submitted_review_success' => 'تم إرسال المقايسة للمراجعة الفنية بنجاح',
+    'measurement_approved_success' => 'تم اعتماد المقايسة الهندسية بنجاح واعتبارها مصدراً للكميات',
+    'measurement_revision_created_success' => 'تم إنشاء مراجعة وإصدار جديد من المقايسة بنجاح',
+    'site_visit_rooms_imported_success' => 'تم استيراد فراغات وغرف المعاينة بنجاح',
+    'measurement_requires_opportunity' => 'المقايسة تتطلب ربطاً بفرصة تجارية صالحة.',
+    'approved_measurement_cannot_be_edited' => 'المقايسة المعتمدة غير قابلة للتعديل. يرجى إنشاء مراجعة جديدة (Revision) للتعديل.',
+    'approved_measurement_cannot_be_deleted' => 'لا يمكن حذف مقايسة معتمدة للحفاظ على تاريخ وحصر الكميات.',
+    'only_draft_can_be_submitted_for_review' => 'يمكن فقط تقديم المقايسات في حالة المسودة للمراجعة.',
+    'measurement_cannot_be_approved_in_current_state' => 'لا يمكن اعتماد المقايسة في حالتها الحالية.',
+    'cannot_approve_empty_measurement' => 'لا يمكن اعتماد مقايسة فارغة بدون بنود حصر.',
+    'measurement_items_missing_required_info' => 'جميع بنود المقايسة يجب أن تحتوي على اسم الفراغ واسم البند.',
+
     // Settings
     'settings_saved_success' => 'تم حفظ الإعدادات بنجاح',
 ];

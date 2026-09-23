@@ -60,6 +60,14 @@ return [
     'site_visit_cancelled' => 'تم إلغاء معاينة الموقع (#:id)',
     'site_visit_photos_uploaded' => 'تم رفع (:count) صور فوتوغرافية لمعاينة الموقع (#:id)',
 
+    // Measurements (Phase 7)
+    'measurement_created' => 'تم إنشاء المقايسة الهندسية (#:number)',
+    'measurement_updated' => 'تم تحديث بيانات وحصر المقايسة (#:number)',
+    'measurement_deleted' => 'تم حذف المقايسة (#:number)',
+    'measurement_event' => 'إجراء :event على المقايسة (#:number)',
+    'measurement_submitted_for_review' => 'تم إرسال المقايسة (#:number) للمراجعة الهندسية',
+    'measurement_approved' => 'تم اعتماد المقايسة (#:number) رسمياً كمصدر حقيقة للكميات',
+
     'setting_created' => 'تم إنشاء الإعداد :key',
     'setting_updated' => 'تم تحديث الإعداد :key',
     'setting_event' => 'إجراء :event على الإعداد :key',

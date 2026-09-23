@@ -15,8 +15,9 @@
 2. **Security Hardening:** عزل المستأجرين التام، الحماية من IDOR، فحص مدخلات SQL، تنقية XSS، وحماية المرفقات.
 3. **Phase 4 (Lead Management):** التقاط طلبات العملاء المحتملين وتتبع مصادر الوصول (Social, Ads, Walk-in).
 4. **Phase 5 (Opportunity Foundation):** إدارة الفرص البيعية، القيمة التقديرية، التواريخ، ومراحل الإغلاق والتعاقد.
-5. **Phase 6 (Site Visit Management):** إدارة المعاينات الميدانية، حجز وجدولة المواعيد، تسجيل المعاينات الفورية المنفذة، رفع المقاسات وتفكيك الفراغات/الغرف (`site_visit_rooms`)، ومعرض الصور التوثيقية الميدانية.
-6. **Executive Commercial Dashboard (اللوحة التنفيذية التجارية):** عكس مسار الأعمال والـ Commercial Pipeline كاملاً على لوحة التحكم الرئيسية (`/dashboard`).
+5. **Phase 6 (Site Visit Management):** إدارة المعاينات الميدانية، حجز وجدولة المواعيد، تسجيل المعاينات الفورية المنفذة، وتوثيق صور الموقع.
+6. **Phase 7 (Measurement / Quantity Surveying Module):** إدارة المقايسات وحصر الكميات الهندسية، محرك الحسابات الآلية المعتمد، استيراد فراغات المعاينة، وإدارة المراجعات والاعتمادات.
+7. **Executive Commercial Dashboard (اللوحة التنفيذية التجارية):** عكس مسار الأعمال والـ Commercial Pipeline كاملاً على لوحة التحكم الرئيسية (`/dashboard`).
 
 ---
 
@@ -30,9 +31,9 @@ Opportunity (الفرصة التجارية)
    ↓
 Site Visit (المعاينة الميدانية)  ← [Phase 6 Completed]
    ↓
-Measurement (المقايسات التفصيلية)  ← [Phase 7 Ready]
+Measurement (المقايسات وحصر الكميات)  ← [Phase 7 Completed]
    ↓
-Scope of Work (نطاق الأعمال)
+Scope of Work (نطاق الأعمال)  ← [Phase 8 Next]
    ↓
 BOQ (جدول الكميات)
    ↓
@@ -47,95 +48,70 @@ Project (المشروع والتنفيذ)
 
 ---
 
-### 📊 4. Executive Commercial Dashboard (لوحة التحكم التنفيذية الجديدة)
-
-#### أ. شريط الإجراءات السريعة (Quick Primary Actions):
-- `+ تسجيل / حجز معاينة موقع`
-- `+ إضافة فرصة بيعية جديدة`
-- `+ التقاط طلب عميل محتمل`
-- `+ إضافة عميل جديد`
-
-#### ب. بطاقات المؤشرات التجارية الأساسية (Commercial KPIs):
-1. **العملاء (Customers):** إجمالي عدد العملاء مع تصنيفهم (أفراد وشركات).
-2. **العملاء المحتملين (Leads):** إجمالي الطلبات وحالتها (جديد، تم التواصل، مؤهل).
-3. **الفرص التجارية (Opportunities):** عدد الفرص النشطة + القيمة الإجمالية التقديرية لخط الأنابيب (`Pipeline Value`) بالجنيه المصري (ج.م).
-4. **معاينات الموقع (Site Visits):** إجمالي المعاينات مع توضيح عدد معاينات اليوم المجدولة.
-
-#### ج. مخطط مسار التدفق والتحويل التجاري (Commercial Funnel & Stepper):
-- استعراض بصري للأرقام والمراحل:
-  `العملاء (1) ➔ الطلبات (2) ➔ الفرص (3) ➔ المعاينات (4) ➔ المقايسات (5) ➔ عروض الأسعار (6) ➔ التعاقد والمشروع (7)`
-
-#### د. البطاقات التشغيلية التفاعلية:
-1. **معاينات الموقع اليوم والقادمة:** مع بطاقات العملاء، المواعيد، المهندس المكلف، وأزرار الاتصال والواتساب الفورية.
-2. **أحدث الفرص البيعية الساخنة:** مع بيان مرحلة الفرصة وقيمتها وتاريخ الإغلاق المتوقع.
-3. **أحدث طلبات العملاء المحتملين (Incoming Leads):** للرد والمتابعة السريعة.
-4. **سجل الأنشطة والعمليات التجارية المباشرة.**
-
----
-
-### 🗄️ 5. Data Model (هيكل قاعدة البيانات)
+### 🗄️ 5. Measurement Data Model (هيكل المقايسات الهندسية — Phase 7)
 ```text
-Table: site_visits
+Table: measurements
 ├── id (BIGINT, Primary Key)
-├── customer_id (BIGINT, Foreign Key -> customers.id)
-├── opportunity_id (BIGINT, Nullable, Foreign Key -> opportunities.id)
-├── lead_id (BIGINT, Nullable, Foreign Key -> leads.id)
-├── status (VARCHAR 50: Requested, Scheduled, Completed, Cancelled, Rescheduled)
-├── scheduled_date (DATE, Nullable)
-├── scheduled_time (TIME, Nullable)
-├── visit_date (DATE, Nullable)
-├── assigned_to (BIGINT, Nullable, Foreign Key -> users.id)
-├── general_assessment (TEXT, Nullable)
-├── internal_notes (TEXT, Nullable)
+├── opportunity_id (BIGINT, Foreign Key -> opportunities.id ON DELETE CASCADE)
+├── site_visit_id (BIGINT, Nullable, Foreign Key -> site_visits.id ON DELETE SET NULL)
+├── measurement_number (VARCHAR 50, Indexed)
+├── version (INT, Default 1)
+├── status (VARCHAR 50: Draft, Under Review, Approved, Superseded)
+├── measured_by (BIGINT, Nullable, Foreign Key -> users.id)
+├── measured_at (DATE, Nullable)
+├── reviewed_by (BIGINT, Nullable, Foreign Key -> users.id)
+├── reviewed_at (DATETIME, Nullable)
+├── approved_by (BIGINT, Nullable, Foreign Key -> users.id)
+├── approved_at (DATETIME, Nullable)
+├── total_area, total_volume, total_linear, total_count (DECIMAL 15,2)
+├── notes (TEXT, Nullable)
 ├── created_by (BIGINT, Foreign Key -> users.id)
 └── created_at, updated_at (TIMESTAMPS)
 
-Table: site_visit_rooms
+Table: measurement_items
 ├── id (BIGINT, Primary Key)
-├── site_visit_id (BIGINT, Foreign Key -> site_visits.id ON DELETE CASCADE)
+├── measurement_id (BIGINT, Foreign Key -> measurements.id ON DELETE CASCADE)
 ├── room_name (VARCHAR 150)
-├── estimated_area (DECIMAL 10,2, Nullable)
+├── item_name (VARCHAR 250)
+├── unit (VARCHAR 20: m2, m3, lm, pcs)
+├── measurement_type (VARCHAR 30: area, volume, linear, count)
+├── count (DECIMAL 10,2, Default 1.00)
+├── length, width, height (DECIMAL 10,2, Nullable)
+├── deductions (DECIMAL 10,2, Default 0.00)
+├── gross_quantity (DECIMAL 15,2)
+├── net_quantity (DECIMAL 15,2)
 ├── notes (TEXT, Nullable)
+├── sort_order (INT, Default 0)
 └── created_at, updated_at (TIMESTAMPS)
 ```
 
 ---
 
-### 📉 6. Loss Reason Tracking & Win/Loss Analytics (تتبع وتوثيق أسباب فقدان الصفقات والليدز)
-تم بناء منظومة متكاملة لحفظ وتحليل أسباب خسارة الفرص والعملاء المحتملين لخدمة التقارير المستقبلية والإدارة التنفيذية:
-1. **قاعدة البيانات (`leads` & `opportunities`):**
-   - `loss_reason`: التصنيف الأساسي لسبب الفقدان (`price_high`, `competitor_won`, `client_postponed`, `client_unresponsive`, `scope_mismatch`, `budget_insufficient`, `other`).
-   - `competitor_name`: اسم الشركة المنافسة التي فازت بالعقد (مشروط باختيار شركة منافسة).
-   - `loss_notes`: ملاحظات تفصيلية وتحليل ما بعد الفقدان (Post-Mortem Notes).
-2. **تجربة المستخدم (UX / UI):**
-   - في صفحة العملاء المحتملين (`LeadsView.vue`): نافذة التأهيل تعرض قسم أسباب الفقدان عند اختيار الحالة `Lost` أو `Unqualified`، مع بطاقة تحليل الخسارة عند معاينة تفاصيل الطلب.
-   - في صفحة الفرص البيعية (`OpportunitiesView.vue`): عند تحويل المرحلة إلى `Lost`، تنبثق تلقائياً نافذة تسجيل سبب الخسارة، وتظهر بطاقة التحليل باللون الأحمر المميز في تفاصيل الفرصة.
-3. **التوثيق وسجل الأنشطة (Activity Log):**
-   - يتم تسجيل حدث تغيير المرحلة مع تفاصيل الخسارة واسم المنافس في `activity_log` لمتابعة التدقيق الأمني والإداري.
+### 📐 6. Deterministic Calculation Engine (محرك الحسابات الهندسية)
+تم بناء خدمة مستقلة [`MeasurementCalculationService.php`](file:///c:/xampp/htdocs/sarah-bk/app/Services/MeasurementCalculationService.php) لتطبيق القواعد الرياضية القطعية:
+1. **المسطحات (Area - $\text{m}^2$):** $\text{Gross} = \text{Count} \times \text{Length} \times \text{Width}$ ، $\text{Net} = \max(0, \text{Gross} - \text{Deductions})$
+2. **المكعبات (Volume - $\text{m}^3$):** $\text{Gross} = \text{Count} \times \text{Length} \times \text{Width} \times \text{Height}$ ، $\text{Net} = \max(0, \text{Gross} - \text{Deductions})$
+3. **الأطوال (Linear - $\text{lm}$):** $\text{Gross} = \text{Count} \times \text{Length}$ ، $\text{Net} = \max(0, \text{Gross} - \text{Deductions})$
+4. **العدد (Count - $\text{pcs}$):** $\text{Gross} = \text{Count}$ ، $\text{Net} = \max(0, \text{Gross} - \text{Deductions})$
 
 ---
 
 ### 🔑 7. Permissions Matrix (منظومة الصلاحيات)
-- `site_visits.view`
-- `site_visits.create`
-- `site_visits.update`
-- `site_visits.delete`
-- `site_visits.assign`
-- `site_visits.complete`
-- `site_visits.cancel`
-- `site_visits.upload_photos`
+- `site_visits.view`, `site_visits.create`, `site_visits.update`, `site_visits.delete`, `site_visits.assign`, `site_visits.complete`, `site_visits.cancel`, `site_visits.upload_photos`
+- `measurements.view`, `measurements.create`, `measurements.update`, `measurements.delete`, `measurements.approve`
 
 ---
 
-### 🧪 8. Quality Assurance & Phase 6 Final Sign-off (الجودة والإغلاق النهائي)
-- **إصلاحات وتدقيق Phase 6 (Code & Business Fixes Completed):**
-  1. تصحيح دالة `down()` في ملف migration جدول `site_visits` وإزالة التكرار.
-  2. توحيد حالات المعاينة في التحقق (`customValidationRules`) وحصرها في `Scheduled, Completed, Cancelled, Rescheduled`.
-  3. إضافة صلاحية `site_visits.cancel` في `DefaultPermissionsSeeder` وتوزيعها على الأدوار في `RolePermissionMappingSeeder`.
-  4. ربط المعاينات التابعة للعميل المحتمل تلقائياً بالفرصة التجارية الجديدة عند التحويل في كلا المسارين (`LeadController::convertToOpportunity` و `OpportunityController::convertFromLead`) داخل الـ Transaction، مع تسجيل ذلك في الـ Activity Log واختباره برمجياً لكلا الـ endpoints.
-  5. إضافة نقطة دخول ورابط مباشر للمعاينة من شاشة تفاصيل العميل المحتمل (`LeadsView.vue`) لدعم مسار الـ Dual-path بالكامل.
-  6. تصحيح إسناد المهندس في `createFromOpportunity()` ليكون `null` افتراضياً لمنع التعيين الخاطئ لموظف المبيعات، مع استخدام endpoint التكليف المستقل.
-- **بناء الواجهة الأمامية (Vite Build):** ناجح بنسبة 100% بدون أي أخطاء (`✓ built in 12.99s`).
-- **الاختبارات الآلية (Automated Tests):** 100% نجاح لكافة الاختبارات في `SiteVisitManagementTest` (10 tests, 54 assertions) و `LeadManagementTest` (11 tests, 99 assertions).
-- **حالة المرحلة:** تم إغلاق وتأكيد Phase 6 (إدارة معاينات الموقع) وسد كافة الثغرات المعمارية بنجاح 100%.
+### 🧪 8. Quality Assurance & Phase 7 Final Sign-off (الجودة والإغلاق النهائي)
+- **إصلاحات وتدقيق Phase 6 و Phase 7:**
+  1. سد ثغرة التحويل المزدوج للعميل المحتمل وربط المعاينات في كلاً من `LeadController::convertToOpportunity` و `OpportunityController::convertFromLead`.
+  2. بناء موديول المقايسات كاملاً ككيان مستقل يرتبط بـ `Opportunity` اختيارياً من `SiteVisit`.
+  3. استيراد الغرف باتجاه واحد (One-Way Copy) دون التعديل على بيانات المعاينة التاريخية.
+  4. منع تعديل أو حذف المقايسة المعتمدة (Approved) وحمايتها بنظام الإصدارات والمراجعات (Revisions).
+  5. عزل المستأجرين بنسبة 100% ومنع الوصول بين الشركات في الاستعراض، التعديل، الاستيراد، والاعتماد.
+- **الاختبارات الآلية (Automated Tests):** 100% نجاح لكافة الاختبارات:
+  - `MeasurementManagementTest`: (8 tests, 64 assertions)
+  - `SiteVisitManagementTest`: (10 tests, 54 assertions)
+  - `LeadManagementTest`: (11 tests, 99 assertions)
+- **حالة المرحلة:** تم إغلاق وتأكيد **Phase 7 (المقايسات وحصر الكميات)** رسمياً بنجاح تام.
 

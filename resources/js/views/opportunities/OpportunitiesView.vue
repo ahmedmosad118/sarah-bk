@@ -258,121 +258,18 @@
     </CrudIndex>
 
     <!-- 1. Quick Customer Creation Modal -->
-    <CrudModal
+    <QuickCustomerModal
       :show="showQuickCustomerModal"
-      :title="$t('leads.quickAddCustomerTitle')"
-      :loading="quickCustomerLoading"
       @close="showQuickCustomerModal = false"
-      @save="saveQuickCustomer"
-    >
-      <div class="space-y-4">
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          {{ $t('leads.quickAddCustomerDesc') }}
-        </p>
-
-        <!-- Customer Type Radio/Pills -->
-        <div>
-          <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-            {{ $t('customers.customerType') }} <span class="text-rose-500">*</span>
-          </label>
-          <div class="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              @click="quickCustomerForm.customer_type = 'individual'"
-              class="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer"
-              :class="quickCustomerForm.customer_type === 'individual' ? 'border-[#00C896] bg-[#00C896]/10 text-[#00A87E] dark:bg-[#00C896]/20 dark:text-[#00C896]' : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400'"
-            >
-              <User class="h-4 w-4" />
-              <span>{{ $t('customers.individual') }}</span>
-            </button>
-            <button
-              type="button"
-              @click="quickCustomerForm.customer_type = 'company'"
-              class="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer"
-              :class="quickCustomerForm.customer_type === 'company' ? 'border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400'"
-            >
-              <Building2 class="h-4 w-4" />
-              <span>{{ $t('customers.company') }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Name & Company Name -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-              {{ $t('customers.name') }} <span class="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              v-model="quickCustomerForm.name"
-              required
-              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-            />
-            <p v-if="quickCustomerErrors.name" class="mt-1 text-[11px] text-rose-500 font-bold">
-              {{ quickCustomerErrors.name[0] }}
-            </p>
-          </div>
-
-          <div v-if="quickCustomerForm.customer_type === 'company'">
-            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-              {{ $t('customers.companyName') }}
-            </label>
-            <input
-              type="text"
-              v-model="quickCustomerForm.company_name"
-              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-            />
-          </div>
-        </div>
-
-        <!-- Phone & WhatsApp -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-              {{ $t('customers.phone') }}
-            </label>
-            <input
-              type="tel"
-              v-model="quickCustomerForm.phone"
-              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-              dir="ltr"
-            />
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-              {{ $t('customers.whatsapp') }}
-            </label>
-            <input
-              type="tel"
-              v-model="quickCustomerForm.whatsapp"
-              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-              dir="ltr"
-            />
-          </div>
-        </div>
-
-        <!-- Email -->
-        <div>
-          <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-            {{ $t('customers.email') }}
-          </label>
-          <input
-            type="email"
-            v-model="quickCustomerForm.email"
-            class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-            dir="ltr"
-          />
-        </div>
-      </div>
-    </CrudModal>
+      @customer-created="onQuickCustomerCreated"
+    />
 
     <!-- 2. Opportunity Details & Stage Progression Modal -->
     <CrudModal
       :show="showDetailsModal"
       :title="$t('opportunities.opportunityDetails')"
       :show-save-button="false"
+      :size="'5xl'"
       @close="showDetailsModal = false"
     >
       <div v-if="selectedOpportunity" class="space-y-6">
@@ -459,26 +356,201 @@
           </div>
         </div>
 
-        <!-- Next Logical Action: Site Visit -->
-        <div class="p-4 rounded-2xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <div class="p-2.5 rounded-xl bg-blue-600 text-white shadow-xs">
-              <MapPin class="h-5 w-5" />
+        <!-- Commercial Flow Hub: Site Visits & Measurements Sections -->
+        <div class="space-y-4">
+          <!-- 1. Site Visits Section -->
+          <div class="p-4 rounded-2xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/40 dark:bg-blue-950/20 space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <div class="p-2 rounded-xl bg-blue-600 text-white shadow-xs">
+                  <MapPin class="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5">
+                    <span>المعاينات الميدانية (Site Visits)</span>
+                    <span v-if="selectedOpportunity.site_visits?.length" class="ms-1 px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-[10px] font-mono font-bold">
+                      {{ selectedOpportunity.site_visits.length }}
+                    </span>
+                  </h4>
+                  <p class="text-[11px] text-gray-500 dark:text-gray-400">حجز وإدارة مواعيد المعاينة وتفكيك غرف الموقع</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                @click="openQuickSiteVisitModal(selectedOpportunity)"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer self-start sm:self-auto"
+              >
+                <Plus class="h-3.5 w-3.5" />
+                <span>حجز معاينة جديدة</span>
+              </button>
             </div>
-            <div>
-              <span class="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 block">الخطوة التالية في دورة العمل</span>
-              <h4 class="text-xs font-black text-gray-900 dark:text-white">إضافة وتحديد موعد المعاينة الميدانية (Site Visit)</h4>
-              <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">رفع المقاسات الميدانية ومعاينة الموقع لتحديد نطاق الأعمال وجدول الكميات.</p>
+
+            <!-- List of Site Visits -->
+            <div v-if="selectedOpportunity.site_visits && selectedOpportunity.site_visits.length > 0" class="space-y-2">
+              <div
+                v-for="v in selectedOpportunity.site_visits"
+                :key="v.id"
+                class="p-3 rounded-xl bg-white dark:bg-gray-900 border border-blue-100 dark:border-blue-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+              >
+                <div class="flex items-start sm:items-center gap-2.5">
+                  <div class="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold shrink-0 font-mono">
+                    #{{ v.id }}
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span
+                        class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                        :class="getVisitStatusClass(v.status)"
+                      >
+                        {{ getVisitStatusLabel(v.status) }}
+                      </span>
+                      <span v-if="v.scheduled_date || v.visit_date" class="text-[11px] font-mono text-gray-700 dark:text-gray-300 font-bold flex items-center gap-1">
+                        <Calendar class="h-3 w-3 text-gray-400" />
+                        {{ formatDate(v.visit_date || v.scheduled_date) }} {{ v.scheduled_time || '' }}
+                      </span>
+                    </div>
+                    <p v-if="v.assigned_user" class="text-[11px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                      <User class="h-3 w-3 text-gray-400" />
+                      <span>المهندس المكلف: <strong class="text-gray-700 dark:text-gray-300">{{ v.assigned_user.name }}</strong></span>
+                    </p>
+                    <p v-if="v.general_assessment" class="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5 line-clamp-1 italic">
+                      "{{ v.general_assessment }}"
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <span v-if="v.rooms && v.rooms.length" class="text-[11px] text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-900/20 px-2 py-0.5 rounded-md">
+                    {{ v.rooms.length }} فراغات
+                  </span>
+                  <router-link
+                    :to="`/site-visits?opportunity_id=${selectedOpportunity.id}`"
+                    class="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                    title="فتح في شاشة المعاينات التفصيلية"
+                  >
+                    <ExternalLink class="h-3.5 w-3.5" />
+                  </router-link>
+                </div>
+              </div>
+            </div>
+
+            <!-- Empty Site Visits -->
+            <div v-else class="p-3.5 rounded-xl bg-white/70 dark:bg-gray-900/40 border border-dashed border-blue-200 dark:border-blue-900/40 text-center py-4">
+              <p class="text-xs text-gray-500 dark:text-gray-400">لم يتم تسجيل أي معاينة ميدانية لهذه الفرصة حتى الآن.</p>
+              <button
+                type="button"
+                @click="openQuickSiteVisitModal(selectedOpportunity)"
+                class="mt-2 inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
+              >
+                <Plus class="h-3.5 w-3.5" />
+                <span>حجز موعد معاينة الآن مباشرة من هنا</span>
+              </button>
             </div>
           </div>
-          <div class="shrink-0">
-            <router-link
-              :to="`/site-visits?opportunity_id=${selectedOpportunity.id}`"
-              class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
-            >
-              <MapPin class="h-3.5 w-3.5" />
-              <span>حجز / عرض المعاينات</span>
-            </router-link>
+
+          <!-- 2. Measurements Section -->
+          <div class="p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/20 space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <div class="p-2 rounded-xl bg-[#00C896] text-white shadow-xs">
+                  <Ruler class="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5">
+                    <span>المقايسات وحصر الكميات (Measurements)</span>
+                    <span v-if="selectedOpportunity.measurements?.length" class="ms-1 px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-[10px] font-mono font-bold">
+                      {{ selectedOpportunity.measurements.length }}
+                    </span>
+                  </h4>
+                  <p class="text-[11px] text-gray-500 dark:text-gray-400">حصر الكميات والأبعاد المسطحة والحجوم والمقايسات الهندسية</p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">
+                <button
+                  v-if="hasCompletedSiteVisit"
+                  type="button"
+                  @click="createMeasurementFromCompletedVisit"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+                  title="استيراد غرف وفراغات المعاينة المكتملة"
+                >
+                  <Sparkles class="h-3.5 w-3.5" />
+                  <span>استيراد غرف المعاينة</span>
+                </button>
+
+                <button
+                  type="button"
+                  @click="createBlankMeasurement"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00C896] hover:bg-[#00A87E] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+                >
+                  <Plus class="h-3.5 w-3.5" />
+                  <span>إنشاء مقايسة جديدة</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- List of Measurements -->
+            <div v-if="selectedOpportunity.measurements && selectedOpportunity.measurements.length > 0" class="space-y-2">
+              <div
+                v-for="m in selectedOpportunity.measurements"
+                :key="m.id"
+                class="p-3 rounded-xl bg-white dark:bg-gray-900 border border-emerald-100 dark:border-emerald-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+              >
+                <div class="flex items-start sm:items-center gap-2.5">
+                  <div class="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-bold shrink-0 font-mono">
+                    {{ m.measurement_number || `#${m.id}` }}
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                        :class="getMeasurementStatusClass(m.status)"
+                      >
+                        {{ getMeasurementStatusLabel(m.status) }}
+                      </span>
+                      <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-mono">
+                        v{{ m.version || 1 }}
+                      </span>
+                    </div>
+                    <div class="flex items-center gap-3 text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                      <span v-if="m.total_area > 0" class="font-mono font-bold text-gray-800 dark:text-gray-200">
+                        {{ Number(m.total_area).toLocaleString() }} م²
+                      </span>
+                      <span v-if="m.total_volume > 0" class="font-mono font-bold text-gray-800 dark:text-gray-200">
+                        {{ Number(m.total_volume).toLocaleString() }} م³
+                      </span>
+                      <span v-if="m.measured_user">
+                        المعد: {{ m.measured_user.name }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <router-link
+                    :to="`/measurements?opportunity_id=${selectedOpportunity.id}`"
+                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-300 font-bold text-xs transition-colors"
+                  >
+                    <span>فتح جدول المقايسة</span>
+                    <ExternalLink class="h-3 w-3" />
+                  </router-link>
+                </div>
+              </div>
+            </div>
+
+            <!-- Empty Measurements -->
+            <div v-else class="p-3.5 rounded-xl bg-white/70 dark:bg-gray-900/40 border border-dashed border-emerald-200 dark:border-emerald-900/40 text-center py-4">
+              <p class="text-xs text-gray-500 dark:text-gray-400">لم يتم إنشاء أي مقايسة أو حصر كميات لهذه الفرصة حتى الآن.</p>
+              <button
+                type="button"
+                @click="createBlankMeasurement"
+                class="mt-2 inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer"
+              >
+                <Plus class="h-3.5 w-3.5" />
+                <span>إنشاء أول مقايسة لهذه الفرصة الآن</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -627,6 +699,76 @@
         </div>
       </div>
     </CrudModal>
+
+    <!-- 4. Quick Site Visit Booking Modal -->
+    <CrudModal
+      :show="showQuickSiteVisitModal"
+      :title="'حجز وتحديد موعد معاينة ميدانية للفرصة'"
+      :loading="quickSiteVisitLoading"
+      :save-text="'حجز المعاينة وتأكيد الموعد'"
+      @close="showQuickSiteVisitModal = false"
+      @save="submitQuickSiteVisit"
+    >
+      <div class="space-y-4">
+        <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2">
+          <MapPin class="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+          <span>سيتم ربط المعاينة الميدانية مباشرة بالفرصة: <strong>{{ selectedOpportunity?.title }}</strong> وعميلها: <strong>{{ selectedOpportunity?.customer?.name }}</strong></span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+              تاريخ المعاينة المجدول <span class="text-rose-500">*</span>
+            </label>
+            <input
+              type="date"
+              v-model="quickSiteVisitForm.scheduled_date"
+              required
+              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+              الوقت المتوقع (اختياري)
+            </label>
+            <input
+              type="text"
+              v-model="quickSiteVisitForm.scheduled_time"
+              placeholder="مثال: 11:30 صباحاً"
+              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+            المهندس الفني المسؤول عن المعاينة
+          </label>
+          <select
+            v-model="quickSiteVisitForm.assigned_to"
+            class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+          >
+            <option :value="null">اختر المهندس المسؤول...</option>
+            <option v-for="u in userOptions" :key="u.value" :value="u.value">
+              {{ u.label }}
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+            عنوان الموقع أو ملاحظات الموعد
+          </label>
+          <textarea
+            v-model="quickSiteVisitForm.internal_notes"
+            rows="2"
+            class="w-full rounded-xl border border-gray-200 bg-gray-50 p-2.5 text-xs text-gray-900 outline-hidden focus:border-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            placeholder="أدخل عنوان الموقع بدقة أو أي تعليمات خاصة للمهندس..."
+          ></textarea>
+        </div>
+      </div>
+    </CrudModal>
   </div>
 </template>
 
@@ -639,6 +781,7 @@ import { useNotificationStore } from '../../stores/notification';
 import { formatDate } from '../../utils/date';
 import CrudIndex from '../../components/crud/CrudIndex.vue';
 import CrudModal from '../../components/crud/CrudModal.vue';
+import QuickCustomerModal from '../../components/common/QuickCustomerModal.vue';
 import {
   Target,
   Clock,
@@ -655,6 +798,12 @@ import {
   MessageSquare,
   Sparkles,
   AlertCircle,
+  MapPin,
+  Ruler,
+  Calendar,
+  CheckCircle2,
+  Plus,
+  ExternalLink,
 } from 'lucide-vue-next';
 
 const { t } = useI18n();
@@ -702,6 +851,16 @@ const columns = computed(() => [
 const showDetailsModal = ref(false);
 const selectedOpportunity = ref(null);
 
+// Quick Site Visit State
+const showQuickSiteVisitModal = ref(false);
+const quickSiteVisitLoading = ref(false);
+const quickSiteVisitForm = reactive({
+  scheduled_date: '',
+  scheduled_time: '',
+  assigned_to: null,
+  internal_notes: '',
+});
+
 // Loss Reason Modal State
 const showLossModal = ref(false);
 const lossFormLoading = ref(false);
@@ -713,17 +872,6 @@ const lossForm = reactive({
 
 // Quick Customer Modal State
 const showQuickCustomerModal = ref(false);
-const quickCustomerLoading = ref(false);
-const quickCustomerErrors = ref({});
-const quickCustomerForm = reactive({
-  customer_type: 'individual',
-  name: '',
-  company_name: '',
-  phone: '',
-  whatsapp: '',
-  email: '',
-  status: 'active',
-});
 
 const loadDropdownOptions = async () => {
   try {
@@ -781,9 +929,99 @@ const resetFilters = () => {
   crudRef.value?.loadData(1);
 };
 
-const openOpportunityDetails = (opp) => {
+const openOpportunityDetails = async (opp) => {
   selectedOpportunity.value = opp;
   showDetailsModal.value = true;
+  await refreshSelectedOpportunity(opp.id);
+};
+
+const refreshSelectedOpportunity = async (oppId) => {
+  try {
+    const res = await api.get(`/opportunities/${oppId}`);
+    if (res.data?.success && res.data?.data) {
+      selectedOpportunity.value = res.data.data;
+    }
+  } catch (e) {
+    console.error('Failed to refresh opportunity details:', e);
+  }
+};
+
+const openQuickSiteVisitModal = (opp) => {
+  quickSiteVisitForm.scheduled_date = new Date().toISOString().split('T')[0];
+  quickSiteVisitForm.scheduled_time = '';
+  quickSiteVisitForm.assigned_to = opp.assigned_to || null;
+  quickSiteVisitForm.internal_notes = '';
+  showQuickSiteVisitModal.value = true;
+};
+
+const submitQuickSiteVisit = async () => {
+  if (!selectedOpportunity.value) return;
+  if (!quickSiteVisitForm.scheduled_date) {
+    notify.error('يرجى تحديد تاريخ المعاينة المجدول');
+    return;
+  }
+
+  quickSiteVisitLoading.value = true;
+  try {
+    const payload = {
+      customer_id: selectedOpportunity.value.customer_id,
+      opportunity_id: selectedOpportunity.value.id,
+      lead_id: selectedOpportunity.value.lead_id || null,
+      status: 'Scheduled',
+      scheduled_date: quickSiteVisitForm.scheduled_date,
+      scheduled_time: quickSiteVisitForm.scheduled_time || null,
+      assigned_to: quickSiteVisitForm.assigned_to || null,
+      internal_notes: quickSiteVisitForm.internal_notes || null,
+    };
+
+    const res = await api.post('/site-visits', payload);
+    if (res.data?.success) {
+      notify.success('تم حجز وتأكيد موعد المعاينة الميدانية بنجاح');
+      showQuickSiteVisitModal.value = false;
+      await refreshSelectedOpportunity(selectedOpportunity.value.id);
+      crudRef.value?.loadData();
+    }
+  } catch (err) {
+    notify.error(err.response?.data?.message || 'حدث خطأ أثناء حجز المعاينة');
+  } finally {
+    quickSiteVisitLoading.value = false;
+  }
+};
+
+const hasCompletedSiteVisit = computed(() => {
+  if (!selectedOpportunity.value?.site_visits) return false;
+  return selectedOpportunity.value.site_visits.some((v) => v.status === 'Completed');
+});
+
+const completedSiteVisit = computed(() => {
+  if (!selectedOpportunity.value?.site_visits) return null;
+  return selectedOpportunity.value.site_visits.find((v) => v.status === 'Completed');
+});
+
+const createMeasurementFromCompletedVisit = async () => {
+  if (!completedSiteVisit.value) return;
+  try {
+    const res = await api.post(`/measurements/import-from-site-visit/${completedSiteVisit.value.id}`);
+    if (res.data?.success) {
+      notify.success('تم استيراد غرف وفراغات المعاينة وإنشاء مسودة المقايسة بنجاح');
+      await refreshSelectedOpportunity(selectedOpportunity.value.id);
+    }
+  } catch (err) {
+    notify.error(err.response?.data?.message || 'حدث خطأ أثناء استيراد المعاينة');
+  }
+};
+
+const createBlankMeasurement = async () => {
+  if (!selectedOpportunity.value) return;
+  try {
+    const res = await api.post(`/measurements/from-opportunity/${selectedOpportunity.value.id}`);
+    if (res.data?.success) {
+      notify.success('تم إنشاء مسودة مقايسة جديدة للفرصة بنجاح');
+      await refreshSelectedOpportunity(selectedOpportunity.value.id);
+    }
+  } catch (err) {
+    notify.error(err.response?.data?.message || 'حدث خطأ أثناء إنشاء المقايسة');
+  }
 };
 
 const updateOpportunityStage = (newStage) => {
@@ -828,54 +1066,30 @@ const executeStageChange = async (newStage, extraData = {}) => {
 
 const onFieldAction = (fieldName) => {
   if (fieldName === 'customer_id') {
-    openQuickCustomerModal();
+    showQuickCustomerModal.value = true;
   }
 };
 
-const openQuickCustomerModal = () => {
-  quickCustomerForm.customer_type = 'individual';
-  quickCustomerForm.name = '';
-  quickCustomerForm.company_name = '';
-  quickCustomerForm.phone = '';
-  quickCustomerForm.whatsapp = '';
-  quickCustomerForm.email = '';
-  quickCustomerErrors.value = {};
-  showQuickCustomerModal.value = true;
-};
+const onQuickCustomerCreated = (newCustomer) => {
+  const optionLabel = newCustomer.company_name
+    ? `${newCustomer.name} (${newCustomer.company_name})`
+    : newCustomer.name;
 
-const saveQuickCustomer = async () => {
-  quickCustomerLoading.value = true;
-  quickCustomerErrors.value = {};
+  const newOption = {
+    value: newCustomer.id,
+    label: optionLabel,
+  };
 
-  try {
-    const res = await api.post('/customers', quickCustomerForm);
-    if (res.data?.success && res.data?.data) {
-      const newCustomer = res.data.data;
-      notify.success(t('customers.savedSuccessfully'));
+  // 1. Add to local customerOptions ref
+  customerOptions.value.unshift(newOption);
 
-      const optionLabel = newCustomer.company_name
-        ? `${newCustomer.name} (${newCustomer.company_name})`
-        : newCustomer.name;
+  // 2. Append option in CrudIndex schema
+  crudRef.value?.appendOption('customer_id', newOption);
 
-      customerOptions.value.unshift({
-        value: newCustomer.id,
-        label: optionLabel,
-      });
-
-      if (crudRef.value?.formData) {
-        crudRef.value.formData.customer_id = newCustomer.id;
-      }
-
-      showQuickCustomerModal.value = false;
-    }
-  } catch (err) {
-    if (err.response?.status === 422 && err.response.data?.errors) {
-      quickCustomerErrors.value = err.response.data.errors;
-    } else {
-      notify.error(err.response?.data?.message || 'Error saving customer');
-    }
-  } finally {
-    quickCustomerLoading.value = false;
+  // 3. Auto-select in form
+  crudRef.value?.setFieldValue('customer_id', newCustomer.id);
+  if (crudRef.value?.formData) {
+    crudRef.value.formData.customer_id = newCustomer.id;
   }
 };
 
@@ -918,6 +1132,50 @@ const getStageDotClass = (stage) => {
     Lost: 'bg-rose-500',
   };
   return map[stage] || 'bg-gray-400';
+};
+
+const getVisitStatusLabel = (st) => {
+  const map = {
+    Requested: 'مطلوبة',
+    Scheduled: 'مجدولة',
+    Completed: 'مكتملة',
+    Cancelled: 'ملغاة',
+    Rescheduled: 'معاد جدولتها',
+  };
+  return map[st] || st;
+};
+
+const getVisitStatusClass = (st) => {
+  const map = {
+    Requested: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+    Scheduled: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    Completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    Cancelled: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
+    Rescheduled: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+  };
+  return map[st] || 'bg-gray-100 text-gray-700';
+};
+
+const getMeasurementStatusLabel = (st) => {
+  const map = {
+    Draft: 'مسودة',
+    'Under Review': 'قيد المراجعة',
+    Approved: 'معتمدة',
+    Rejected: 'مرفوضة',
+    Superseded: 'مستبدلة بإصدار أحدث',
+  };
+  return map[st] || st;
+};
+
+const getMeasurementStatusClass = (st) => {
+  const map = {
+    Draft: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+    'Under Review': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    Approved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    Rejected: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
+    Superseded: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  };
+  return map[st] || 'bg-gray-100 text-gray-700';
 };
 
 const getLossReasonLabel = (reason) => {

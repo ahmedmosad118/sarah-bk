@@ -95,6 +95,36 @@
 
       <!-- 2. Segmented Status Filters + Primary Create Button -->
       <template #filters>
+        <!-- Active Filter Alert Banner (e.g. Filtered by Opportunity) -->
+        <div v-if="filterParams.opportunity_id" class="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full mb-3">
+          <div class="flex items-center gap-2.5 text-xs text-blue-900 dark:text-blue-300">
+            <div class="p-1.5 rounded-lg bg-blue-600 text-white">
+              <MapPin class="h-4 w-4" />
+            </div>
+            <div>
+              <p class="font-bold">تصفية المعاينات للفرصة البيعية #{{ filterParams.opportunity_id }}</p>
+              <p class="text-[11px] text-blue-700/80 dark:text-blue-400">يتم عرض المعاينات الميدانية المرتبطة بهذه الفرصة فقط.</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              @click="openCreateModal"
+              class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+            >
+              + تسجيل معاينة لهذه الفرصة
+            </button>
+            <button
+              type="button"
+              @click="clearOpportunityFilter"
+              class="px-3 py-1.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+            >
+              عرض كل المعاينات
+            </button>
+          </div>
+        </div>
+
         <div class="flex flex-wrap items-center justify-between gap-3 w-full">
           <!-- Status Filters -->
           <div class="inline-flex p-1 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 text-xs font-bold">
@@ -315,23 +345,24 @@
     >
       <div class="space-y-5">
         <!-- Section 1: Customer & Associated Opportunity -->
-        <div class="space-y-3 p-4 rounded-2xl bg-gray-50/80 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
-          <div class="flex items-center justify-between">
-            <label class="text-xs font-black text-gray-800 dark:text-gray-200">
-              {{ $t('siteVisits.customer') }} <span class="text-rose-500">*</span>
-            </label>
-            <button
-              type="button"
-              @click="showQuickCustomerModal = true"
-              class="text-[11px] font-bold text-[#00C896] hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <Plus class="h-3 w-3" />
-              <span>+ إضافة عميل جديد</span>
-            </button>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="p-4 rounded-2xl bg-gray-50/80 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- 1. Customer Select -->
             <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                  {{ $t('siteVisits.customer') }} <span class="text-rose-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  @click="showQuickCustomerModal = true"
+                  class="text-[11px] font-bold text-[#00C896] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus class="h-3 w-3" />
+                  <span>+ إضافة عميل جديد</span>
+                </button>
+              </div>
+
               <select
                 v-model="visitForm.customer_id"
                 required
@@ -348,12 +379,20 @@
               </p>
             </div>
 
+            <!-- 2. Opportunity Select -->
             <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                  {{ $t('siteVisits.opportunity') || 'الفرصة التجارية المرتبطة' }}
+                </label>
+                <span class="text-[10px] text-gray-400 font-medium">(اختياري - معاينة مباشرة)</span>
+              </div>
+
               <select
                 v-model="visitForm.opportunity_id"
                 class="w-full rounded-xl border border-gray-200 bg-white py-2.5 px-3 text-xs font-semibold text-gray-900 outline-hidden focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               >
-                <option :value="null">{{ $t('siteVisits.directVisitNotice') }}</option>
+                <option :value="null">{{ $t('siteVisits.directVisitNotice') || 'معاينة مباشرة (بدون فرصة مسجلة مسبقاً)' }}</option>
                 <option v-for="opp in filteredOpportunities" :key="opp.id" :value="opp.id">
                   {{ opp.title }} (فرصة #{{ opp.id }})
                 </option>
@@ -1176,115 +1215,11 @@
     <!-- ======================================================== -->
     <!-- 6. Quick Customer Creation Modal                         -->
     <!-- ======================================================== -->
-    <CrudModal
+    <QuickCustomerModal
       :show="showQuickCustomerModal"
-      :title="$t('leads.quickAddCustomerTitle')"
-      :loading="quickCustomerLoading"
       @close="showQuickCustomerModal = false"
-      @save="saveQuickCustomer"
-    >
-      <div class="space-y-4">
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          {{ $t('leads.quickAddCustomerDesc') }}
-        </p>
-
-        <!-- Customer Type -->
-        <div>
-          <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-            {{ $t('customers.customerType') }} <span class="text-rose-500">*</span>
-          </label>
-          <div class="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              @click="quickCustomerForm.customer_type = 'individual'"
-              class="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer"
-              :class="quickCustomerForm.customer_type === 'individual' ? 'border-[#00C896] bg-[#00C896]/10 text-[#00A87E] dark:bg-[#00C896]/20 dark:text-[#00C896]' : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400'"
-            >
-              <User class="h-4 w-4" />
-              <span>{{ $t('customers.individual') }}</span>
-            </button>
-            <button
-              type="button"
-              @click="quickCustomerForm.customer_type = 'company'"
-              class="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer"
-              :class="quickCustomerForm.customer_type === 'company' ? 'border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400'"
-            >
-              <Building2 class="h-4 w-4" />
-              <span>{{ $t('customers.company') }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Name & Company Name -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-              {{ $t('customers.name') }} <span class="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              v-model="quickCustomerForm.name"
-              required
-              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-            />
-            <p v-if="quickCustomerErrors.name" class="mt-1 text-[11px] text-rose-500 font-bold">
-              {{ quickCustomerErrors.name[0] }}
-            </p>
-          </div>
-
-          <div v-if="quickCustomerForm.customer_type === 'company'">
-            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-              {{ $t('customers.companyName') }}
-            </label>
-            <input
-              type="text"
-              v-model="quickCustomerForm.company_name"
-              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-            />
-          </div>
-        </div>
-
-        <!-- Phone & WhatsApp -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-              {{ $t('customers.phone') }}
-            </label>
-            <input
-              type="tel"
-              v-model="quickCustomerForm.phone"
-              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-              dir="ltr"
-            />
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-              {{ $t('customers.whatsapp') }}
-            </label>
-            <input
-              type="tel"
-              v-model="quickCustomerForm.whatsapp"
-              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-              dir="ltr"
-            />
-          </div>
-        </div>
-
-        <!-- Email -->
-        <div>
-          <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-            {{ $t('customers.email') }}
-          </label>
-          <input
-            type="email"
-            v-model="quickCustomerForm.email"
-            class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-            dir="ltr"
-          />
-        </div>
-      </div>
-    </CrudModal>
+      @customer-created="onQuickCustomerCreated"
+    />
   </div>
 </template>
 
@@ -1298,6 +1233,7 @@ import { useNotificationStore } from '../../stores/notification';
 import { formatDate } from '../../utils/date';
 import CrudIndex from '../../components/crud/CrudIndex.vue';
 import CrudModal from '../../components/crud/CrudModal.vue';
+import QuickCustomerModal from '../../components/common/QuickCustomerModal.vue';
 
 // Lucide Icons
 import {
@@ -1492,6 +1428,13 @@ const onModalPhotosSelected = (e) => {
 
 const setStatusFilter = (status) => {
   filterParams.status = status;
+};
+
+const clearOpportunityFilter = () => {
+  filterParams.opportunity_id = '';
+  if (crudRef.value?.loadData) {
+    crudRef.value.loadData(1);
+  }
 };
 
 const onDataLoaded = (payload) => {
@@ -1824,44 +1767,16 @@ const cancelVisitAction = async (item) => {
   }
 };
 
-// Quick Customer Save
-const saveQuickCustomer = async () => {
-  quickCustomerErrors.value = {};
-  if (!quickCustomerForm.name) {
-    quickCustomerErrors.value = { name: [t('validation.required')] };
-    return;
+// Quick Customer Handler
+const onQuickCustomerCreated = (newCustomer) => {
+  if (!relatedOptions.value.customers) {
+    relatedOptions.value.customers = [];
   }
-
-  quickCustomerLoading.value = true;
-  try {
-    const res = await api.post('/customers', quickCustomerForm);
-    const newCustomer = res.data.data;
-
-    // Add to options
-    relatedOptions.value.customers.unshift(newCustomer);
-    visitForm.customer_id = newCustomer.id;
-
-    notificationStore.success(t('customers.createdSuccessfully') || 'تم إضافة العميل بنجاح');
-    showQuickCustomerModal.value = false;
-
-    // Reset quick form
-    Object.assign(quickCustomerForm, {
-      customer_type: 'individual',
-      name: '',
-      company_name: '',
-      phone: '',
-      whatsapp: '',
-      email: '',
-    });
-  } catch (err) {
-    if (err.response?.status === 422) {
-      quickCustomerErrors.value = err.response.data.errors || {};
-    } else {
-      const msg = err.response?.data?.message || err.message;
-      notificationStore.error(msg);
-    }
-  } finally {
-    quickCustomerLoading.value = false;
+  relatedOptions.value.customers.unshift(newCustomer);
+  visitForm.customer_id = newCustomer.id;
+  crudRef.value?.setFieldValue('customer_id', newCustomer.id);
+  if (crudRef.value?.formData) {
+    crudRef.value.formData.customer_id = newCustomer.id;
   }
 };
 

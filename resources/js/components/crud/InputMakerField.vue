@@ -25,7 +25,8 @@
         :placeholder="formatLabel(field.placeholder) || formatLabel(field.label)"
         :required="field.required"
         :disabled="field.readonly"
-        class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white focus:ring-2 focus:ring-[#00C896]/20 dark:border-gray-700 dark:bg-gray-900/40 dark:text-white dark:focus:border-[#00C896] transition-all"
+        class="w-full rounded-xl border py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden transition-all dark:text-white"
+        :class="error ? 'border-rose-500 bg-rose-50/40 dark:border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20' : 'border-gray-200 bg-gray-50 focus:border-[#00C896] focus:bg-white focus:ring-2 focus:ring-[#00C896]/20 dark:border-gray-700 dark:bg-gray-900/40 dark:focus:border-[#00C896]'"
       />
     </div>
 
@@ -38,7 +39,8 @@
         :rows="3"
         :required="field.required"
         :disabled="field.readonly"
-        class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white focus:ring-2 focus:ring-[#00C896]/20 dark:border-gray-700 dark:bg-gray-900/40 dark:text-white dark:focus:border-[#00C896] transition-all"
+        class="w-full rounded-xl border py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden transition-all dark:text-white"
+        :class="error ? 'border-rose-500 bg-rose-50/40 dark:border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20' : 'border-gray-200 bg-gray-50 focus:border-[#00C896] focus:bg-white focus:ring-2 focus:ring-[#00C896]/20 dark:border-gray-700 dark:bg-gray-900/40 dark:focus:border-[#00C896]'"
       ></textarea>
     </div>
 

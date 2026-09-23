@@ -154,18 +154,26 @@ class CustomerController extends CRUDController
         return parent::destroy($ids);
     }
 
+    protected function beforeSave(Model $model, Request $request, bool $isUpdate): void
+    {
+        /** @var Customer $model */
+        if (empty($model->status)) {
+            $model->status = 'active';
+        }
+    }
+
     protected function customValidationRules(bool $isUpdate = false, mixed $currentId = null): array
     {
         return [
             'customer_type' => ['required', 'string', 'in:individual,company'],
-            'name' => ['required', 'string', 'max:200'],
+            'name' => ['required', 'string', 'min:2', 'max:200'],
             'company_name' => ['nullable', 'string', 'max:200'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'whatsapp' => ['nullable', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:150'],
+            'phone' => ['nullable', 'string', 'regex:/^(\+?[0-9]{7,15}|00[0-9]{7,15}|01[0125][0-9]{8}|0[2345689][0-9]{7,8})$/', 'max:50'],
+            'whatsapp' => ['nullable', 'string', 'regex:/^(\+?[0-9]{7,15}|00[0-9]{7,15}|01[0125][0-9]{8}|0[2345689][0-9]{7,8})$/', 'max:50'],
+            'email' => ['nullable', 'email:rfc,filter', 'max:150'],
             'address' => ['nullable', 'string', 'max:1000'],
             'notes' => ['nullable', 'string', 'max:5000'],
-            'status' => ['required', 'string', 'in:active,inactive'],
+            'status' => ['nullable', 'string', 'in:active,inactive'],
             'documents' => ['nullable'],
             'documents.*' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp', 'max:5120'],
         ];
