@@ -142,7 +142,7 @@ abstract class CRUDController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم حفظ البيانات بنجاح',
+                'message' => __('crud.saved_successfully'),
                 'data' => $model->fresh($this->with),
             ], 201);
         } catch (\Throwable $e) {
@@ -150,7 +150,7 @@ abstract class CRUDController extends Controller
             Log::error("CRUD Store Failed for {$this->model}: " . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء حفظ البيانات: ' . $e->getMessage(),
+                'message' => __('crud.save_failed', ['error' => $e->getMessage()]),
             ], 422);
         }
     }
@@ -178,7 +178,7 @@ abstract class CRUDController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم تحديث البيانات بنجاح',
+                'message' => __('crud.updated_successfully'),
                 'data' => $model->fresh($this->with),
             ]);
         } catch (\Throwable $e) {
@@ -186,7 +186,7 @@ abstract class CRUDController extends Controller
             Log::error("CRUD Update Failed for {$this->model} [{$id}]: " . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء تحديث البيانات: ' . $e->getMessage(),
+                'message' => __('crud.update_failed', ['error' => $e->getMessage()]),
             ], 422);
         }
     }
@@ -205,13 +205,13 @@ abstract class CRUDController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم حذف السجلات المحددة بنجاح',
+                'message' => __('crud.deleted_successfully'),
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'لا يمكن حذف بعض السجلات لارتباطها ببيانات أخرى في النظام',
+                'message' => __('crud.delete_has_relations'),
             ], 422);
         }
     }

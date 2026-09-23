@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
 
+        $middleware->prependToGroup('api', \App\Http\Middleware\SetLocaleMiddleware::class);
         $middleware->prependToGroup('api', \App\Core\Tenancy\IdentifyTenant::class);
         $middleware->appendToGroup('api', \App\Http\Middleware\SecurityHeadersMiddleware::class);
         $middleware->appendToGroup('api', \App\Http\Middleware\SanitizeInputMiddleware::class);

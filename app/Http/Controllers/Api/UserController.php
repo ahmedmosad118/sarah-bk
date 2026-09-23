@@ -148,21 +148,25 @@ class UserController extends CRUDController
         if ($user->hasRole('Owner') && $user->status === 'active' && User::role('Owner')->where('status', 'active')->count() <= 1) {
             return response()->json([
                 'success' => false,
-                'message' => 'لا يمكن تعطيل المالك الوحيد للمنظومة.',
+                'message' => __('messages.user_cannot_deactivate_owner'),
             ], 422);
         }
 
         $newStatus = $user->status === 'active' ? 'inactive' : 'active';
         $user->update(['status' => $newStatus]);
 
+        $statusLabel = $newStatus === 'active' ? __('activity.status_activated') : __('activity.status_deactivated');
+
         activity('users')
             ->performedOn($user)
             ->causedBy(auth()->user())
-            ->log("تم " . ($newStatus === 'active' ? 'تفعيل' : 'تعطيل') . " حساب المستخدم {$user->name}");
+            ->log(__('activity.user_status_changed', ['status' => $statusLabel, 'user' => $user->name]));
+
+        $msgStatusLabel = $newStatus === 'active' ? __('messages.user_status_active') : __('messages.user_status_inactive');
 
         return response()->json([
             'success' => true,
-            'message' => "تم " . ($newStatus === 'active' ? 'تفعيل' : 'تعطيل') . " الحساب بنجاح",
+            'message' => __('messages.user_status_updated', ['status' => $msgStatusLabel]),
             'data' => $user->fresh($this->with),
         ]);
     }
@@ -195,7 +199,7 @@ class UserController extends CRUDController
                 ->performedOn($model)
                 ->causedBy(auth()->user())
                 ->withProperties(['assigned_roles' => $roles])
-                ->log("تم تحديث أدوار المستخدم {$model->name}");
+                ->log(__('activity.user_roles_updated', ['user' => $model->name]));
         } elseif (!$isUpdate && !$model->roles()->exists()) {
             // Default role if none given
             $model->assignRole('Project Team');
@@ -243,7 +247,7 @@ class UserController extends CRUDController
         }
 
         if (!$hasAny) {
-            abort(403, 'ليس لديك الصلاحية الكافية لتنفيذ هذا الإجراء (' . implode(', ', $perms) . ').');
+            abort(403, __('messages.permissions_denied_any', ['permissions' => implode(', ', $perms)]));
         }
     }
 }

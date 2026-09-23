@@ -90,14 +90,13 @@ class CustomerController extends CRUDController
         $perPage = min(max($rawPerPage, 1), 100);
         $paginated = $query->paginate($perPage);
 
-        // Stats Summary
-        $all = Customer::all();
+        // High Performance Stats Summary via SQL Counts
         $stats = [
-            'total' => $all->count(),
-            'active' => $all->where('status', 'active')->count(),
-            'inactive' => $all->where('status', 'inactive')->count(),
-            'individuals' => $all->where('customer_type', 'individual')->count(),
-            'companies' => $all->where('customer_type', 'company')->count(),
+            'total' => Customer::count(),
+            'active' => Customer::where('status', 'active')->count(),
+            'inactive' => Customer::where('status', 'inactive')->count(),
+            'individuals' => Customer::where('customer_type', 'individual')->count(),
+            'companies' => Customer::where('customer_type', 'company')->count(),
         ];
 
         return response()->json([
@@ -111,6 +110,23 @@ class CustomerController extends CRUDController
             ],
             'stats' => $stats,
             'schema' => $this->inputMaker()->toSchema(),
+        ]);
+    }
+
+    /**
+     * Return lightweight list of customers for select dropdowns.
+     */
+    public function all(Request $request): JsonResponse
+    {
+        $this->authorizePermission('customers.view');
+
+        $customers = Customer::select('id', 'name', 'company_name', 'phone', 'whatsapp', 'email', 'customer_type', 'status')
+            ->orderBy('name', 'asc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $customers,
         ]);
     }
 
@@ -192,7 +208,7 @@ class CustomerController extends CRUDController
         }
 
         if (!$hasAny) {
-            abort(403, 'ليس لديك الصلاحية الكافية لتنفيذ هذا الإجراء (' . implode(', ', $perms) . ').');
+            abort(403, __('messages.permissions_denied_any', ['permissions' => implode(', ', $perms)]));
         }
     }
 }

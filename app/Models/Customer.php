@@ -86,15 +86,23 @@ class Customer extends Model implements HasMedia
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn(string $eventName) => match($eventName) {
-                'created' => 'تم تسجيل العميل الجديد (' . $this->name . ')',
-                'updated' => 'تم تحديث بيانات العميل (' . $this->name . ')',
-                'deleted' => 'تم حذف بيانات العميل (' . $this->name . ')',
-                default => "إجراء {$eventName} على العميل " . $this->name,
+                'created' => __('activity.customer_created', ['name' => $this->name]),
+                'updated' => __('activity.customer_updated', ['name' => $this->name]),
+                'deleted' => __('activity.customer_deleted', ['name' => $this->name]),
+                default => __('activity.customer_event', ['event' => $eventName, 'name' => $this->name]),
             });
     }
 
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('documents');
+    }
+
+    /**
+     * Leads associated with this customer.
+     */
+    public function leads(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Lead::class);
     }
 }

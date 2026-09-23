@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\JobTitleController;
+use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\UserController;
@@ -60,11 +61,25 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     // Customers Management (Commercial Foundation)
     Route::prefix('customers')->group(function () {
         Route::get('/schema', [CustomerController::class, 'schema']);
+        Route::get('/all', [CustomerController::class, 'all']);
         Route::get('/', [CustomerController::class, 'index']);
         Route::post('/', [CustomerController::class, 'store']);
         Route::get('/{id}', [CustomerController::class, 'show']);
         Route::put('/{id}', [CustomerController::class, 'update']);
         Route::delete('/{ids}', [CustomerController::class, 'destroy']);
+    });
+
+    // Leads Management (Commercial Pipeline Layer)
+    Route::prefix('leads')->group(function () {
+        Route::get('/schema', [LeadController::class, 'schema']);
+        Route::get('/', [LeadController::class, 'index']);
+        Route::post('/', [LeadController::class, 'store']);
+        Route::get('/{id}', [LeadController::class, 'show']);
+        Route::put('/{id}', [LeadController::class, 'update']);
+        Route::delete('/{ids}', [LeadController::class, 'destroy']);
+        Route::post('/{id}/convert', [LeadController::class, 'convert']);
+        Route::post('/{id}/assign', [LeadController::class, 'assign']);
+        Route::post('/{id}/qualify', [LeadController::class, 'qualify']);
     });
 
     // Roles & Permissions Management

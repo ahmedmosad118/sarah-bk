@@ -79,6 +79,21 @@
           </div>
         </div>
 
+        <!-- Quick Action / Add New Option inside Select -->
+        <div v-if="actionLabel" class="p-1 mb-1 border-b border-gray-100 dark:border-gray-700">
+          <button
+            type="button"
+            @click.stop="triggerAction"
+            class="w-full flex items-center justify-between px-3 py-2 text-xs font-bold rounded-xl bg-[#00C896]/10 text-[#00A87E] hover:bg-[#00C896]/20 dark:bg-[#00C896]/20 dark:text-[#00C896] transition-all cursor-pointer group"
+          >
+            <span class="flex items-center gap-1.5">
+              <Plus class="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
+              <span>{{ formatLabel(actionLabel) }}</span>
+            </span>
+            <span class="text-[10px] font-medium opacity-75 px-1.5 py-0.5 rounded-md bg-white/70 dark:bg-gray-800/80">{{ $t('common.create') }}</span>
+          </button>
+        </div>
+
         <!-- Options List -->
         <div class="overflow-y-auto max-h-52 space-y-0.5 custom-scrollbar py-0.5">
           <!-- Empty option (Reset / All) -->
@@ -129,7 +144,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { ChevronDown, Search, Check, X } from 'lucide-vue-next';
+import { ChevronDown, Search, Check, X, Plus } from 'lucide-vue-next';
 
 const props = defineProps({
   modelValue: {
@@ -164,9 +179,13 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  actionLabel: {
+    type: String,
+    default: '',
+  },
 });
 
-const emit = defineEmits(['update:modelValue', 'change']);
+const emit = defineEmits(['update:modelValue', 'change', 'action']);
 
 const { t, te } = useI18n();
 const containerRef = ref(null);
@@ -224,6 +243,12 @@ const selectOption = (val) => {
 const clearSelection = () => {
   emit('update:modelValue', null);
   emit('change', null);
+};
+
+const triggerAction = () => {
+  isOpen.value = false;
+  searchQuery.value = '';
+  emit('action');
 };
 
 const handleClickOutside = (e) => {

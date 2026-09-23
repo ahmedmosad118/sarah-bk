@@ -81,20 +81,20 @@ class RoleController extends Controller
             activity('roles')
                 ->performedOn($role)
                 ->causedBy(auth()->user())
-                ->log("تم إنشاء دور مخصص جديد ({$role->name})");
+                ->log(__('activity.role_created', ['role' => $role->name]));
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم إنشاء الدور بنجاح',
+                'message' => __('messages.role_created_success'),
                 'data' => $role->load('permissions'),
             ], 201);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء حفظ الدور: ' . $e->getMessage(),
+                'message' => __('messages.role_save_failed', ['error' => $e->getMessage()]),
             ], 422);
         }
     }
@@ -120,7 +120,7 @@ class RoleController extends Controller
         if ($role->name === 'Owner' && $validated['name'] !== 'Owner') {
             return response()->json([
                 'success' => false,
-                'message' => 'لا يمكن تغيير الاسم البرمجي لدور المالك (Owner).',
+                'message' => __('messages.role_owner_cannot_rename'),
             ], 422);
         }
 
@@ -144,20 +144,20 @@ class RoleController extends Controller
             activity('roles')
                 ->performedOn($role)
                 ->causedBy(auth()->user())
-                ->log("تم تحديث صلاحيات وبيانات الدور ({$role->name})");
+                ->log(__('activity.role_updated', ['role' => $role->name]));
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم تحديث الدور والصلاحيات بنجاح',
+                'message' => __('messages.role_updated_success'),
                 'data' => $role->load('permissions'),
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء تحديث الدور: ' . $e->getMessage(),
+                'message' => __('messages.role_update_failed', ['error' => $e->getMessage()]),
             ], 422);
         }
     }
@@ -174,27 +174,27 @@ class RoleController extends Controller
         if ($role->is_default || in_array($role->name, ['Owner', 'Super Admin', 'Administrator', 'Viewer'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'لا يمكن حذف الأدوار الأساسية للنظام (System Roles).',
+                'message' => __('messages.role_system_cannot_delete'),
             ], 422);
         }
 
         if ($role->users()->exists()) {
             return response()->json([
                 'success' => false,
-                'message' => 'لا يمكن حذف الدور لوجود مستخدمين مرتبطين به. قم بنقل المستخدمين أولاً.',
+                'message' => __('messages.role_cannot_delete_has_users'),
             ], 422);
         }
 
         activity('roles')
             ->performedOn($role)
             ->causedBy(auth()->user())
-            ->log("تم حذف الدور ({$role->name})");
+            ->log(__('activity.role_deleted', ['role' => $role->name]));
 
         $role->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'تم حذف الدور بنجاح',
+            'message' => __('messages.role_deleted_success'),
         ]);
     }
 
@@ -234,7 +234,7 @@ class RoleController extends Controller
         }
 
         if (!$user->hasPermissionTo($permission)) {
-            abort(403, "ليس لديك الصلاحية المطلوبة ({$permission}).");
+            abort(403, __('messages.permission_denied', ['permission' => $permission]));
         }
     }
 }

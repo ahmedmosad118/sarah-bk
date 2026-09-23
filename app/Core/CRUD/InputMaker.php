@@ -83,7 +83,7 @@ class InputMaker
         $fillable = [];
         foreach ($this->fields as $field) {
             $data = $field->toArray();
-            if (!$data['hidden_in_form'] && $data['type'] !== 'media' && $data['type'] !== 'file') {
+            if ($data['type'] !== 'media' && $data['type'] !== 'file') {
                 $fillable[] = $field->getName();
             }
         }

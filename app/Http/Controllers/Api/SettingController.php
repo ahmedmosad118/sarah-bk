@@ -51,11 +51,11 @@ class SettingController extends Controller
 
         activity('settings')
             ->causedBy(auth()->user())
-            ->log('تم تحديث إعدادات المنظومة');
+            ->log(__('activity.settings_updated'));
 
         return response()->json([
             'success' => true,
-            'message' => 'تم حفظ الإعدادات بنجاح',
+            'message' => __('messages.settings_saved_success'),
             'data' => Setting::all()->groupBy('group'),
         ]);
     }
@@ -72,7 +72,7 @@ class SettingController extends Controller
         }
 
         if (!$user->hasPermissionTo($permission)) {
-            abort(403, "ليس لديك الصلاحية المطلوبة ({$permission}).");
+            abort(403, __('messages.permission_denied', ['permission' => $permission]));
         }
     }
 }

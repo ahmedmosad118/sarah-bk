@@ -26,14 +26,14 @@ class AuthController extends Controller
 
         if (!$user || !Hash::check($validated['password'], $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['بيانات تسجيل الدخول غير صحيحة (البريد الإلكتروني أو كلمة المرور). / Invalid credentials.'],
+                'email' => [__('auth.failed')],
             ]);
         }
 
         if (!$user->isActive()) {
             return response()->json([
                 'success' => false,
-                'message' => 'حسابك معطل حالياً. يرجى مراجعة مسؤول النظام. / Account is currently inactive.',
+                'message' => __('auth.account_inactive'),
                 'error_code' => 'USER_INACTIVE',
             ], 403);
         }
@@ -47,13 +47,13 @@ class AuthController extends Controller
         activity('auth')
             ->performedOn($user)
             ->causedBy($user)
-            ->log('تم تسجيل الدخول بنجاح');
+            ->log(__('activity.login'));
 
         $tenant = TenantContext::getTenant();
 
         return response()->json([
             'success' => true,
-            'message' => 'تم تسجيل الدخول بنجاح',
+            'message' => __('auth.login_success'),
             'data' => [
                 'token' => $token,
                 'user' => [
@@ -89,7 +89,7 @@ class AuthController extends Controller
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'غير مصرح بالدخول / Unauthorized',
+                'message' => __('auth.unauthorized'),
             ], 401);
         }
 
@@ -134,14 +134,14 @@ class AuthController extends Controller
             activity('auth')
                 ->performedOn($user)
                 ->causedBy($user)
-                ->log('تم تسجيل الخروج');
+                ->log(__('activity.logout'));
 
             $user->currentAccessToken()?->delete();
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'تم تسجيل الخروج بنجاح / Logged out successfully',
+            'message' => __('auth.logout_success'),
         ]);
     }
 
@@ -160,7 +160,7 @@ class AuthController extends Controller
 
         if (!Hash::check($validated['current_password'], $user->password)) {
             throw ValidationException::withMessages([
-                'current_password' => ['كلمة المرور الحالية غير صحيحة.'],
+                'current_password' => [__('auth.current_password_invalid')],
             ]);
         }
 
@@ -171,11 +171,11 @@ class AuthController extends Controller
         activity('auth')
             ->performedOn($user)
             ->causedBy($user)
-            ->log('تم تغيير كلمة المرور بنجاح');
+            ->log(__('activity.password_changed'));
 
         return response()->json([
             'success' => true,
-            'message' => 'تم تغيير كلمة المرور بنجاح',
+            'message' => __('auth.password_changed_success'),
         ]);
     }
 
@@ -202,11 +202,11 @@ class AuthController extends Controller
         activity('auth')
             ->performedOn($user)
             ->causedBy($user)
-            ->log('تم تحديث بيانات الملف الشخصي');
+            ->log(__('activity.profile_updated'));
 
         return response()->json([
             'success' => true,
-            'message' => 'تم تحديث الملف الشخصي بنجاح',
+            'message' => __('auth.profile_updated_success'),
             'data' => [
                 'user' => [
                     'id' => $user->id,
@@ -248,11 +248,11 @@ class AuthController extends Controller
             activity('auth')
                 ->performedOn($user)
                 ->causedBy($user)
-                ->log('تم تحديث الصورة الشخصية');
+                ->log(__('activity.avatar_updated'));
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم تحديث الصورة الشخصية بنجاح',
+                'message' => __('auth.avatar_updated_success'),
                 'avatar_url' => $user->avatar_url,
                 'user' => [
                     'id' => $user->id,
@@ -270,7 +270,7 @@ class AuthController extends Controller
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'تعذر رفع الصورة: ' . $e->getMessage(),
+                'message' => __('auth.avatar_upload_failed', ['error' => $e->getMessage()]),
             ], 422);
         }
     }

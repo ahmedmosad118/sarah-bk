@@ -1,0 +1,46 @@
+<?php
+
+return [
+    'login' => 'تم تسجيل الدخول بنجاح',
+    'logout' => 'تم تسجيل الخروج',
+    'password_changed' => 'تم تغيير كلمة المرور بنجاح',
+    'profile_updated' => 'تم تحديث بيانات الملف الشخصي',
+    'avatar_updated' => 'تم تحديث الصورة الشخصية',
+    'role_created' => 'تم إنشاء دور مخصص جديد (:role)',
+    'role_updated' => 'تم تحديث صلاحيات وبيانات الدور (:role)',
+    'role_deleted' => 'تم حذف الدور (:role)',
+    'lead_converted' => 'تم تحويل العميل المحتمل (:title) إلى عميل/مشروع معتمد',
+    'lead_assigned' => 'تم إسناد العميل المحتمل (:title) إلى المسؤول (:user)',
+    'lead_qualified' => 'تم تحديث بيانات تأهيل العميل المحتمل (:title) وتعديل الحالة إلى (:status)',
+    'settings_updated' => 'تم تحديث إعدادات المنظومة',
+    'user_status_changed' => 'تم :status حساب المستخدم :user',
+    'user_roles_updated' => 'تم تحديث أدوار المستخدم :user',
+    'status_activated' => 'تفعيل',
+    'status_deactivated' => 'تعطيل',
+    'tenant_provisioned' => 'تم إنشاء وتهيئة منظومة الشركة (:tenant) وحساب المالك (:owner) بنجاح.',
+
+    // Model Lifecycle Activity Logs
+    'user_created' => 'تم إنشاء المستخدم :name',
+    'user_updated' => 'تم تحديث بيانات المستخدم :name',
+    'user_deleted' => 'تم حذف المستخدم :name',
+    'user_event' => 'إجراء :event على المستخدم :name',
+
+    'customer_created' => 'تم تسجيل العميل الجديد (:name)',
+    'customer_updated' => 'تم تحديث بيانات العميل (:name)',
+    'customer_deleted' => 'تم حذف بيانات العميل (:name)',
+    'customer_event' => 'إجراء :event على العميل :name',
+
+    'lead_model_created' => 'تم تسجيل العميل المحتمل الجديد (:title)',
+    'lead_model_updated' => 'تم تحديث بيانات العميل المحتمل (:title)',
+    'lead_model_deleted' => 'تم حذف العميل المحتمل (:title)',
+    'lead_event' => 'إجراء :event على العميل المحتمل :title',
+
+    'job_title_created' => 'تم إنشاء المسمى الوظيفي :name',
+    'job_title_updated' => 'تم تحديث المسمى الوظيفي :name',
+    'job_title_deleted' => 'تم حذف المسمى الوظيفي :name',
+    'job_title_event' => 'إجراء :event على المسمى الوظيفي :name',
+
+    'setting_created' => 'تم إنشاء الإعداد :key',
+    'setting_updated' => 'تم تحديث الإعداد :key',
+    'setting_event' => 'إجراء :event على الإعداد :key',
+];

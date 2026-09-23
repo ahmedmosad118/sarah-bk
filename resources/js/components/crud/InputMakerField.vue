@@ -1,9 +1,20 @@
 <template>
   <div :class="[colClass, $i18n.locale === 'ar' ? 'text-right' : 'text-left']" class="mb-3.5">
-    <label v-if="field.type !== 'boolean'" class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-      {{ formatLabel(field.label) }}
-      <span v-if="field.required" class="text-rose-500 font-bold">*</span>
-    </label>
+    <div class="flex items-center justify-between mb-1.5">
+      <label v-if="field.type !== 'boolean'" class="block text-xs font-bold text-gray-700 dark:text-gray-300">
+        {{ formatLabel(field.label) }}
+        <span v-if="field.required" class="text-rose-500 font-bold">*</span>
+      </label>
+      <button
+        v-if="field.name === 'customer_id' || field.allow_create"
+        type="button"
+        @click="$emit('field-action', field.name)"
+        class="text-[11px] font-bold text-[#00A87E] hover:text-[#00C896] hover:underline dark:text-[#00C896] flex items-center gap-1 cursor-pointer transition-colors"
+      >
+        <Plus class="h-3 w-3" />
+        <span>{{ $t('leads.addNewCustomer') }}</span>
+      </button>
+    </div>
 
     <!-- 1. Text / Email / Tel / Password -->
     <div v-if="['text', 'email', 'tel', 'password'].includes(field.type)" class="relative">
@@ -70,6 +81,8 @@
         :disabled="field.readonly"
         :clearable="!field.required"
         :allow-empty="!field.required"
+        :action-label="field.name === 'customer_id' ? 'leads.addNewCustomer' : (field.action_label || '')"
+        @action="$emit('field-action', field.name)"
         @update:model-value="$emit('update:modelValue', $event)"
       />
     </div>
@@ -113,6 +126,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { Plus } from 'lucide-vue-next';
 import SearchableSelect from '../common/SearchableSelect.vue';
 
 const props = defineProps({
@@ -134,7 +148,7 @@ const props = defineProps({
   },
 });
 
-defineEmits(['update:modelValue']);
+defineEmits(['update:modelValue', 'field-action']);
 
 const { t, te } = useI18n();
 

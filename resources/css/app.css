@@ -45,3 +45,147 @@
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(107, 114, 128, 0.8);
 }
+
+/* ==========================================================================
+   SARH ERP — Luxury SweetAlert2 Design System
+   ========================================================================== */
+.swal2-container {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    background-color: rgba(15, 23, 42, 0.65) !important;
+    z-index: 99999 !important;
+}
+
+.sarh-swal-popup {
+    border-radius: 1.5rem !important;
+    padding: 2rem 1.75rem !important;
+    background: #ffffff !important;
+    border: 1px solid rgba(226, 232, 240, 0.9) !important;
+    box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+    font-family: inherit !important;
+}
+
+.sarh-swal-popup.dark-mode,
+.dark .sarh-swal-popup,
+.dark-mode .sarh-swal-popup {
+    background: #0F172A !important;
+    border-color: rgba(51, 65, 85, 0.8) !important;
+    color: #F8FAFC !important;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+}
+
+.sarh-swal-title {
+    font-size: 1.2rem !important;
+    font-weight: 800 !important;
+    color: #0F172A !important;
+    margin-bottom: 0.5rem !important;
+    padding: 0 !important;
+}
+
+.dark .sarh-swal-title,
+.dark-mode .sarh-swal-title {
+    color: #F8FAFC !important;
+}
+
+.sarh-swal-content {
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: #64748B !important;
+    line-height: 1.6 !important;
+    margin: 0.5rem 0 1.5rem 0 !important;
+    padding: 0 !important;
+}
+
+.dark .sarh-swal-content,
+.dark-mode .sarh-swal-content {
+    color: #94A3B8 !important;
+}
+
+.sarh-swal-actions {
+    display: flex !important;
+    gap: 0.75rem !important;
+    margin: 0 !important;
+    width: 100% !important;
+    justify-content: center !important;
+}
+
+.sarh-swal-btn {
+    padding: 0.65rem 1.5rem !important;
+    border-radius: 0.875rem !important;
+    font-size: 0.8125rem !important;
+    font-weight: 800 !important;
+    cursor: pointer !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    outline: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Delete / Danger Button */
+.sarh-swal-delete {
+    background-color: #E11D48 !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(225, 29, 72, 0.3) !important;
+}
+.sarh-swal-delete:hover {
+    background-color: #BE123C !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 18px rgba(225, 29, 72, 0.4) !important;
+}
+
+/* Confirm / Primary Button */
+.sarh-swal-confirm {
+    background-color: #00C896 !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(0, 200, 150, 0.3) !important;
+}
+.sarh-swal-confirm:hover {
+    background-color: #00A87E !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 18px rgba(0, 200, 150, 0.4) !important;
+}
+
+/* Cancel Button */
+.sarh-swal-cancel {
+    background-color: #F1F5F9 !important;
+    color: #475569 !important;
+    border: 1px solid #E2E8F0 !important;
+}
+.sarh-swal-cancel:hover {
+    background-color: #E2E8F0 !important;
+    color: #1E293B !important;
+}
+
+.dark .sarh-swal-cancel,
+.dark-mode .sarh-swal-cancel {
+    background-color: #1E293B !important;
+    color: #CBD5E1 !important;
+    border-color: #334155 !important;
+}
+.dark .sarh-swal-cancel:hover,
+.dark-mode .sarh-swal-cancel:hover {
+    background-color: #334155 !important;
+    color: #FFFFFF !important;
+}
+
+/* Icons Refining */
+.swal2-icon.swal2-warning {
+    border-color: #F59E0B !important;
+    color: #F59E0B !important;
+}
+.swal2-icon.swal2-error {
+    border-color: #E11D48 !important;
+    color: #E11D48 !important;
+}
+.swal2-icon.swal2-success {
+    border-color: #00C896 !important;
+    color: #00C896 !important;
+}
+.swal2-icon.swal2-success [class^='swal2-success-line'] {
+    background-color: #00C896 !important;
+}
+.swal2-icon.swal2-success .swal2-success-ring {
+    border-color: rgba(0, 200, 150, 0.3) !important;
+}
+

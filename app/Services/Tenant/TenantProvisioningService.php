@@ -120,7 +120,10 @@ class TenantProvisioningService
                     'database' => $tenant->database_name,
                     'domain' => $domain->domain,
                 ])
-                ->log("تم إنشاء وتهيئة منظومة الشركة ({$tenant->name}) وحساب المالك ({$owner->name}) بنجاح.");
+                ->log(__('activity.tenant_provisioned', [
+                    'tenant' => $tenant->name,
+                    'owner' => $owner->name,
+                ]));
 
             return [
                 'tenant' => $tenant,

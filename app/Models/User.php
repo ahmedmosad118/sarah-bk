@@ -87,15 +87,31 @@ class User extends Authenticatable implements HasMedia
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn(string $eventName) => match($eventName) {
-                'created' => 'تم إنشاء المستخدم ' . $this->name,
-                'updated' => 'تم تحديث بيانات المستخدم ' . $this->name,
-                'deleted' => 'تم حذف المستخدم ' . $this->name,
-                default => "إجراء {$eventName} على المستخدم " . $this->name,
+                'created' => __('activity.user_created', ['name' => $this->name]),
+                'updated' => __('activity.user_updated', ['name' => $this->name]),
+                'deleted' => __('activity.user_deleted', ['name' => $this->name]),
+                default => __('activity.user_event', ['event' => $eventName, 'name' => $this->name]),
             });
     }
 
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('avatar')->singleFile();
+    }
+
+    /**
+     * Leads assigned to this user.
+     */
+    public function assignedLeads(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Lead::class, 'assigned_to');
+    }
+
+    /**
+     * Leads created by this user.
+     */
+    public function createdLeads(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Lead::class, 'created_by');
     }
 }

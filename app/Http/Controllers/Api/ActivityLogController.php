@@ -65,7 +65,7 @@ class ActivityLogController extends Controller
         }
 
         if (!$user->hasPermissionTo($permission)) {
-            abort(403, "ليس لديك الصلاحية المطلوبة ({$permission}).");
+            abort(403, __('messages.permission_denied', ['permission' => $permission]));
         }
     }
 }

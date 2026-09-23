@@ -8,6 +8,7 @@ import LoginView from '../views/auth/LoginView.vue';
 import DashboardView from '../views/dashboard/DashboardView.vue';
 import UsersView from '../views/team/UsersView.vue';
 import CustomersView from '../views/customers/CustomersView.vue';
+import LeadsView from '../views/leads/LeadsView.vue';
 import JobTitlesView from '../views/team/JobTitlesView.vue';
 import RolesView from '../views/team/RolesView.vue';
 import ActivityLogView from '../views/activities/ActivityLogView.vue';
@@ -53,6 +54,11 @@ const routes = [
         path: 'customers',
         name: 'customers',
         component: CustomersView,
+      },
+      {
+        path: 'leads',
+        name: 'leads',
+        component: LeadsView,
       },
       {
         path: 'team/users',

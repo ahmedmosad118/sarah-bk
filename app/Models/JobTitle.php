@@ -39,10 +39,10 @@ class JobTitle extends Model
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn(string $eventName) => match($eventName) {
-                'created' => 'تم إنشاء المسمى الوظيفي ' . ($this->name_ar ?: $this->name),
-                'updated' => 'تم تحديث المسمى الوظيفي ' . ($this->name_ar ?: $this->name),
-                'deleted' => 'تم حذف المسمى الوظيفي ' . ($this->name_ar ?: $this->name),
-                default => "إجراء {$eventName} على المسمى الوظيفي " . ($this->name_ar ?: $this->name),
+                'created' => __('activity.job_title_created', ['name' => $this->name_ar ?: $this->name]),
+                'updated' => __('activity.job_title_updated', ['name' => $this->name_ar ?: $this->name]),
+                'deleted' => __('activity.job_title_deleted', ['name' => $this->name_ar ?: $this->name]),
+                default => __('activity.job_title_event', ['event' => $eventName, 'name' => $this->name_ar ?: $this->name]),
             });
     }
 }

@@ -1,0 +1,43 @@
+<?php
+
+return [
+    'unauthorized' => 'Unauthorized',
+    'permission_denied' => 'You do not have the required permission (:permission).',
+    'permissions_denied_any' => 'You do not have sufficient permissions to perform this action (:permissions).',
+    'validation_error' => 'The given data was invalid.',
+    'server_error' => 'An internal server error occurred. Please try again later.',
+    
+    // Tenancy & Provisioning
+    'tenant_inactive' => 'Company account / domain is currently suspended. Please contact technical support.',
+    'tenant_not_found' => 'Unable to identify tenant company domain or slug. Please provide valid domain or X-Tenant-Slug header.',
+    'tenant_provisioned_success' => 'Company tenant and owner account successfully provisioned',
+    'tenant_provision_failed' => 'Tenant provisioning failed: :error',
+    'tenant_identifier_required' => 'Tenant identifier is required',
+
+    // User Management
+    'user_cannot_deactivate_owner' => 'Cannot deactivate the sole system owner.',
+    'user_status_updated' => 'User account successfully :status',
+    'user_status_active' => 'activated',
+    'user_status_inactive' => 'deactivated',
+
+    // Job Titles
+    'job_title_cannot_delete_has_users' => 'Cannot delete job titles that are assigned to active users. You may deactivate them instead.',
+
+    // Roles
+    'role_owner_cannot_rename' => 'Cannot rename the system Owner role.',
+    'role_system_cannot_delete' => 'Cannot delete system core roles.',
+    'role_cannot_delete_has_users' => 'Cannot delete role with assigned users. Reassign users first.',
+    'role_created_success' => 'Role created successfully',
+    'role_updated_success' => 'Role and permissions updated successfully',
+    'role_deleted_success' => 'Role deleted successfully',
+    'role_save_failed' => 'Error saving role: :error',
+    'role_update_failed' => 'Error updating role: :error',
+
+    // Leads & Commercial
+    'lead_converted_success' => 'Lead converted successfully',
+    'lead_assigned_success' => 'Lead assigned successfully',
+    'lead_qualified_success' => 'Lead qualified and updated successfully',
+
+    // Settings
+    'settings_saved_success' => 'Settings saved successfully',
+];

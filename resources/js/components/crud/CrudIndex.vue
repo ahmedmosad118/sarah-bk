@@ -54,11 +54,16 @@
         :form-data="formData"
         :errors="formErrors"
         :related-options="relatedOptions"
+        @field-action="$emit('field-action', $event)"
       >
         <template #extra-fields>
           <slot name="modal-extra-fields" :form-data="formData" :modal-mode="modalMode" />
         </template>
       </CrudForm>
+      <div v-else class="flex flex-col items-center justify-center py-12 text-center text-gray-400">
+        <div class="h-8 w-8 animate-spin rounded-full border-3 border-[#00C896] border-t-transparent"></div>
+        <p class="mt-3 text-xs font-semibold">{{ $t('common.loading') }}</p>
+      </div>
     </CrudModal>
   </div>
 </template>
@@ -67,6 +72,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+import alertService from '../../services/alert';
 import { useNotificationStore } from '../../stores/notification';
 import BreadcrumbDefault from '../tailadmin/BreadcrumbDefault.vue';
 import TailAdminDataTable from '../tailadmin/TailAdminDataTable.vue';
@@ -97,7 +103,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['loaded', 'record-saved', 'record-deleted', 'open-modal']);
+const emit = defineEmits(['loaded', 'record-saved', 'record-deleted', 'open-modal', 'field-action']);
 
 const { t, te, locale } = useI18n();
 const notificationStore = useNotificationStore();
@@ -242,7 +248,14 @@ const saveRecord = async () => {
 };
 
 const confirmDelete = async (id) => {
-  if (!confirm(t('common.confirmDelete'))) {
+  const confirmed = await alertService.confirmDelete({
+    title: locale.value === 'ar' ? 'تأكيد الحذف النهائي' : 'Confirm Deletion',
+    text: t('common.confirmDelete'),
+    confirmButtonText: locale.value === 'ar' ? 'نعم، احذف السجل' : 'Yes, Delete',
+    cancelButtonText: locale.value === 'ar' ? 'إلغاء الأمر' : 'Cancel',
+  });
+
+  if (!confirmed) {
     return;
   }
 

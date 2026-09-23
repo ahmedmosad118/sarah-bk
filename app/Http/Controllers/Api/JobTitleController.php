@@ -66,7 +66,7 @@ class JobTitleController extends CRUDController
         if ($usedCount > 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'لا يمكن حذف المسميات الوظيفية لوجود موظفين مسندين إليها. يمكنك تعطيلها بدلاً من ذلك.',
+                'message' => __('messages.job_title_cannot_delete_has_users'),
             ], 422);
         }
 

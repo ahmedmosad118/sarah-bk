@@ -38,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($throttleKey)->response(function () {
                 return response()->json([
                     'success' => false,
-                    'message' => 'تم تجاوز الحد المسموح من محاولات تسجيل الدخول. يرجى المحاولة بعد دقيقة. / Too many login attempts. Please try again in 1 minute.',
+                    'message' => __('auth.too_many_attempts'),
                     'error_code' => 'TOO_MANY_ATTEMPTS',
                 ], 429);
             });

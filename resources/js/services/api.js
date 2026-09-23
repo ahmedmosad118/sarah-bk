@@ -42,6 +42,11 @@ api.interceptors.request.use((config) => {
     config.headers['X-Tenant-Slug'] = tenantSlug;
   }
 
+  // Locale header
+  const locale = localStorage.getItem('sarh_locale') || 'ar';
+  config.headers['X-Locale'] = locale;
+  config.headers['Accept-Language'] = locale;
+
   return config;
 }, (error) => {
   return Promise.reject(error);

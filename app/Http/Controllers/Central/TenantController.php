@@ -76,7 +76,7 @@ class TenantController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم إنشاء وتهيئة منظومة الشركة وحساب المالك بنجاح',
+                'message' => __('messages.tenant_provisioned_success'),
                 'data' => [
                     'tenant' => [
                         'id' => $result['tenant']->id,
@@ -97,7 +97,7 @@ class TenantController extends Controller
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'فشل تهيئة الشركة: ' . $e->getMessage(),
+                'message' => __('messages.tenant_provision_failed', ['error' => $e->getMessage()]),
             ], 422);
         }
     }
@@ -109,7 +109,7 @@ class TenantController extends Controller
     {
         $slug = $request->query('slug');
         if (!$slug) {
-            return response()->json(['available' => false, 'message' => 'يرجى تحديد المعرف'], 400);
+            return response()->json(['available' => false, 'message' => __('messages.tenant_identifier_required')], 400);
         }
 
         $exists = Tenant::where('slug', Str::slug($slug))->exists();

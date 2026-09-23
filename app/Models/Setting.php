@@ -43,9 +43,9 @@ class Setting extends Model
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn(string $eventName) => match($eventName) {
-                'created' => 'تم إنشاء الإعداد ' . $this->key,
-                'updated' => 'تم تحديث الإعداد ' . $this->key,
-                default => "إجراء {$eventName} على الإعداد " . $this->key,
+                'created' => __('activity.setting_created', ['key' => $this->key]),
+                'updated' => __('activity.setting_updated', ['key' => $this->key]),
+                default => __('activity.setting_event', ['event' => $eventName, 'key' => $this->key]),
             });
     }
 }

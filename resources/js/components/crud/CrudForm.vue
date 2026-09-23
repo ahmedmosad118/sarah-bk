@@ -8,6 +8,7 @@
         :model-value="formData[field.name]"
         :error="errors[field.name]?.[0]"
         :options-list="relatedOptions[field.name]"
+        @field-action="$emit('field-action', $event)"
         @update:model-value="updateField(field.name, $event)"
       />
 
@@ -41,7 +42,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['submit', 'update:formData']);
+const emit = defineEmits(['submit', 'update:formData', 'field-action']);
 
 const visibleFields = computed(() => {
   return (props.schema?.fields || []).filter((f) => !f.hidden_in_form && f.type !== 'hidden');

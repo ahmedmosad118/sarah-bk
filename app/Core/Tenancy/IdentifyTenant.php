@@ -78,7 +78,7 @@ class IdentifyTenant
             if (!$tenant->isActive()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'حساب الشركة / النطاق معطل حالياً. يرجى التواصل مع الدعم الفني.',
+                    'message' => __('messages.tenant_inactive'),
                     'error_code' => 'TENANT_INACTIVE',
                 ], 403);
             }
@@ -90,7 +90,7 @@ class IdentifyTenant
             if ($request->is('api/*') && !$request->is('api/central/*')) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'تعذر التعرف على نطاق أو معرّف الشركة (Tenant). يرجى تمرير الدومين أو الهيدر X-Tenant-Slug.',
+                    'message' => __('messages.tenant_not_found'),
                     'error_code' => 'TENANT_NOT_IDENTIFIED',
                 ], 400);
             }
