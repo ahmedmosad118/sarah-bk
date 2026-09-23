@@ -132,10 +132,10 @@ Table: site_visit_rooms
   1. تصحيح دالة `down()` في ملف migration جدول `site_visits` وإزالة التكرار.
   2. توحيد حالات المعاينة في التحقق (`customValidationRules`) وحصرها في `Scheduled, Completed, Cancelled, Rescheduled`.
   3. إضافة صلاحية `site_visits.cancel` في `DefaultPermissionsSeeder` وتوزيعها على الأدوار في `RolePermissionMappingSeeder`.
-  4. ربط المعاينات التابعة للعميل المحتمل تلقائياً بالفرصة التجارية الجديدة عند التحويل (`Lead -> Opportunity`) داخل الـ Transaction، مع تسجيل ذلك في الـ Activity Log واختباره برمجياً.
+  4. ربط المعاينات التابعة للعميل المحتمل تلقائياً بالفرصة التجارية الجديدة عند التحويل في كلا المسارين (`LeadController::convertToOpportunity` و `OpportunityController::convertFromLead`) داخل الـ Transaction، مع تسجيل ذلك في الـ Activity Log واختباره برمجياً لكلا الـ endpoints.
   5. إضافة نقطة دخول ورابط مباشر للمعاينة من شاشة تفاصيل العميل المحتمل (`LeadsView.vue`) لدعم مسار الـ Dual-path بالكامل.
   6. تصحيح إسناد المهندس في `createFromOpportunity()` ليكون `null` افتراضياً لمنع التعيين الخاطئ لموظف المبيعات، مع استخدام endpoint التكليف المستقل.
 - **بناء الواجهة الأمامية (Vite Build):** ناجح بنسبة 100% بدون أي أخطاء (`✓ built in 12.99s`).
-- **الاختبارات الآلية (Automated Tests):** 100% نجاح لكافة الاختبارات في `SiteVisitManagementTest` (9 tests, 49 assertions) و `LeadManagementTest` (11 tests, 99 assertions).
-- **حالة المرحلة:** تم إغلاق وتأكيد Phase 6 (إدارة معاينات الموقع) رسمياً بنجاح تام.
+- **الاختبارات الآلية (Automated Tests):** 100% نجاح لكافة الاختبارات في `SiteVisitManagementTest` (10 tests, 54 assertions) و `LeadManagementTest` (11 tests, 99 assertions).
+- **حالة المرحلة:** تم إغلاق وتأكيد Phase 6 (إدارة معاينات الموقع) وسد كافة الثغرات المعمارية بنجاح 100%.
 

@@ -8,6 +8,7 @@ use App\Core\CRUD\InputMaker;
 use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\Opportunity;
+use App\Models\SiteVisit;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -237,6 +238,19 @@ class OpportunityController extends CRUDController
                 ->performedOn($opp)
                 ->causedBy(auth()->user())
                 ->log(__('activity.opportunity_converted_from_lead', ['lead' => $lead->title, 'title' => $opp->title]));
+
+            // Link any existing Site Visits tied to this Lead to the newly created Opportunity
+            $linkedVisitsCount = SiteVisit::where('lead_id', $lead->id)
+                ->whereNull('opportunity_id')
+                ->update(['opportunity_id' => $opp->id]);
+
+            if ($linkedVisitsCount > 0) {
+                activity('commercial')
+                    ->event('updated')
+                    ->performedOn($opp)
+                    ->causedBy(auth()->user())
+                    ->log("تم ربط {$linkedVisitsCount} معاينات موقع تابعة للعميل المحتمل بالفرصة التجارية الجديدة تلقائياً.");
+            }
 
             return $opp;
         });

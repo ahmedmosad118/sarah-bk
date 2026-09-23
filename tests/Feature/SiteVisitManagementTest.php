@@ -578,4 +578,57 @@ class SiteVisitManagementTest extends TestCase
         // Verify the SiteVisit now has opportunity_id linked
         $this->assertEquals($oppId, $visit->fresh()->opportunity_id);
     }
+
+    /**
+     * 10. Test automatic linking of Site Visits when converted via Opportunity convert-from-lead endpoint.
+     */
+    public function test_site_visits_auto_link_on_opportunity_convert_from_lead(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Opportunity Convert Client',
+            'customer_type' => 'company',
+            'company_name' => 'Al-Ahram Group',
+            'phone' => '01099887766',
+            'status' => 'active',
+        ]);
+
+        $lead = Lead::create([
+            'customer_id' => $customer->id,
+            'title' => 'Commercial Office Renovation',
+            'status' => 'Contacted',
+        ]);
+
+        // Create Site Visit attached to Lead
+        $visit = SiteVisit::create([
+            'customer_id' => $customer->id,
+            'lead_id' => $lead->id,
+            'opportunity_id' => null,
+            'status' => 'Scheduled',
+            'scheduled_date' => '2026-11-05',
+            'created_by' => $this->ownerA->id,
+        ]);
+
+        $this->assertNull($visit->opportunity_id);
+
+        // Convert Lead via OpportunityController endpoint
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/opportunities/convert-from-lead/{$lead->id}", [
+            'title' => 'Al-Ahram Head Office Renovation',
+            'stage' => 'Proposal',
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('success', true);
+
+        $oppId = $response->json('data.id');
+        $this->assertNotNull($oppId);
+
+        // Verify the SiteVisit now has opportunity_id linked
+        $this->assertEquals($oppId, $visit->fresh()->opportunity_id);
+    }
 }
