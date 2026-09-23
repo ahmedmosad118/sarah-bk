@@ -72,7 +72,7 @@
     </div>
 
     <!-- 4. Select / Relation Dropdown (Select2 Searchable Component) -->
-    <div v-else-if="['select', 'relation'].includes(field.type)" class="relative">
+    <div v-else-if="['select', 'relation', 'searchable_select', 'enum', 'dropdown'].includes(field.type)" class="relative">
       <SearchableSelect
         :model-value="modelValue"
         :options="computedOptions"

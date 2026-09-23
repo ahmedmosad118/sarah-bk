@@ -659,19 +659,13 @@
           <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
             {{ $t('opportunities.lossReason') }} <span class="text-rose-500">*</span>
           </label>
-          <select
-            v-model="lossForm.loss_reason"
-            class="w-full rounded-xl border border-rose-200 bg-white py-2.5 px-3.5 text-xs font-semibold text-gray-900 outline-hidden focus:border-rose-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          >
-            <option value="">{{ $t('opportunities.lossReasonSelect') }}</option>
-            <option value="price_high">{{ $t('opportunities.lossReasonPrice') }}</option>
-            <option value="competitor_won">{{ $t('opportunities.lossReasonCompetitor') }}</option>
-            <option value="client_postponed">{{ $t('opportunities.lossReasonPostponed') }}</option>
-            <option value="client_unresponsive">{{ $t('opportunities.lossReasonUnresponsive') }}</option>
-            <option value="scope_mismatch">{{ $t('opportunities.lossReasonOutOfScope') }}</option>
-            <option value="budget_insufficient">{{ $t('opportunities.lossReasonBudget') }}</option>
-            <option value="other">{{ $t('opportunities.lossReasonOther') }}</option>
-          </select>
+          <SearchableSelect
+            :model-value="lossForm.loss_reason"
+            :options="lossReasonOptions"
+            :placeholder="$t('opportunities.lossReasonSelect') || 'اختر سبب الخسارة...'"
+            :clearable="false"
+            @update:model-value="lossForm.loss_reason = $event"
+          />
         </div>
 
         <div v-if="lossForm.loss_reason === 'competitor_won'">
@@ -745,15 +739,13 @@
           <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
             المهندس الفني المسؤول عن المعاينة
           </label>
-          <select
-            v-model="quickSiteVisitForm.assigned_to"
-            class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          >
-            <option :value="null">اختر المهندس المسؤول...</option>
-            <option v-for="u in userOptions" :key="u.value" :value="u.value">
-              {{ u.label }}
-            </option>
-          </select>
+          <SearchableSelect
+            :model-value="quickSiteVisitForm.assigned_to"
+            :options="userOptions"
+            :placeholder="'اختر المهندس المسؤول...'"
+            :clearable="true"
+            @update:model-value="quickSiteVisitForm.assigned_to = $event"
+          />
         </div>
 
         <div>
@@ -782,6 +774,7 @@ import { formatDate } from '../../utils/date';
 import CrudIndex from '../../components/crud/CrudIndex.vue';
 import CrudModal from '../../components/crud/CrudModal.vue';
 import QuickCustomerModal from '../../components/common/QuickCustomerModal.vue';
+import SearchableSelect from '../../components/common/SearchableSelect.vue';
 import {
   Target,
   Clock,
@@ -861,14 +854,15 @@ const quickSiteVisitForm = reactive({
   internal_notes: '',
 });
 
-// Loss Reason Modal State
-const showLossModal = ref(false);
-const lossFormLoading = ref(false);
-const lossForm = reactive({
-  loss_reason: '',
-  competitor_name: '',
-  loss_notes: '',
-});
+const lossReasonOptions = computed(() => [
+  { value: 'price_high', label: t('opportunities.lossReasonPrice') },
+  { value: 'competitor_won', label: t('opportunities.lossReasonCompetitor') },
+  { value: 'client_postponed', label: t('opportunities.lossReasonPostponed') },
+  { value: 'client_unresponsive', label: t('opportunities.lossReasonUnresponsive') },
+  { value: 'scope_mismatch', label: t('opportunities.lossReasonOutOfScope') },
+  { value: 'budget_insufficient', label: t('opportunities.lossReasonBudget') },
+  { value: 'other', label: t('opportunities.lossReasonOther') },
+]);
 
 // Quick Customer Modal State
 const showQuickCustomerModal = ref(false);
@@ -999,9 +993,11 @@ const completedSiteVisit = computed(() => {
 });
 
 const createMeasurementFromCompletedVisit = async () => {
-  if (!completedSiteVisit.value) return;
+  if (!completedSiteVisit.value || !selectedOpportunity.value) return;
   try {
-    const res = await api.post(`/measurements/import-from-site-visit/${completedSiteVisit.value.id}`);
+    const res = await api.post(`/measurements/import-from-site-visit/${completedSiteVisit.value.id}`, {
+      opportunity_id: selectedOpportunity.value.id,
+    });
     if (res.data?.success) {
       notify.success('تم استيراد غرف وفراغات المعاينة وإنشاء مسودة المقايسة بنجاح');
       await refreshSelectedOpportunity(selectedOpportunity.value.id);

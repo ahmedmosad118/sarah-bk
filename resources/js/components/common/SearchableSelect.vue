@@ -198,11 +198,22 @@ const formatLabel = (key) => {
   return te(key) ? t(key) : key;
 };
 
+const normalizedOptions = computed(() => {
+  return (props.options || []).map((opt) => {
+    if (typeof opt === 'object' && opt !== null) {
+      const val = opt.value !== undefined ? opt.value : (opt.id !== undefined ? opt.id : opt.key);
+      const lbl = opt.label !== undefined ? opt.label : (opt.name || opt.title || opt.display_name || String(val));
+      return { ...opt, value: val, label: lbl };
+    }
+    return { value: opt, label: String(opt) };
+  });
+});
+
 const selectedOption = computed(() => {
   if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') {
     return null;
   }
-  return props.options.find((opt) => String(opt.value) === String(props.modelValue)) || null;
+  return normalizedOptions.value.find((opt) => String(opt.value) === String(props.modelValue)) || null;
 });
 
 const isSelected = (val) => {
@@ -212,10 +223,10 @@ const isSelected = (val) => {
 
 const filteredOptions = computed(() => {
   if (!searchQuery.value.trim()) {
-    return props.options;
+    return normalizedOptions.value;
   }
   const q = searchQuery.value.toLowerCase().trim();
-  return props.options.filter((opt) => {
+  return normalizedOptions.value.filter((opt) => {
     const label = formatLabel(opt.label).toLowerCase();
     const val = String(opt.value).toLowerCase();
     return label.includes(q) || val.includes(q);

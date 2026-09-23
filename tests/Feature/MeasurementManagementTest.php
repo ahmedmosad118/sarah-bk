@@ -43,8 +43,8 @@ class MeasurementManagementTest extends TestCase
 
         $this->provisioningService = app(TenantProvisioningService::class);
 
-        $this->slugA = 'meas-alpha-' . time() . '-' . rand(10, 99);
-        $this->slugB = 'meas-beta-' . time() . '-' . rand(10, 99);
+        $this->slugA = str_replace('.', '', uniqid('meas-a-', true)) . rand(100, 999);
+        $this->slugB = str_replace('.', '', uniqid('meas-b-', true)) . rand(100, 999);
 
         // Provision Tenant A
         $resA = $this->provisioningService->provision([
@@ -225,7 +225,9 @@ class MeasurementManagementTest extends TestCase
             'Authorization' => 'Bearer ' . $this->tokenA,
             'X-Tenant-Slug' => $this->slugA,
             'Accept' => 'application/json',
-        ])->postJson("/api/measurements/import-from-site-visit/{$siteVisit->id}");
+        ])->postJson("/api/measurements/import-from-site-visit/{$siteVisit->id}", [
+            'opportunity_id' => $opportunity->id,
+        ]);
 
         $importResponse->assertStatus(201)
             ->assertJsonPath('success', true)
@@ -316,7 +318,9 @@ class MeasurementManagementTest extends TestCase
             'Authorization' => 'Bearer ' . $this->tokenA,
             'X-Tenant-Slug' => $this->slugA,
             'Accept' => 'application/json',
-        ])->postJson("/api/measurements/import-from-site-visit/{$siteVisit->id}");
+        ])->postJson("/api/measurements/import-from-site-visit/{$siteVisit->id}", [
+            'opportunity_id' => $opportunity->id,
+        ]);
 
         $importResponse->assertStatus(201);
         $measurementId = $importResponse->json('data.id');
@@ -694,5 +698,169 @@ class MeasurementManagementTest extends TestCase
 
         $deleteApproved->assertStatus(422)
             ->assertJsonValidationErrors(['status']);
+    }
+
+    /**
+     * TEST 1: Import requires explicit opportunity_id (returns 422 if missing).
+     */
+    public function test_import_requires_explicit_opportunity_id(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Import Validation Client',
+            'customer_type' => 'individual',
+            'phone' => '01012345678',
+            'status' => 'active',
+        ]);
+
+        $siteVisit = SiteVisit::create([
+            'customer_id' => $customer->id,
+            'status' => 'Completed',
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/measurements/import-from-site-visit/{$siteVisit->id}", []);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['opportunity_id']);
+    }
+
+    /**
+     * TEST 2: Import rejects opportunity customer mismatch (SiteVisit for Customer A, Opportunity for Customer B).
+     */
+    public function test_import_rejects_opportunity_customer_mismatch(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customerA = Customer::create([
+            'name' => 'Customer Alpha',
+            'customer_type' => 'individual',
+            'phone' => '01011112222',
+            'status' => 'active',
+        ]);
+
+        $customerB = Customer::create([
+            'name' => 'Customer Beta',
+            'customer_type' => 'company',
+            'phone' => '01033334444',
+            'status' => 'active',
+        ]);
+
+        $siteVisitA = SiteVisit::create([
+            'customer_id' => $customerA->id,
+            'status' => 'Completed',
+        ]);
+
+        $opportunityB = Opportunity::create([
+            'customer_id' => $customerB->id,
+            'title' => 'Customer B Opportunity',
+            'stage' => 'Qualified',
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/measurements/import-from-site-visit/{$siteVisitA->id}", [
+            'opportunity_id' => $opportunityB->id,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['opportunity_id']);
+    }
+
+    /**
+     * TEST 3: Import does NOT mutate historical site visit opportunity_id.
+     */
+    public function test_import_does_not_mutate_site_visit_opportunity_id(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Customer Direct Visit',
+            'customer_type' => 'individual',
+            'phone' => '01055557777',
+            'status' => 'active',
+        ]);
+
+        $siteVisit = SiteVisit::create([
+            'customer_id' => $customer->id,
+            'opportunity_id' => null, // Direct site visit
+            'status' => 'Completed',
+        ]);
+
+        $opportunity = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Explicit Opp Link',
+            'stage' => 'Qualified',
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/measurements/import-from-site-visit/{$siteVisit->id}", [
+            'opportunity_id' => $opportunity->id,
+        ]);
+
+        $response->assertStatus(201);
+
+        // Historical site visit record MUST remain untouched (opportunity_id stays null)
+        $this->assertNull($siteVisit->fresh()->opportunity_id);
+
+        // Created measurement references both independently
+        $this->assertEquals($opportunity->id, $response->json('data.opportunity_id'));
+        $this->assertEquals($siteVisit->id, $response->json('data.site_visit_id'));
+    }
+
+    /**
+     * TEST 4: Customer having multiple open opportunities -> measurement links to explicitly provided opportunity.
+     */
+    public function test_import_with_customer_having_multiple_open_opportunities(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Multi-Opp Client',
+            'customer_type' => 'company',
+            'phone' => '01088889999',
+            'status' => 'active',
+        ]);
+
+        $oppOld = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Project Alpha 1',
+            'stage' => 'Qualified',
+            'created_at' => Carbon::now()->subDays(5),
+        ]);
+
+        $oppNew = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Project Alpha 2',
+            'stage' => 'Proposal',
+            'created_at' => Carbon::now(),
+        ]);
+
+        $siteVisit = SiteVisit::create([
+            'customer_id' => $customer->id,
+            'opportunity_id' => null,
+            'status' => 'Completed',
+        ]);
+
+        // Explicitly importing into older Opportunity 1
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/measurements/import-from-site-visit/{$siteVisit->id}", [
+            'opportunity_id' => $oppOld->id,
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertEquals($oppOld->id, $response->json('data.opportunity_id'));
     }
 }

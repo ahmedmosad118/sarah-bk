@@ -363,17 +363,15 @@
                 </button>
               </div>
 
-              <select
-                v-model="visitForm.customer_id"
-                required
-                class="w-full rounded-xl border bg-white py-2.5 px-3 text-xs font-semibold text-gray-900 outline-hidden focus:border-[#00C896] dark:bg-gray-900 dark:text-white"
-                :class="visitErrors.customer_id ? 'border-rose-500 bg-rose-50/40 dark:border-rose-500' : 'border-gray-200 dark:border-gray-700'"
-              >
-                <option :value="null">{{ $t('siteVisits.selectCustomer') }}</option>
-                <option v-for="c in customersList" :key="c.id" :value="c.id">
-                  {{ c.name }} {{ c.company_name ? `(${c.company_name})` : '' }}
-                </option>
-              </select>
+              <SearchableSelect
+                :model-value="visitForm.customer_id"
+                :options="formattedCustomerOptions"
+                :placeholder="$t('siteVisits.selectCustomer') || 'اختر العميل...'"
+                :clearable="false"
+                :action-label="'leads.addNewCustomer'"
+                @action="showQuickCustomerModal = true"
+                @update:model-value="visitForm.customer_id = $event"
+              />
               <p v-if="visitErrors.customer_id" class="mt-1 text-[11px] text-rose-500 font-bold">
                 {{ visitErrors.customer_id[0] }}
               </p>
@@ -388,15 +386,13 @@
                 <span class="text-[10px] text-gray-400 font-medium">(اختياري - معاينة مباشرة)</span>
               </div>
 
-              <select
-                v-model="visitForm.opportunity_id"
-                class="w-full rounded-xl border border-gray-200 bg-white py-2.5 px-3 text-xs font-semibold text-gray-900 outline-hidden focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              >
-                <option :value="null">{{ $t('siteVisits.directVisitNotice') || 'معاينة مباشرة (بدون فرصة مسجلة مسبقاً)' }}</option>
-                <option v-for="opp in filteredOpportunities" :key="opp.id" :value="opp.id">
-                  {{ opp.title }} (فرصة #{{ opp.id }})
-                </option>
-              </select>
+              <SearchableSelect
+                :model-value="visitForm.opportunity_id"
+                :options="formattedOpportunityOptions"
+                :placeholder="$t('siteVisits.directVisitNotice') || 'معاينة مباشرة (بدون فرصة مسجلة مسبقاً)'"
+                :clearable="true"
+                @update:model-value="visitForm.opportunity_id = $event"
+              />
             </div>
           </div>
         </div>
@@ -496,15 +492,13 @@
             <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
               {{ $t('siteVisits.assignedTo') }}
             </label>
-            <select
-              v-model="visitForm.assigned_to"
-              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3 text-xs font-semibold text-gray-900 outline-hidden focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            >
-              <option :value="null">{{ $t('siteVisits.selectAssignee') }}</option>
-              <option v-for="u in usersList" :key="u.id" :value="u.id">
-                {{ u.name }}
-              </option>
-            </select>
+            <SearchableSelect
+              :model-value="visitForm.assigned_to"
+              :options="formattedUserOptions"
+              :placeholder="$t('siteVisits.selectAssignee') || 'اختر المهندس المسؤول...'"
+              :clearable="true"
+              @update:model-value="visitForm.assigned_to = $event"
+            />
           </div>
         </div>
 
@@ -1032,15 +1026,13 @@
           <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
             {{ $t('siteVisits.assignedTo') }}
           </label>
-          <select
-            v-model="scheduleForm.assigned_to"
-            class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
-          >
-            <option :value="null">{{ $t('siteVisits.selectAssignee') }}</option>
-            <option v-for="u in usersList" :key="u.id" :value="u.id">
-              {{ u.name }}
-            </option>
-          </select>
+          <SearchableSelect
+            :model-value="scheduleForm.assigned_to"
+            :options="formattedUserOptions"
+            :placeholder="$t('siteVisits.selectAssignee') || 'اختر المهندس المسؤول...'"
+            :clearable="true"
+            @update:model-value="scheduleForm.assigned_to = $event"
+          />
         </div>
 
         <div>
@@ -1234,6 +1226,7 @@ import { formatDate } from '../../utils/date';
 import CrudIndex from '../../components/crud/CrudIndex.vue';
 import CrudModal from '../../components/crud/CrudModal.vue';
 import QuickCustomerModal from '../../components/common/QuickCustomerModal.vue';
+import SearchableSelect from '../../components/common/SearchableSelect.vue';
 
 // Lucide Icons
 import {
@@ -1305,6 +1298,27 @@ const relatedOptions = ref({
 const customersList = computed(() => relatedOptions.value.customers || []);
 const allOpportunitiesList = computed(() => relatedOptions.value.opportunities || []);
 const usersList = computed(() => relatedOptions.value.users || []);
+
+const formattedCustomerOptions = computed(() => {
+  return (customersList.value || []).map((c) => ({
+    value: c.id,
+    label: c.company_name ? `${c.name} (${c.company_name})` : c.name,
+  }));
+});
+
+const formattedOpportunityOptions = computed(() => {
+  return (filteredOpportunities.value || []).map((opp) => ({
+    value: opp.id,
+    label: `${opp.title} (فرصة #${opp.id})`,
+  }));
+});
+
+const formattedUserOptions = computed(() => {
+  return (usersList.value || []).map((u) => ({
+    value: u.id,
+    label: u.name,
+  }));
+});
 
 // Filtered opportunities based on chosen customer in form
 const filteredOpportunities = computed(() => {

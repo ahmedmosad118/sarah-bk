@@ -126,6 +126,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/', [MeasurementController::class, 'store']);
         Route::post('/from-opportunity/{opportunityId}', [MeasurementController::class, 'createFromOpportunity']);
         Route::post('/import-from-site-visit/{siteVisitId}', [MeasurementController::class, 'importFromSiteVisit']);
+        Route::post('/parse-dxf', [MeasurementController::class, 'parseDxf']);
+        Route::post('/import-from-dxf', [MeasurementController::class, 'importFromDxf']);
         Route::get('/{id}', [MeasurementController::class, 'show']);
         Route::put('/{id}', [MeasurementController::class, 'update']);
         Route::delete('/{ids}', [MeasurementController::class, 'destroy']);

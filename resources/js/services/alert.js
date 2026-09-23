@@ -98,13 +98,24 @@ export const confirmDelete = async ({
  * @param {Object} options
  * @returns {Promise<boolean>}
  */
-export const confirmAction = async ({
-  title = isRTL() ? 'تأكيد الإجراء' : 'Confirm Action',
-  text = isRTL() ? 'هل تريد الاستمرار في تنفيذ هذا الإجراء؟' : 'Do you want to proceed with this action?',
-  icon = 'question',
-  confirmButtonText = isRTL() ? 'تأكيد' : 'Confirm',
-  cancelButtonText = isRTL() ? 'إلغاء' : 'Cancel',
-} = {}) => {
+export const confirmAction = async (optionsOrTitle = {}, maybeText = '', maybeIcon = 'question') => {
+  let title, text, icon, confirmButtonText, cancelButtonText;
+
+  if (typeof optionsOrTitle === 'string') {
+    title = optionsOrTitle;
+    text = maybeText || '';
+    icon = maybeIcon || 'question';
+    confirmButtonText = isRTL() ? 'تأكيد' : 'Confirm';
+    cancelButtonText = isRTL() ? 'إلغاء' : 'Cancel';
+  } else {
+    const opts = optionsOrTitle || {};
+    title = opts.title || (isRTL() ? 'تأكيد الإجراء' : 'Confirm Action');
+    text = opts.text || (isRTL() ? 'هل تريد الاستمرار في تنفيذ هذا الإجراء؟' : 'Do you want to proceed with this action?');
+    icon = opts.icon || 'question';
+    confirmButtonText = opts.confirmButtonText || (isRTL() ? 'تأكيد' : 'Confirm');
+    cancelButtonText = opts.cancelButtonText || (isRTL() ? 'إلغاء' : 'Cancel');
+  }
+
   const swal = getSwalInstance();
 
   const result = await swal.fire({
@@ -196,6 +207,7 @@ export const showInfo = async ({
 
 export default {
   fire: (...args) => getSwalInstance().fire(...args),
+  confirm: confirmAction,
   confirmDelete,
   confirmAction,
   success: showSuccess,

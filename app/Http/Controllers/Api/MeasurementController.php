@@ -10,6 +10,7 @@ use App\Models\MeasurementItem;
 use App\Models\Opportunity;
 use App\Models\SiteVisit;
 use App\Models\User;
+use App\Services\DxfParserService;
 use App\Services\MeasurementCalculationService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,10 +29,14 @@ class MeasurementController extends CRUDController
     protected string $defaultSortOrder = 'desc';
 
     protected MeasurementCalculationService $calculationService;
+    protected DxfParserService $dxfParserService;
 
-    public function __construct(MeasurementCalculationService $calculationService)
-    {
+    public function __construct(
+        MeasurementCalculationService $calculationService,
+        DxfParserService $dxfParserService
+    ) {
         $this->calculationService = $calculationService;
+        $this->dxfParserService = $dxfParserService;
     }
 
     protected function inputMaker(): InputMaker
@@ -398,46 +403,21 @@ class MeasurementController extends CRUDController
         $siteVisit = SiteVisit::with('rooms', 'opportunity', 'customer')->findOrFail($siteVisitId);
 
         $validated = $request->validate([
-            'opportunity_id' => ['nullable', 'integer', 'exists:opportunities,id'],
+            'opportunity_id' => ['required', 'integer', 'exists:opportunities,id'],
         ]);
 
-        $targetOpportunityId = $validated['opportunity_id'] ?? $siteVisit->opportunity_id;
+        $opportunity = Opportunity::findOrFail($validated['opportunity_id']);
 
-        // If no opportunity is linked yet, auto-find or auto-create one for the customer
-        if (!$targetOpportunityId) {
-            $customerId = $siteVisit->customer_id;
-            if ($customerId) {
-                // Check if customer already has an active opportunity
-                $existingOpp = Opportunity::where('customer_id', $customerId)
-                    ->whereNotIn('stage', ['Won', 'Lost'])
-                    ->latest()
-                    ->first();
-
-                if ($existingOpp) {
-                    $opportunity = $existingOpp;
-                } else {
-                    $customerName = $siteVisit->customer?->name ?? 'معاينة #' . $siteVisit->id;
-                    $opportunity = Opportunity::create([
-                        'customer_id' => $customerId,
-                        'lead_id' => $siteVisit->lead_id,
-                        'title' => "فرصة أعمال ومقايسة - {$customerName}",
-                        'stage' => 'Qualified',
-                        'created_by' => auth()->id(),
-                    ]);
-                }
-
-                // Link site visit to this opportunity
-                $siteVisit->opportunity_id = $opportunity->id;
-                $siteVisit->save();
-                $targetOpportunityId = $opportunity->id;
-            } else {
-                throw ValidationException::withMessages([
-                    'opportunity_id' => [__('messages.measurement_requires_opportunity')],
-                ]);
-            }
-        } else {
-            $opportunity = Opportunity::findOrFail($targetOpportunityId);
+        // Sanity check: opportunity must belong to same customer as the site visit
+        if ($siteVisit->customer_id && $opportunity->customer_id !== $siteVisit->customer_id) {
+            throw ValidationException::withMessages([
+                'opportunity_id' => [__('messages.opportunity_customer_mismatch')],
+            ]);
         }
+
+        // No implicit mutation of the SiteVisit record whatsoever.
+        // If it isn't linked to this Opportunity yet, that stays true —
+        // Measurement just references both independently.
 
         $measurement = DB::transaction(function () use ($siteVisit, $opportunity) {
             $number = $this->generateMeasurementNumber($opportunity->id);
@@ -470,8 +450,8 @@ class MeasurementController extends CRUDController
                         'width' => null,
                         'height' => null,
                         'deductions' => 0.00,
-                        'net_quantity' => $estimatedArea > 0 ? $estimatedArea : 0.00,
-                        'notes' => $room->notes ? "ملاحظات المعاينة: {$room->notes}" : ($estimatedArea > 0 ? "المساحة المرفوعة بالمعاينة: {$estimatedArea} م²" : null),
+                        'net_quantity' => 0.00,
+                        'notes' => $room->notes ? "ملاحظات المعاينة: {$room->notes}" : ($estimatedArea > 0 ? "المساحة التقريبية بالمعاينة: {$estimatedArea} م²" : null),
                         'sort_order' => $sortOrder++,
                     ]);
                     $itemsData[] = $calc;
@@ -501,6 +481,132 @@ class MeasurementController extends CRUDController
         return response()->json([
             'success' => true,
             'message' => __('messages.site_visit_rooms_imported_success'),
+            'data' => $measurement->fresh($this->with),
+        ], 201);
+    }
+
+    /**
+     * Parse DXF file to return detected layers and polyline counts for user selection.
+     */
+    public function parseDxf(Request $request): JsonResponse
+    {
+        $this->authorizePermission('measurements.create');
+
+        $request->validate([
+            'file' => ['required', 'file', 'max:10240'],
+            'rooms_layer' => ['nullable', 'string', 'max:100'],
+            'labels_layer' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $summary = $this->dxfParserService->getLayerSummary($request->file('file'));
+
+        $rooms = [];
+        if ($request->filled('rooms_layer')) {
+            try {
+                $rooms = $this->dxfParserService->parseRooms(
+                    $request->file('file'),
+                    $request->input('rooms_layer'),
+                    $request->input('labels_layer')
+                );
+            } catch (\Exception $e) {
+                $rooms = [];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => array_merge($summary, [
+                'rooms_preview' => $rooms,
+            ]),
+        ]);
+    }
+
+    /**
+     * Import room dimensions and geometry from DXF file into a new Draft measurement.
+     */
+    public function importFromDxf(Request $request): JsonResponse
+    {
+        $this->authorizePermission('measurements.create');
+
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'max:10240'],
+            'rooms_layer' => ['required', 'string', 'max:100'],
+            'labels_layer' => ['nullable', 'string', 'max:100'],
+            'opportunity_id' => ['required', 'integer', 'exists:opportunities,id'],
+        ]);
+
+        $opportunity = Opportunity::findOrFail($validated['opportunity_id']);
+
+        $parsedRooms = $this->dxfParserService->parseRooms(
+            $request->file('file'),
+            $validated['rooms_layer'],
+            $validated['labels_layer'] ?? null
+        );
+
+        if (empty($parsedRooms)) {
+            throw ValidationException::withMessages([
+                'rooms_layer' => [__('messages.dxf_no_rooms_found')],
+            ]);
+        }
+
+        $measurement = DB::transaction(function () use ($opportunity, $parsedRooms, $request) {
+            $number = $this->generateMeasurementNumber($opportunity->id);
+
+            $measurement = Measurement::create([
+                'opportunity_id' => $opportunity->id,
+                'site_visit_id' => null,
+                'measurement_number' => $number,
+                'version' => 1,
+                'status' => 'Draft', // Strict Rule: DXF import is always Draft until reviewed by an engineer
+                'measured_by' => auth()->id(),
+                'measured_at' => Carbon::today()->toDateString(),
+                'notes' => 'تم استيراد أبعاد ومساحات الغرف من ملف أوتوكاد DXF (' . ($request->file('file')->getClientOriginalName()) . ').',
+                'created_by' => auth()->id(),
+            ]);
+
+            $calculatedItems = [];
+            foreach ($parsedRooms as $idx => $room) {
+                $calc = $this->calculationService->calculateItem([
+                    'room_name' => $room['room_name'],
+                    'item_name' => 'أعمال تشطيبات عامة (مستورد من DXF)',
+                    'unit' => 'm2',
+                    'measurement_type' => 'area',
+                    'count' => 1.00,
+                    'length' => $room['length'] ?? null,
+                    'width' => $room['width'] ?? null,
+                    'height' => null,
+                    'deductions' => 0.00,
+                    'net_quantity' => empty($room['length']) ? $room['area'] : null,
+                    'notes' => $room['notes'] ?? "مستورد من DXF: مساحة هندسية = {$room['area']} م² (محيط: {$room['perimeter']} م.ط).",
+                    'sort_order' => $idx,
+                ]);
+
+                $calculatedItems[] = $calc;
+                $measurement->items()->create($calc);
+            }
+
+            if (!empty($calculatedItems)) {
+                $summary = $this->calculationService->calculateSummary($calculatedItems);
+                $measurement->update([
+                    'total_area' => $summary['total_area'],
+                    'total_volume' => $summary['total_volume'],
+                    'total_linear' => $summary['total_linear'],
+                    'total_count' => $summary['total_count'],
+                ]);
+            }
+
+            activity('commercial')
+                ->event('created')
+                ->performedOn($measurement)
+                ->causedBy(auth()->user())
+                ->log("تم استيراد مقايسة من ملف DXF برقم #{$measurement->measurement_number}.");
+
+            return $measurement;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => __('messages.dxf_imported_success'),
             'data' => $measurement->fresh($this->with),
         ], 201);
     }

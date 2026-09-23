@@ -21,8 +21,17 @@
       <div class="flex flex-wrap items-center gap-2.5">
         <button
           v-if="canCreate"
+          @click="openDxfImportModal"
+          class="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/50 px-4 py-2.5 text-xs font-bold text-blue-700 shadow-xs hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition-colors cursor-pointer"
+        >
+          <FileCode2 class="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <span>{{ $t('measurements.importFromDxf') || 'استيراد من أوتوكاد (DXF)' }}</span>
+        </button>
+
+        <button
+          v-if="canCreate"
           @click="openImportModal"
-          class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-bold text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800 transition-colors"
+          class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-bold text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800 transition-colors cursor-pointer"
         >
           <DownloadCloud class="h-4 w-4 text-[#00C896]" />
           <span>{{ $t('measurements.importFromSiteVisit') }}</span>
@@ -31,7 +40,7 @@
         <button
           v-if="canCreate"
           @click="openCreateModal"
-          class="inline-flex items-center gap-2 rounded-xl bg-[#00C896] px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#00A87E] transition-colors"
+          class="inline-flex items-center gap-2 rounded-xl bg-[#00C896] px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#00A87E] transition-colors cursor-pointer"
         >
           <Plus class="h-4 w-4" />
           <span>{{ $t('measurements.createTitle') }}</span>
@@ -127,18 +136,15 @@
         />
       </div>
 
-      <div class="flex items-center gap-2">
-        <select
-          v-model="selectedStatus"
-          @change="fetchMeasurements"
-          class="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs font-semibold text-gray-700 outline-none focus:border-[#00C896] dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200"
-        >
-          <option value="">{{ $t('measurements.filterAll') }}</option>
-          <option value="Draft">{{ $t('measurements.filterDraft') }}</option>
-          <option value="Under Review">{{ $t('measurements.filterUnderReview') }}</option>
-          <option value="Approved">{{ $t('measurements.filterApproved') }}</option>
-          <option value="Superseded">{{ $t('measurements.filterSuperseded') }}</option>
-        </select>
+      <div class="w-48">
+        <SearchableSelect
+          :model-value="selectedStatus"
+          :options="statusFilterOptions"
+          :placeholder="$t('measurements.filterAll')"
+          :allow-empty="true"
+          :clearable="true"
+          @update:model-value="onStatusFilterChange"
+        />
       </div>
     </div>
 
@@ -322,46 +328,51 @@
             <label class="mb-1 block text-[11px] font-bold text-gray-700 dark:text-gray-300">
               {{ $t('measurements.opportunity') }} <span class="text-rose-500">*</span>
             </label>
-            <select
-              v-model="form.opportunity_id"
+            <SearchableSelect
+              :model-value="form.opportunity_id"
+              :options="formattedOpportunityOptions"
+              :placeholder="$t('measurements.selectOpportunity')"
               :disabled="isEditing"
-              class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-900 outline-none focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-900 dark:text-white disabled:opacity-60"
-            >
-              <option value="" disabled>{{ $t('measurements.selectOpportunity') }}</option>
-              <option v-for="opp in opportunities" :key="opp.id" :value="opp.id">
-                {{ opp.title }} ({{ opp.customer?.name || 'عميل' }})
-              </option>
-            </select>
+              :clearable="false"
+              @update:model-value="form.opportunity_id = $event"
+            />
           </div>
 
           <div>
-            <label class="mb-1 block text-[11px] font-bold text-gray-700 dark:text-gray-300">
-              {{ $t('measurements.siteVisit') }}
-            </label>
-            <select
-              v-model="form.site_visit_id"
-              class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-900 outline-none focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            >
-              <option :value="null">{{ $t('measurements.selectSiteVisit') }}</option>
-              <option v-for="sv in siteVisits" :key="sv.id" :value="sv.id">
-                معاينة #{{ sv.id }} ({{ sv.scheduled_date || sv.visit_date }})
-              </option>
-            </select>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                {{ $t('measurements.siteVisit') }}
+              </label>
+              <button
+                v-if="form.site_visit_id"
+                type="button"
+                @click="importRoomsFromCurrentFormSiteVisit"
+                class="text-[10px] font-bold text-teal-600 hover:text-teal-700 dark:text-teal-400 hover:underline cursor-pointer"
+                title="جلب الغرف المسجلة في هذه المعاينة إلى الجدول"
+              >
+                + جلب غرف المعاينة
+              </button>
+            </div>
+            <SearchableSelect
+              :model-value="form.site_visit_id"
+              :options="formattedSiteVisitOptions"
+              :placeholder="$t('measurements.selectSiteVisit')"
+              :clearable="true"
+              @update:model-value="onFormSiteVisitChange($event)"
+            />
           </div>
 
           <div>
             <label class="mb-1 block text-[11px] font-bold text-gray-700 dark:text-gray-300">
               {{ $t('measurements.measuredBy') }}
             </label>
-            <select
-              v-model="form.measured_by"
-              class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-900 outline-none focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            >
-              <option :value="null">{{ $t('measurements.selectMeasuredBy') }}</option>
-              <option v-for="u in engineers" :key="u.id" :value="u.id">
-                {{ u.name }}
-              </option>
-            </select>
+            <SearchableSelect
+              :model-value="form.measured_by"
+              :options="formattedEngineerOptions"
+              :placeholder="$t('measurements.selectMeasuredBy')"
+              :clearable="true"
+              @update:model-value="form.measured_by = $event"
+            />
           </div>
 
           <div>
@@ -384,7 +395,28 @@
               <p class="text-[11px] text-gray-500 dark:text-gray-400">يمكنك كتابة الأبعاد لحسابها آلياً، أو كتابة الكمية الإجمالية مباشرة في حقل الصافي.</p>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                @click="openDxfImportForCurrentForm"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
+                title="استيراد الغرف والأبعاد مباشرة من ملف أوتوكاد DXF إلى هذا الجدول"
+              >
+                <FileCode2 class="h-3.5 w-3.5" />
+                <span>+ استيراد من DXF</span>
+              </button>
+
+              <button
+                v-if="form.site_visit_id"
+                type="button"
+                @click="importRoomsFromCurrentFormSiteVisit"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-teal-50 px-3 py-1.5 text-xs font-bold text-teal-700 hover:bg-teal-100 dark:bg-teal-950/40 dark:text-teal-300 dark:hover:bg-teal-900/50 transition-colors cursor-pointer"
+                title="جلب الغرف المسجلة في المعاينة الميدانية المحددة إلى الجدول"
+              >
+                <DownloadCloud class="h-3.5 w-3.5" />
+                <span>+ جلب غرف المعاينة</span>
+              </button>
+
               <button
                 type="button"
                 @click="addStandardFinishingPreset"
@@ -450,17 +482,14 @@
                     />
                   </td>
 
-                  <td class="py-2 px-2">
-                    <select
-                      v-model="item.unit"
-                      @change="onUnitChange(item)"
-                      class="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs font-bold text-gray-900 outline-none focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                    >
-                      <option value="m2">{{ $t('measurements.typeArea') }}</option>
-                      <option value="m3">{{ $t('measurements.typeVolume') }}</option>
-                      <option value="lm">{{ $t('measurements.typeLinear') }}</option>
-                      <option value="pcs">{{ $t('measurements.typeCount') }}</option>
-                    </select>
+                  <td class="py-2 px-2 min-w-[110px]">
+                    <SearchableSelect
+                      :model-value="item.unit"
+                      :options="unitOptions"
+                      :clearable="false"
+                      :allow-empty="false"
+                      @update:model-value="onItemUnitUpdate(item, $event)"
+                    />
                   </td>
 
                   <td class="py-2 px-1.5">
@@ -761,61 +790,293 @@
       </div>
     </div>
 
-    <!-- Import From Site Visit Modal -->
+    <!-- 1. Import From Site Visit Modal -->
     <div
       v-if="showImportModal"
       class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
     >
-      <div class="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
-        <div class="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800">
+      <div class="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl dark:bg-gray-900 border border-gray-100 dark:border-gray-800 space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
           <div class="flex items-center gap-2.5">
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#00C896]/10 text-[#00A87E]">
               <DownloadCloud class="h-5 w-5" />
             </div>
             <h3 class="text-sm font-black text-gray-900 dark:text-white">{{ $t('measurements.importModalTitle') }}</h3>
           </div>
-          <button @click="showImportModal = false" class="rounded-xl p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
+          <button @click="showImportModal = false" class="rounded-xl p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
             <X class="h-4 w-4" />
           </button>
         </div>
 
-        <p class="text-xs text-gray-500 dark:text-gray-400 py-3">
+        <p class="text-xs text-gray-500 dark:text-gray-400">
           {{ $t('measurements.importModalDesc') }}
         </p>
 
-        <div class="space-y-3.5 py-2">
+        <div class="space-y-4 py-1">
+          <!-- 1. Select Site Visit -->
           <div>
-            <label class="mb-1 block text-xs font-bold text-gray-700 dark:text-gray-300">
-              {{ $t('measurements.selectVisitToImport') }}
+            <label class="mb-1.5 block text-xs font-bold text-gray-700 dark:text-gray-300">
+              {{ $t('measurements.selectVisitToImport') }} <span class="text-rose-500">*</span>
             </label>
-            <select
-              v-model="importSiteVisitId"
-              class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-semibold text-gray-900 outline-none focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            >
-              <option value="" disabled>اختر المعاينة الميدانية...</option>
-              <option v-for="sv in siteVisits" :key="sv.id" :value="sv.id">
-                معاينة #{{ sv.id }} - {{ sv.opportunity?.title || 'معاينة موقع' }} ({{ sv.customer?.name }})
-              </option>
-            </select>
+            <SearchableSelect
+              :model-value="importSiteVisitId"
+              :options="formattedSiteVisitOptions"
+              :placeholder="$t('measurements.selectVisitToImport') || 'اختر المعاينة الميدانية...'"
+              :clearable="true"
+              @update:model-value="onImportSiteVisitSelect($event)"
+            />
+          </div>
+
+          <!-- 2. Selected Site Visit Information & Explicit Opportunity Selector -->
+          <div v-if="selectedVisitForImport" class="p-3.5 rounded-2xl bg-gray-50/90 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 space-y-3">
+            <div class="flex items-center justify-between text-xs pb-2 border-b border-gray-200/60 dark:border-gray-700">
+              <span class="text-gray-500 font-medium">العميل المرتبط بالمعاينة:</span>
+              <span class="font-bold text-gray-900 dark:text-white">{{ selectedVisitForImport.customer?.name || 'عميل غير محدد' }}</span>
+            </div>
+
+            <!-- Opportunity Selector -->
+            <div>
+              <label class="mb-1.5 block text-xs font-bold text-gray-700 dark:text-gray-300">
+                الفرصة التجارية المرتبطة بالمقايسة <span class="text-rose-500">*</span>
+              </label>
+
+              <!-- If Site Visit has a linked Opportunity -->
+              <div v-if="selectedVisitForImport.opportunity" class="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/40 text-xs flex items-center justify-between text-blue-900 dark:text-blue-300">
+                <span class="font-bold">#{{ selectedVisitForImport.opportunity.id }} - {{ selectedVisitForImport.opportunity.title }}</span>
+                <span class="text-[10px] bg-blue-200/60 dark:bg-blue-900/60 px-2 py-0.5 rounded-md font-bold">مرتبطة بالمعاينة</span>
+              </div>
+
+              <!-- If Site Visit is Direct (No Opportunity) -> Pick from Customer's open opportunities -->
+              <div v-else class="space-y-2">
+                <SearchableSelect
+                  v-if="availableOpportunitiesForVisitCustomer.length > 0"
+                  :model-value="importOpportunityId"
+                  :options="availableOpportunitiesForVisitCustomer"
+                  :placeholder="'اختر فرصة تجارية مفتوحة للعميل...'"
+                  :clearable="false"
+                  @update:model-value="importOpportunityId = $event"
+                />
+
+                <div v-else class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-300 space-y-1.5">
+                  <p class="font-bold flex items-center gap-1.5">
+                    <AlertCircle class="h-4 w-4 text-amber-600 shrink-0" />
+                    <span>لا توجد فرص تجارية مسجلة لهذا العميل</span>
+                  </p>
+                  <p class="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                    يلزم تحديد فرصة تجارية صريحة لربط المقايسة الهندسية بها. يرجى إنشاء فرصة تجارية للعميل أولاً قبل الاستيراد.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100 dark:border-gray-800">
+        <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100 dark:border-gray-800">
           <button
             @click="showImportModal = false"
-            class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+            class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 cursor-pointer"
           >
             {{ $t('common.cancel') }}
           </button>
 
           <button
-            :disabled="!importSiteVisitId || importing"
+            :disabled="!importSiteVisitId || !importOpportunityId || importing"
             @click="executeImport"
-            class="inline-flex items-center gap-2 rounded-xl bg-[#00C896] px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#00A87E] disabled:opacity-50 transition-colors"
+            class="inline-flex items-center gap-2 rounded-xl bg-[#00C896] px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#00A87E] disabled:opacity-50 transition-colors cursor-pointer"
           >
             <Loader2 v-if="importing" class="h-4 w-4 animate-spin" />
             <DownloadCloud v-else class="h-4 w-4" />
             <span>{{ $t('measurements.importAction') }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Import From AutoCAD (DXF) Modal -->
+    <div
+      v-if="showDxfModal"
+      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+    >
+      <div class="relative w-full max-w-3xl rounded-3xl bg-white p-6 shadow-2xl dark:bg-gray-900 border border-gray-100 dark:border-gray-800 space-y-5 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
+          <div class="flex items-center gap-2.5">
+            <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+              <FileCode2 class="h-5 w-5" />
+            </div>
+            <div>
+              <h3 class="text-sm font-black text-gray-900 dark:text-white">استيراد أبعاد ومساحات الغرف من أوتوكاد (DXF)</h3>
+              <p class="text-[11px] text-gray-500 dark:text-gray-400">حساب هندسي دقيق لمساحات ومحيط الغرف باستخدام معادلة Shoelace الرياضية</p>
+            </div>
+          </div>
+          <button @click="closeDxfModal" class="rounded-xl p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+            <X class="h-4 w-4" />
+          </button>
+        </div>
+
+        <!-- Step 1: Upload File -->
+        <div class="space-y-4">
+          <div
+            @dragover.prevent
+            @drop.prevent="onDxfFileDrop"
+            class="border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer"
+            :class="dxfFile ? 'border-blue-500 bg-blue-50/40 dark:bg-blue-950/20' : 'border-gray-200 hover:border-blue-400 dark:border-gray-700'"
+            @click="triggerDxfFileInput"
+          >
+            <input
+              ref="dxfFileInputRef"
+              type="file"
+              accept=".dxf"
+              class="hidden"
+              @change="onDxfFileChange"
+            />
+            <div class="flex flex-col items-center gap-2">
+              <div class="p-3 rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/30">
+                <UploadCloud class="h-6 w-6" />
+              </div>
+              <div v-if="dxfFile">
+                <p class="text-xs font-bold text-gray-900 dark:text-white">{{ dxfFile.name }}</p>
+                <p class="text-[11px] text-gray-500 font-mono">حجم الملف: {{ (dxfFile.size / 1024).toFixed(1) }} KB</p>
+              </div>
+              <div v-else>
+                <p class="text-xs font-bold text-gray-700 dark:text-gray-300">انقر هنا لاختيار ملف .DXF أو اسحبه وأفلته هنا</p>
+                <p class="text-[11px] text-gray-400 mt-0.5">الصيغة المدعومة: DXF فقط (حتى 10 ميجابايت)</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Format notice banner -->
+          <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 text-[11px] text-gray-600 dark:text-gray-400 flex items-center gap-2">
+            <Info class="h-4 w-4 text-blue-500 shrink-0" />
+            <span>الصيغة المدعومة حاليًا هي DXF فقط. لو عندك ملف DWG، افتحه بالأوتوكاد واعمل Save As → DXF ثم ارفعه هنا.</span>
+          </div>
+
+          <!-- Parsing Loader -->
+          <div v-if="dxfParsing" class="flex items-center justify-center gap-2 py-4 text-xs font-bold text-blue-600">
+            <Loader2 class="h-4 w-4 animate-spin" />
+            <span>جاري فحص الطبقات (Layers) وقراءة المضلعات الهندسية...</span>
+          </div>
+
+          <!-- Step 2: Layer & Opportunity Selectors (Once parsed) -->
+          <div v-if="dxfSummary && !dxfParsing" class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-4 rounded-2xl bg-gray-50/80 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
+            <!-- Rooms Layer -->
+            <div>
+              <label class="mb-1.5 block text-xs font-bold text-gray-700 dark:text-gray-300">
+                Layer حدود الغرف (Polylines) <span class="text-rose-500">*</span>
+              </label>
+              <SearchableSelect
+                :model-value="dxfRoomsLayer"
+                :options="dxfRoomsLayerOptions"
+                :placeholder="'اختر Layer الغرف...'"
+                :clearable="false"
+                @update:model-value="onRoomsLayerChange($event)"
+              />
+              <p v-if="dxfRoomsLayerOptions.length === 0" class="mt-1 text-[11px] text-rose-500">
+                لم يتم العثور على مضلعات مغلقة في أي طبقة بالملف.
+              </p>
+            </div>
+
+            <!-- Labels Layer -->
+            <div>
+              <label class="mb-1.5 block text-xs font-bold text-gray-700 dark:text-gray-300">
+                Layer أسماء الغرف (Labels/Text)
+              </label>
+              <SearchableSelect
+                :model-value="dxfLabelsLayer"
+                :options="dxfLabelsLayerOptions"
+                :placeholder="'(اختياري) اختر Layer الأسماء...'"
+                :clearable="true"
+                @update:model-value="onLabelsLayerChange($event)"
+              />
+            </div>
+
+            <!-- Opportunity Link -->
+            <div>
+              <label class="mb-1.5 block text-xs font-bold text-gray-700 dark:text-gray-300">
+                الفرصة التجارية المرتبطة <span class="text-rose-500">*</span>
+              </label>
+              <SearchableSelect
+                :model-value="dxfOpportunityId"
+                :options="formattedOpportunityOptions"
+                :placeholder="'اختر الفرصة التجارية...'"
+                :clearable="false"
+                @update:model-value="dxfOpportunityId = $event"
+              />
+            </div>
+          </div>
+
+          <!-- Step 3: Interactive Preview Table of Detected Rooms -->
+          <div v-if="dxfPreviewRooms.length > 0" class="space-y-2">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5">
+                <CheckCircle2 class="h-4 w-4 text-emerald-500" />
+                <span>الغرف المكتشفة بالملف ({{ dxfPreviewRooms.length }} غرفة)</span>
+              </h4>
+              <span class="text-xs font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-xl">
+                إجمالي المساحة: {{ dxfTotalPreviewArea.toFixed(2) }} م²
+              </span>
+            </div>
+
+            <div class="max-h-56 overflow-y-auto rounded-2xl border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900 custom-scrollbar">
+              <table class="w-full text-right text-xs">
+                <thead class="bg-gray-50 text-[11px] font-bold text-gray-500 dark:bg-gray-800/80 dark:text-gray-400">
+                  <tr>
+                    <th class="py-2.5 px-3">#</th>
+                    <th class="py-2.5 px-3">اسم الفراغ / الغرفة</th>
+                    <th class="py-2.5 px-3 text-center">الأبعاد (طول × عرض)</th>
+                    <th class="py-2.5 px-3 text-center">المساحة (Shoelace)</th>
+                    <th class="py-2.5 px-3 text-center">المحيط (م.ط)</th>
+                    <th class="py-2.5 px-3 text-center">الأضلاع</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
+                  <tr v-for="(room, rIdx) in dxfPreviewRooms" :key="rIdx" class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                    <td class="py-2 px-3 font-mono text-gray-400">{{ rIdx + 1 }}</td>
+                    <td class="py-2 px-3">
+                      <input
+                        v-model="room.room_name"
+                        type="text"
+                        class="w-full rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-bold text-gray-900 outline-hidden focus:border-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                      />
+                    </td>
+                    <td class="py-2 px-3 text-center font-mono font-bold text-blue-600 dark:text-blue-400">
+                      <span v-if="room.length && room.width">{{ Number(room.length).toFixed(2) }} × {{ Number(room.width).toFixed(2) }} م</span>
+                      <span v-else class="text-[11px] text-amber-600 dark:text-amber-400 font-normal">شكل غير منتظم</span>
+                    </td>
+                    <td class="py-2 px-3 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      {{ Number(room.area).toFixed(2) }} م²
+                    </td>
+                    <td class="py-2 px-3 text-center font-mono text-gray-500">
+                      {{ Number(room.perimeter || 0).toFixed(2) }}
+                    </td>
+                    <td class="py-2 px-3 text-center font-mono text-gray-400">
+                      {{ room.vertex_count }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <button
+            @click="closeDxfModal"
+            class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 cursor-pointer"
+          >
+            {{ $t('common.cancel') }}
+          </button>
+
+          <button
+            :disabled="!dxfFile || !dxfRoomsLayer || (!dxfOpportunityId && dxfImportMode !== 'form_append') || dxfImporting"
+            @click="executeDxfImport"
+            class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
+          >
+            <Loader2 v-if="dxfImporting" class="h-4 w-4 animate-spin" />
+            <DownloadCloud v-else class="h-4 w-4" />
+            <span v-if="dxfImportMode === 'form_append'">إدراج الغرف في جدول المقايسة</span>
+            <span v-else>استيراد وإنشاء مسودة المقايسة</span>
           </button>
         </div>
       </div>
@@ -852,7 +1113,12 @@ import {
   Check,
   Printer,
   History,
+  FileCode2,
+  UploadCloud,
+  Info,
+  AlertCircle,
 } from 'lucide-vue-next';
+import SearchableSelect from '../../components/common/SearchableSelect.vue';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -883,12 +1149,114 @@ const stats = reactive({
   total_measured_area: 0,
 });
 
+const statusFilterOptions = computed(() => [
+  { value: '', label: t('measurements.filterAll') },
+  { value: 'Draft', label: t('measurements.filterDraft') },
+  { value: 'Under Review', label: t('measurements.filterUnderReview') },
+  { value: 'Approved', label: t('measurements.filterApproved') },
+  { value: 'Superseded', label: t('measurements.filterSuperseded') },
+]);
+
+const formattedOpportunityOptions = computed(() => {
+  return (opportunities.value || []).map((opp) => ({
+    value: opp.id,
+    label: `${opp.title} (${opp.customer?.name || 'عميل'})`,
+  }));
+});
+
+const formattedSiteVisitOptions = computed(() => {
+  return (siteVisits.value || []).map((sv) => ({
+    value: sv.id,
+    label: `معاينة #${sv.id} - ${sv.opportunity?.title || 'معاينة موقع'} (${sv.customer?.name || ''} ${sv.scheduled_date || sv.visit_date ? `- ${sv.scheduled_date || sv.visit_date}` : ''})`,
+  }));
+});
+
+const formattedEngineerOptions = computed(() => {
+  return (engineers.value || []).map((u) => ({
+    value: u.id,
+    label: u.name,
+  }));
+});
+
+const unitOptions = computed(() => [
+  { value: 'm2', label: t('measurements.typeArea') },
+  { value: 'm3', label: t('measurements.typeVolume') },
+  { value: 'lm', label: t('measurements.typeLinear') },
+  { value: 'pcs', label: t('measurements.typeCount') },
+]);
+
+const onStatusFilterChange = (val) => {
+  selectedStatus.value = val || '';
+  fetchMeasurements();
+};
+
+const onItemUnitUpdate = (item, val) => {
+  item.unit = val;
+  onUnitChange(item);
+};
+
 const showEditModal = ref(false);
 const showDetailsModal = ref(false);
 const showImportModal = ref(false);
 const isEditing = ref(false);
 const selectedMeasurement = ref(null);
 const importSiteVisitId = ref('');
+const importOpportunityId = ref('');
+
+const selectedVisitForImport = computed(() => {
+  return siteVisits.value.find((v) => String(v.id) === String(importSiteVisitId.value)) || null;
+});
+
+const availableOpportunitiesForVisitCustomer = computed(() => {
+  if (!selectedVisitForImport.value?.customer_id) return [];
+  const cId = selectedVisitForImport.value.customer_id;
+  return (opportunities.value || [])
+    .filter((opp) => opp.customer_id === cId)
+    .map((opp) => ({
+      value: opp.id,
+      label: `#${opp.id} - ${opp.title} (${opp.stage || 'مفتوحة'})`,
+    }));
+});
+
+// DXF Import States
+const showDxfModal = ref(false);
+const dxfFile = ref(null);
+const dxfFileInputRef = ref(null);
+const dxfParsing = ref(false);
+const dxfImporting = ref(false);
+const dxfSummary = ref(null);
+const dxfRoomsLayer = ref('');
+const dxfLabelsLayer = ref('');
+const dxfOpportunityId = ref('');
+const dxfPreviewRooms = ref([]);
+
+const dxfRoomsLayerOptions = computed(() => {
+  if (!dxfSummary.value?.layers_found) return [];
+  const layers = dxfSummary.value.layers_found;
+  return layers.map((l) => {
+    const polyCount = dxfSummary.value.polyline_count_per_layer?.[l] || 0;
+    return {
+      value: l,
+      label: polyCount > 0 ? `${l} (${polyCount} مضلع/مساحة)` : `${l} (لا يحتوي على مضلعات)`,
+    };
+  });
+});
+
+const dxfLabelsLayerOptions = computed(() => {
+  if (!dxfSummary.value?.layers_found) return [];
+  const layers = dxfSummary.value.layers_found;
+  return layers.map((l) => {
+    const txtCount = dxfSummary.value.text_count_per_layer?.[l] || 0;
+    return {
+      value: l,
+      label: txtCount > 0 ? `${l} (${txtCount} نص/اسم)` : `${l} (لا يحتوي على نصوص)`,
+    };
+  });
+});
+
+const dxfTotalPreviewArea = computed(() => {
+  return dxfPreviewRooms.value.reduce((acc, r) => acc + (Number(r.area) || 0), 0);
+});
 
 const form = reactive({
   id: null,
@@ -1145,8 +1513,27 @@ const openDetailsModal = (item) => {
   showDetailsModal.value = true;
 };
 
+const onImportSiteVisitSelect = (visitId) => {
+  importSiteVisitId.value = visitId;
+  const visit = siteVisits.value.find((v) => String(v.id) === String(visitId));
+  if (visit?.opportunity_id) {
+    importOpportunityId.value = visit.opportunity_id;
+  } else if (visit?.customer_id) {
+    const opps = (opportunities.value || []).filter((o) => o.customer_id === visit.customer_id);
+    importOpportunityId.value = opps.length > 0 ? opps[0].id : '';
+  } else {
+    importOpportunityId.value = '';
+  }
+};
+
 const openImportModal = () => {
-  importSiteVisitId.value = siteVisits.value[0]?.id || '';
+  const initialVisit = siteVisits.value[0];
+  if (initialVisit) {
+    onImportSiteVisitSelect(initialVisit.id);
+  } else {
+    importSiteVisitId.value = '';
+    importOpportunityId.value = '';
+  }
   showImportModal.value = true;
 };
 
@@ -1212,16 +1599,25 @@ const saveMeasurement = async () => {
 };
 
 const executeImport = async () => {
-  if (!importSiteVisitId.value) return;
+  if (!importSiteVisitId.value || !importOpportunityId.value) {
+    notificationStore.addToast({
+      type: 'error',
+      title: 'تنبيه',
+      message: 'يرجى تحديد المعاينة والفرصة التجارية المرتبطة بها صراحة.',
+    });
+    return;
+  }
 
   importing.value = true;
   try {
-    const res = await api.post(`/measurements/import-from-site-visit/${importSiteVisitId.value}`);
+    const res = await api.post(`/measurements/import-from-site-visit/${importSiteVisitId.value}`, {
+      opportunity_id: importOpportunityId.value,
+    });
     if (res.data?.success) {
       notificationStore.addToast({
         type: 'success',
         title: 'تم الاستيراد',
-        message: t('measurements.site_visit_rooms_imported_success') || 'تم استيراد غرف المعاينة بنجاح.',
+        message: 'تم استيراد غرف المعاينة وإنشاء مسودة المقايسة بنجاح.',
       });
       showImportModal.value = false;
       fetchMeasurements();
@@ -1231,21 +1627,354 @@ const executeImport = async () => {
     notificationStore.addToast({
       type: 'error',
       title: 'خطأ في الاستيراد',
-      message: err.response?.data?.message || 'تعذر استيراد الفراغات.',
+      message: err.response?.data?.message || 'تعذر استيراد غرف المعاينة.',
     });
   } finally {
     importing.value = false;
   }
 };
 
+// DXF Import Handlers
+const dxfImportMode = ref('new_measurement');
+
+const openDxfImportModal = () => {
+  dxfImportMode.value = 'new_measurement';
+  dxfFile.value = null;
+  dxfSummary.value = null;
+  dxfRoomsLayer.value = '';
+  dxfLabelsLayer.value = '';
+  dxfOpportunityId.value = filterOpportunityId.value ? Number(filterOpportunityId.value) : (opportunities.value[0]?.id || '');
+  dxfPreviewRooms.value = [];
+  showDxfModal.value = true;
+};
+
+const openDxfImportForCurrentForm = () => {
+  dxfImportMode.value = 'form_append';
+  dxfFile.value = null;
+  dxfSummary.value = null;
+  dxfRoomsLayer.value = '';
+  dxfLabelsLayer.value = '';
+  dxfOpportunityId.value = form.opportunity_id || (opportunities.value[0]?.id || '');
+  dxfPreviewRooms.value = [];
+  showDxfModal.value = true;
+};
+
+const onFormSiteVisitChange = async (val) => {
+  form.site_visit_id = val;
+  if (val) {
+    const sv = siteVisits.value.find((v) => String(v.id) === String(val));
+    if (sv && !form.opportunity_id && sv.opportunity_id) {
+      form.opportunity_id = sv.opportunity_id;
+    }
+  }
+};
+
+const importRoomsFromCurrentFormSiteVisit = async () => {
+  if (!form.site_visit_id) {
+    notificationStore.addToast({
+      type: 'warning',
+      title: 'تنبيه',
+      message: 'يرجى اختيار المعاينة الميدانية من الحقل بالأعلى أولاً.',
+    });
+    return;
+  }
+
+  try {
+    const res = await api.get(`/site-visits/${form.site_visit_id}`);
+    const sv = res.data?.data;
+    if (sv?.rooms?.length) {
+      const newItems = sv.rooms.map((room, idx) => ({
+        room_name: room.room_name,
+        item_name: 'أعمال تشطيبات عامة',
+        unit: 'm2',
+        measurement_type: 'area',
+        count: 1,
+        length: null,
+        width: null,
+        height: null,
+        deductions: 0,
+        net_quantity: Number(room.estimated_area || 0) || null,
+        notes: `مستورد من المعاينة الميدانية #${sv.id} ${room.notes ? '(' + room.notes + ')' : ''}`,
+        sort_order: form.items.length + idx,
+      }));
+
+      if (form.items.length === 1 && (!form.items[0].room_name || form.items[0].room_name === 'ريسبشن')) {
+        form.items = newItems;
+      } else {
+        form.items.push(...newItems);
+      }
+
+      notificationStore.addToast({
+        type: 'success',
+        title: 'تم جلب الغرف',
+        message: `تم جلب ${newItems.length} غرف من المعاينة بنجاح وإدراجها في الجدول.`,
+      });
+    } else {
+      notificationStore.addToast({
+        type: 'info',
+        title: 'لا توجد غرف',
+        message: 'هذه المعاينة الميدانية لا تحتوي على غرف مسجلة.',
+      });
+    }
+  } catch (e) {
+    notificationStore.addToast({
+      type: 'error',
+      title: 'خطأ',
+      message: 'تعذر جلب غرف المعاينة.',
+    });
+  }
+};
+
+const closeDxfModal = () => {
+  showDxfModal.value = false;
+  dxfFile.value = null;
+  dxfSummary.value = null;
+  dxfPreviewRooms.value = [];
+};
+
+const triggerDxfFileInput = () => {
+  dxfFileInputRef.value?.click();
+};
+
+const onDxfFileChange = (e) => {
+  const file = e.target.files?.[0];
+  if (file) handleDxfFile(file);
+};
+
+const onDxfFileDrop = (e) => {
+  const file = e.dataTransfer?.files?.[0];
+  if (file) handleDxfFile(file);
+};
+
+const handleDxfFile = async (file) => {
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  if (ext === 'dwg' || ext === 'pdf') {
+    await alertService.showError({
+      title: 'صيغة غير مدعومة',
+      text: 'الصيغة المدعومة حاليًا هي DXF فقط. لو عندك ملف DWG، افتحه بالأوتوكاد واعمل Save As → DXF ثم ارفعه هنا.',
+    });
+    return;
+  }
+
+  if (ext !== 'dxf') {
+    await alertService.showError({
+      title: 'صيغة غير صحيحة',
+      text: 'يرجى اختيار ملف بامتداد .DXF صالح.',
+    });
+    return;
+  }
+
+  dxfFile.value = file;
+  await parseDxfFile(file);
+};
+
+const parseDxfFile = async (file) => {
+  dxfParsing.value = true;
+  dxfPreviewRooms.value = [];
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await api.post('/measurements/parse-dxf', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    if (res.data?.success) {
+      dxfSummary.value = res.data.data;
+      const layers = res.data.data.layers_found || [];
+
+      // Auto-suggest rooms layer: MUST have polylines > 0
+      const polyLayers = layers.filter(
+        (l) => (res.data.data.polyline_count_per_layer?.[l] || 0) > 0
+      );
+      const roomsGuess =
+        polyLayers.find((l) => /room|space|area|حدود|فراغ/i.test(l)) ||
+        (polyLayers.includes('ROOMS') ? 'ROOMS' : polyLayers[0] || '');
+      dxfRoomsLayer.value = roomsGuess;
+
+      // Auto-suggest labels layer: MUST have texts > 0
+      const textLayers = layers.filter(
+        (l) => (res.data.data.text_count_per_layer?.[l] || 0) > 0
+      );
+      const labelsGuess =
+        textLayers.find((l) => /label|text|name|اسم/i.test(l)) ||
+        (textLayers.includes('ROOM_LABELS') ? 'ROOM_LABELS' : textLayers[0] || '');
+      dxfLabelsLayer.value = labelsGuess;
+
+      if (roomsGuess) {
+        await refreshDxfPreview();
+      }
+    }
+  } catch (err) {
+    notificationStore.addToast({
+      type: 'error',
+      title: 'خطأ في فحص الملف',
+      message: err.response?.data?.message || 'تعذر فحص طبقات ملف DXF.',
+    });
+  } finally {
+    dxfParsing.value = false;
+  }
+};
+
+const refreshDxfPreview = async () => {
+  if (!dxfFile.value || !dxfRoomsLayer.value) {
+    dxfPreviewRooms.value = [];
+    return;
+  }
+
+  // If selected rooms layer has 0 polylines, clear preview immediately
+  const polyCount = dxfSummary.value?.polyline_count_per_layer?.[dxfRoomsLayer.value] || 0;
+  if (polyCount === 0) {
+    dxfPreviewRooms.value = [];
+    return;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append('file', dxfFile.value);
+    formData.append('rooms_layer', dxfRoomsLayer.value);
+    if (dxfLabelsLayer.value) formData.append('labels_layer', dxfLabelsLayer.value);
+
+    const res = await api.post('/measurements/parse-dxf', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    if (res.data?.success && res.data.data?.rooms_preview) {
+      dxfPreviewRooms.value = res.data.data.rooms_preview.map((r) => ({
+        room_name: r.room_name,
+        area: Number(r.area || 0),
+        perimeter: Number(r.perimeter || 0),
+        length: r.length ? Number(r.length) : null,
+        width: r.width ? Number(r.width) : null,
+        vertex_count: r.vertex_count || 4,
+      }));
+    }
+  } catch (e) {
+    dxfPreviewRooms.value = [];
+  }
+};
+
+const onRoomsLayerChange = async (layer) => {
+  dxfRoomsLayer.value = layer;
+  await refreshDxfPreview();
+};
+
+const onLabelsLayerChange = async (layer) => {
+  dxfLabelsLayer.value = layer;
+  await refreshDxfPreview();
+};
+
+const executeDxfImport = async () => {
+  if (!dxfFile.value || !dxfRoomsLayer.value || (!dxfOpportunityId.value && dxfImportMode.value !== 'form_append')) {
+    notificationStore.addToast({
+      type: 'error',
+      title: 'تنبيه',
+      message: 'يرجى استكمال اختيار الطبقات وتحديد الفرصة التجارية.',
+    });
+    return;
+  }
+
+  const polyCount = dxfSummary.value?.polyline_count_per_layer?.[dxfRoomsLayer.value] || 0;
+  if (polyCount === 0) {
+    notificationStore.addToast({
+      type: 'error',
+      title: 'طبقة غير صالحة للغرف',
+      message: 'الطبقة المحددة لحدود الغرف لا تحتوي على مضلعات مغلقة (Polylines). يرجى اختيار طبقة تحتوي على مضلعات مثل ROOMS.',
+    });
+    return;
+  }
+
+  // If appending directly to current active form table
+  if (dxfImportMode.value === 'form_append') {
+    if (dxfPreviewRooms.value.length === 0) {
+      notificationStore.addToast({
+        type: 'warning',
+        title: 'تنبيه',
+        message: 'لا توجد غرف مكتشفة لإدراجها في الجدول.',
+      });
+      return;
+    }
+
+    const newItems = dxfPreviewRooms.value.map((r, idx) => ({
+      room_name: r.room_name,
+      item_name: 'أعمال تشطيبات عامة',
+      unit: 'm2',
+      measurement_type: 'area',
+      count: 1,
+      length: r.length || null,
+      width: r.width || null,
+      height: null,
+      deductions: 0,
+      net_quantity: !r.length ? Number(r.area) : null,
+      notes: r.length && r.width ? `أبعاد هندسية ${r.length} × ${r.width} م (مساحة: ${r.area} م²)` : `مساحة هندسية غير منتظمة = ${r.area} م²`,
+      sort_order: form.items.length + idx,
+    }));
+
+    if (form.items.length === 1 && (!form.items[0].room_name || form.items[0].room_name === 'ريسبشن')) {
+      form.items = newItems;
+    } else {
+      form.items.push(...newItems);
+    }
+
+    notificationStore.addToast({
+      type: 'success',
+      title: 'تم إدراج الغرف',
+      message: `تم إدراج ${newItems.length} غرف بنجاح في جدول البنود.`,
+    });
+    closeDxfModal();
+    return;
+  }
+
+  dxfImporting.value = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', dxfFile.value);
+    formData.append('rooms_layer', dxfRoomsLayer.value);
+    if (dxfLabelsLayer.value) formData.append('labels_layer', dxfLabelsLayer.value);
+    formData.append('opportunity_id', dxfOpportunityId.value);
+
+    const res = await api.post('/measurements/import-from-dxf', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    if (res.data?.success) {
+      await alertService.showSuccess({
+        title: 'تم الاستيراد بنجاح',
+        text: 'تم استيراد أبعاد ومساحات الغرف من ملف DXF وحسابها بدقة، وتم إنشاء مسودة المقايسة.',
+      });
+
+      closeDxfModal();
+      fetchMeasurements();
+      openEditModal(res.data.data);
+    }
+  } catch (err) {
+    notificationStore.addToast({
+      type: 'error',
+      title: 'خطأ في الاستيراد',
+      message: err.response?.data?.message || 'تعذر استيراد ملف DXF.',
+    });
+  } finally {
+    dxfImporting.value = false;
+  }
+};
+
 const submitForReview = async (item) => {
+  const confirmed = await alertService.confirmAction({
+    title: t('measurements.submitReviewAction') || 'تقديم المقايسة للمراجعة الفنية',
+    text: t('measurements.submitReviewConfirm') || 'هل أنت متأكد من تقديم هذه المقايسة للمراجعة الفنية؟',
+    icon: 'question',
+    confirmButtonText: 'نعم، إرسال للمراجعة',
+    cancelButtonText: 'إلغاء',
+  });
+  if (!confirmed) return;
+
   try {
     const res = await api.post(`/measurements/${item.id}/submit-review`);
     if (res.data?.success) {
       notificationStore.addToast({
         type: 'success',
         title: 'تم التقديم',
-        message: 'تم إرسال المقايسة للمراجعة الفنية.',
+        message: 'تم إرسال المقايسة للمراجعة الفنية بنجاح.',
       });
       showDetailsModal.value = false;
       fetchMeasurements();
@@ -1260,7 +1989,14 @@ const submitForReview = async (item) => {
 };
 
 const approveMeasurement = async (item) => {
-  if (!confirm(t('measurements.approveConfirm'))) return;
+  const confirmed = await alertService.confirmAction({
+    title: t('measurements.approveAction') || 'اعتماد المقايسة الهندسية',
+    text: t('measurements.approveConfirm') || 'تأكيد اعتماد المقايسة الهندسية؟ سيتم قفل التعديل عليها واعتبارها المصدر الرسمي لحصر الكميات.',
+    icon: 'warning',
+    confirmButtonText: 'نعم، اعتمد المقايسة',
+    cancelButtonText: 'إلغاء الأمر',
+  });
+  if (!confirmed) return;
 
   try {
     const res = await api.post(`/measurements/${item.id}/approve`);
@@ -1283,7 +2019,14 @@ const approveMeasurement = async (item) => {
 };
 
 const createRevision = async (item) => {
-  if (!confirm(t('measurements.createRevisionConfirm'))) return;
+  const confirmed = await alertService.confirmAction({
+    title: t('measurements.createRevisionAction') || 'إنشاء إصدار جديد (Revision)',
+    text: t('measurements.createRevisionConfirm') || 'هل تريد إنشاء إصدار جديد (نسخة مسودة قابلة للتعديل) من هذه المقايسة المعتمدة؟',
+    icon: 'info',
+    confirmButtonText: 'نعم، أنشئ الإصدار',
+    cancelButtonText: 'إلغاء الأمر',
+  });
+  if (!confirmed) return;
 
   try {
     const res = await api.post(`/measurements/${item.id}/create-revision`);
@@ -1307,7 +2050,13 @@ const createRevision = async (item) => {
 };
 
 const deleteMeasurement = async (item) => {
-  if (!confirm(t('common.confirmDelete'))) return;
+  const confirmed = await alertService.confirmDelete({
+    title: 'تأكيد حذف المقايسة',
+    text: 'هل أنت متأكد من رغبتك في حذف هذه المقايسة؟ لا يمكن التراجع عن هذا الإجراء.',
+    confirmButtonText: 'نعم، احذف المقايسة',
+    cancelButtonText: 'إلغاء الأمر',
+  });
+  if (!confirmed) return;
 
   try {
     await api.delete(`/measurements/${item.id}`);

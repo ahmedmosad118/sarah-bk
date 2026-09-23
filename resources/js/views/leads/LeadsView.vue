@@ -477,19 +477,13 @@
                 <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
                   {{ $t('leads.lossReason') }}
                 </label>
-                <select
-                  v-model="qualificationForm.loss_reason"
-                  class="w-full rounded-xl border border-rose-200 bg-white py-2 px-3 text-xs font-semibold text-gray-900 outline-hidden focus:border-rose-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                >
-                  <option value="">{{ $t('leads.lossReasonSelect') }}</option>
-                  <option value="price_high">{{ $t('leads.lossReasonPrice') }}</option>
-                  <option value="competitor_won">{{ $t('leads.lossReasonCompetitor') }}</option>
-                  <option value="client_postponed">{{ $t('leads.lossReasonPostponed') }}</option>
-                  <option value="client_unresponsive">{{ $t('leads.lossReasonUnresponsive') }}</option>
-                  <option value="scope_mismatch">{{ $t('leads.lossReasonOutOfScope') }}</option>
-                  <option value="budget_insufficient">{{ $t('leads.lossReasonBudget') }}</option>
-                  <option value="other">{{ $t('leads.lossReasonOther') }}</option>
-                </select>
+                <SearchableSelect
+                  :model-value="qualificationForm.loss_reason"
+                  :options="lossReasonOptions"
+                  :placeholder="$t('leads.lossReasonSelect') || 'اختر سبب الخسارة...'"
+                  :clearable="true"
+                  @update:model-value="qualificationForm.loss_reason = $event"
+                />
               </div>
 
               <div v-if="qualificationForm.loss_reason === 'competitor_won'">
@@ -613,17 +607,13 @@
             <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
               {{ $t('opportunities.stage') }}
             </label>
-            <select
-              v-model="convertOpportunityForm.stage"
-              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-bold text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white cursor-pointer"
-            >
-              <option value="New">{{ $t('opportunities.stageNew') }}</option>
-              <option value="Qualified">{{ $t('opportunities.stageQualified') }}</option>
-              <option value="Proposal">{{ $t('opportunities.stageProposal') }}</option>
-              <option value="Negotiation">{{ $t('opportunities.stageNegotiation') }}</option>
-              <option value="Won">{{ $t('opportunities.stageWon') }}</option>
-              <option value="Lost">{{ $t('opportunities.stageLost') }}</option>
-            </select>
+            <SearchableSelect
+              :model-value="convertOpportunityForm.stage"
+              :options="opportunityStageOptions"
+              :placeholder="$t('opportunities.stage')"
+              :clearable="false"
+              @update:model-value="convertOpportunityForm.stage = $event"
+            />
           </div>
 
           <div>
@@ -819,6 +809,25 @@ const convertOpportunityForm = reactive({
   assigned_to: null,
   notes: '',
 });
+
+const lossReasonOptions = computed(() => [
+  { value: 'price_high', label: t('leads.lossReasonPrice') },
+  { value: 'competitor_won', label: t('leads.lossReasonCompetitor') },
+  { value: 'client_postponed', label: t('leads.lossReasonPostponed') },
+  { value: 'client_unresponsive', label: t('leads.lossReasonUnresponsive') },
+  { value: 'scope_mismatch', label: t('leads.lossReasonOutOfScope') },
+  { value: 'budget_insufficient', label: t('leads.lossReasonBudget') },
+  { value: 'other', label: t('leads.lossReasonOther') },
+]);
+
+const opportunityStageOptions = computed(() => [
+  { value: 'New', label: t('opportunities.stageNew') },
+  { value: 'Qualified', label: t('opportunities.stageQualified') },
+  { value: 'Proposal', label: t('opportunities.stageProposal') },
+  { value: 'Negotiation', label: t('opportunities.stageNegotiation') },
+  { value: 'Won', label: t('opportunities.stageWon') },
+  { value: 'Lost', label: t('opportunities.stageLost') },
+]);
 
 const loadDropdownOptions = async () => {
   try {
