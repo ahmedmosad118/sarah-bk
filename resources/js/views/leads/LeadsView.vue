@@ -527,16 +527,18 @@
               <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
                 {{ $t('leads.estimatedValue') }}
               </label>
-              <div class="relative">
+              <div class="flex items-stretch rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 focus-within:border-[#00C896] focus-within:ring-2 focus-within:ring-[#00C896]/20 transition-all overflow-hidden">
                 <input
                   type="number"
                   step="0.01"
                   v-model="qualificationForm.estimated_value"
                   placeholder="0.00"
-                  class="w-full rounded-xl border border-gray-200 bg-white py-2 px-3 text-xs font-bold font-mono text-gray-900 outline-hidden focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                  class="w-full bg-transparent py-2.5 px-3 text-xs font-bold font-mono text-gray-900 dark:text-white outline-hidden [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-left"
                   dir="ltr"
                 />
-                <span class="absolute top-2 left-3 text-[10px] font-bold text-[#00C896]">{{ $t('leads.currencyEGP') }}</span>
+                <span class="inline-flex items-center px-3 bg-gray-50 dark:bg-gray-700/60 border-s border-gray-200 dark:border-gray-700 text-xs font-black text-[#00A87E] dark:text-[#00C896] select-none whitespace-nowrap">
+                  {{ $t('leads.currencyEGP') }}
+                </span>
               </div>
             </div>
 
@@ -732,16 +734,18 @@
             <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
               {{ $t('opportunities.estimatedValue') }}
             </label>
-            <div class="relative">
+            <div class="flex items-stretch rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40 focus-within:border-[#00C896] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#00C896]/20 transition-all overflow-hidden">
               <input
                 type="number"
                 step="0.01"
                 v-model="convertOpportunityForm.estimated_value"
                 placeholder="0.00"
-                class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-bold font-mono text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
+                class="w-full bg-transparent py-2.5 px-3.5 text-xs font-bold font-mono text-gray-900 dark:text-white outline-hidden [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-left"
                 dir="ltr"
               />
-              <span class="absolute top-2.5 left-3.5 text-[10px] font-bold text-[#00C896]">{{ $t('opportunities.currencyEGP') }}</span>
+              <span class="inline-flex items-center px-3 bg-gray-100 dark:bg-gray-800 border-s border-gray-200 dark:border-gray-700 text-xs font-black text-[#00A87E] dark:text-[#00C896] select-none whitespace-nowrap">
+                {{ $t('opportunities.currencyEGP') }}
+              </span>
             </div>
             <p v-if="convertOpportunityErrors.estimated_value" class="mt-1 text-[11px] text-rose-500 font-bold">
               {{ convertOpportunityErrors.estimated_value[0] }}

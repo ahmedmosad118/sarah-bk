@@ -43,29 +43,27 @@
     </div>
 
     <!-- 3. Number / Currency / Percentage -->
-    <div v-else-if="['number', 'currency', 'percentage'].includes(field.type)" class="relative">
+    <div v-else-if="['number', 'currency', 'percentage'].includes(field.type)" class="flex items-stretch rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40 focus-within:border-[#00C896] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#00C896]/20 transition-all overflow-hidden">
       <input
         type="number"
         :step="field.step || (field.type === 'currency' ? '0.01' : 'any')"
         :value="modelValue"
         @input="$emit('update:modelValue', $event.target.value === '' ? null : Number($event.target.value))"
-        :placeholder="formatLabel(field.placeholder) || '0'"
+        :placeholder="formatLabel(field.placeholder) || '0.00'"
         :required="field.required"
         :disabled="field.readonly"
-        class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-bold text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white focus:ring-2 focus:ring-[#00C896]/20 dark:border-gray-700 dark:bg-gray-900/40 dark:text-white dark:focus:border-[#00C896] transition-all text-left"
+        class="w-full bg-transparent py-2.5 px-3.5 text-xs font-bold font-mono text-gray-900 dark:text-white outline-hidden [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-left"
         dir="ltr"
       />
       <span
-        v-if="field.type === 'currency'"
-        class="absolute top-2.5 text-xs font-bold text-[#00C896]"
-        :class="$i18n.locale === 'ar' ? 'left-3.5' : 'right-3.5'"
+        v-if="field.type === 'currency' || field.name === 'estimated_value'"
+        class="inline-flex items-center px-3 bg-gray-100 dark:bg-gray-800 border-s border-gray-200 dark:border-gray-700 text-xs font-black text-[#00A87E] dark:text-[#00C896] select-none whitespace-nowrap"
       >
-        {{ $t('settings.currencySymbol') }}
+        {{ $t('opportunities.currencyEGP') || 'ج.م' }}
       </span>
       <span
-        v-if="field.type === 'percentage'"
-        class="absolute top-2.5 text-xs font-bold text-[#00C896]"
-        :class="$i18n.locale === 'ar' ? 'left-3.5' : 'right-3.5'"
+        v-else-if="field.type === 'percentage'"
+        class="inline-flex items-center px-3 bg-gray-100 dark:bg-gray-800 border-s border-gray-200 dark:border-gray-700 text-xs font-black text-[#00A87E] dark:text-[#00C896] select-none whitespace-nowrap"
       >
         %
       </span>
