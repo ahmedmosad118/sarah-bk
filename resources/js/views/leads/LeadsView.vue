@@ -488,6 +488,29 @@
           </p>
         </div>
 
+        <!-- Dual-path: Site Visit Action -->
+        <div class="p-4 rounded-2xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="p-2.5 rounded-xl bg-blue-600 text-white shadow-xs">
+              <MapPin class="h-5 w-5" />
+            </div>
+            <div>
+              <span class="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 block">المعاينة الميدانية (Dual-path)</span>
+              <h4 class="text-xs font-black text-gray-900 dark:text-white">حجز أو استعراض معاينات الموقع لهذا الطلب</h4>
+              <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">يمكنك حجز موعد معاينة ميدانية ورفع المقاسات وربطها بهذا العميل المحتمل مباشرة.</p>
+            </div>
+          </div>
+          <div class="shrink-0">
+            <router-link
+              :to="`/site-visits?lead_id=${selectedLead.id}&customer_id=${selectedLead.customer_id}`"
+              class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+            >
+              <MapPin class="h-3.5 w-3.5" />
+              <span>{{ $t('siteVisits.viewOrAddForLead') }}</span>
+            </router-link>
+          </div>
+        </div>
+
         <!-- Progressive Commercial Qualification Card -->
         <div class="p-4 rounded-2xl border border-[#00C896]/30 bg-[#00C896]/5 dark:bg-[#00C896]/10 space-y-4">
           <div class="flex items-center justify-between">
@@ -822,6 +845,7 @@ import {
   MessageSquare,
   Target,
   AlertCircle,
+  MapPin,
 } from 'lucide-vue-next';
 
 const { t } = useI18n();

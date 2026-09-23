@@ -81,7 +81,7 @@ class RolePermissionMappingSeeder extends Seeder
             'planning.view', 'planning.create', 'planning.update',
             'wbs.view', 'wbs.create', 'wbs.update',
             'tasks.view', 'tasks.create', 'tasks.update', 'tasks.assign', 'tasks.complete', 'tasks.approve',
-            'site_visits.view', 'site_visits.create', 'site_visits.update',
+            'site_visits.view', 'site_visits.create', 'site_visits.update', 'site_visits.assign', 'site_visits.complete', 'site_visits.cancel',
             'measurements.view', 'measurements.create', 'measurements.update',
             'scope.view', 'scope.create', 'scope.update',
             'boq.view',
@@ -105,7 +105,7 @@ class RolePermissionMappingSeeder extends Seeder
             'dashboard.view',
             'projects.view',
             'tasks.view', 'tasks.update', 'tasks.complete',
-            'site_visits.view', 'site_visits.create', 'site_visits.update',
+            'site_visits.view', 'site_visits.create', 'site_visits.update', 'site_visits.complete', 'site_visits.cancel',
             'measurements.view', 'measurements.create', 'measurements.update',
             'media.view', 'media.upload', 'media.download'
         ]);
@@ -148,7 +148,7 @@ class RolePermissionMappingSeeder extends Seeder
             'customers.view', 'customers.create', 'customers.update',
             'leads.view', 'leads.create', 'leads.update', 'leads.assign', 'leads.convert',
             'opportunities.view', 'opportunities.create', 'opportunities.update', 'opportunities.assign', 'opportunities.convert',
-            'site_visits.view', 'site_visits.create',
+            'site_visits.view', 'site_visits.create', 'site_visits.cancel',
             'quotations.view', 'quotations.create', 'quotations.update', 'quotations.send', 'quotations.export'
         ]);
 

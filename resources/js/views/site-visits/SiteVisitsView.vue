@@ -130,15 +130,6 @@
 
             <button
               type="button"
-              @click="setStatusFilter('Requested')"
-              class="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
-              :class="filterParams.status === 'Requested' ? 'bg-white text-amber-600 shadow-xs dark:bg-gray-800 dark:text-amber-400' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
-            >
-              <span>{{ $t('siteVisits.filterRequested') }}</span>
-            </button>
-
-            <button
-              type="button"
               @click="setStatusFilter('Rescheduled')"
               class="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
               :class="filterParams.status === 'Rescheduled' ? 'bg-white text-purple-600 shadow-xs dark:bg-gray-800 dark:text-purple-400' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
@@ -371,12 +362,12 @@
           </div>
         </div>
 
-        <!-- Section 2: Visit Mode / Status (Interactive 3-Cards Selector) -->
+        <!-- Section 2: Visit Mode / Status (Interactive 2-Cards Selector) -->
         <div class="space-y-2">
           <label class="block text-xs font-black text-gray-800 dark:text-gray-200">
             {{ $t('siteVisits.visitType') }}
           </label>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <!-- Card 1: Scheduled Future Visit -->
             <div
               @click="setVisitMode('Scheduled')"
@@ -410,24 +401,6 @@
               </div>
               <p class="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
                 {{ $t('siteVisits.typeImmediateDesc') }}
-              </p>
-            </div>
-
-            <!-- Card 3: Requested Visit -->
-            <div
-              @click="setVisitMode('Requested')"
-              class="p-3.5 rounded-2xl border transition-all cursor-pointer space-y-1.5"
-              :class="visitForm.status === 'Requested' ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 ring-2 ring-amber-500/20 shadow-xs' : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
-            >
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-black flex items-center gap-1.5">
-                  <Clock class="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                  {{ $t('siteVisits.typeRequested') }}
-                </span>
-                <span v-if="visitForm.status === 'Requested'" class="h-2 w-2 rounded-full bg-amber-600"></span>
-              </div>
-              <p class="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
-                {{ $t('siteVisits.typeRequestedDesc') }}
               </p>
             </div>
           </div>
@@ -1371,6 +1344,7 @@ const stats = ref({
 const filterParams = reactive({
   status: '',
   opportunity_id: route.query.opportunity_id || '',
+  lead_id: route.query.lead_id || '',
   customer_id: route.query.customer_id || '',
 });
 
@@ -1456,6 +1430,7 @@ const quickCustomerForm = reactive({
 const visitForm = reactive({
   customer_id: null,
   opportunity_id: null,
+  lead_id: null,
   status: 'Scheduled',
   scheduled_date: '',
   scheduled_time: '',
@@ -1552,6 +1527,7 @@ const openCreateModal = () => {
   Object.assign(visitForm, {
     customer_id: route.query.customer_id ? Number(route.query.customer_id) : null,
     opportunity_id: route.query.opportunity_id ? Number(route.query.opportunity_id) : null,
+    lead_id: route.query.lead_id ? Number(route.query.lead_id) : null,
     status: 'Scheduled',
     scheduled_date: new Date().toISOString().split('T')[0],
     scheduled_time: '10:00',
@@ -1575,6 +1551,7 @@ const openEditModal = (item) => {
   Object.assign(visitForm, {
     customer_id: item.customer_id,
     opportunity_id: item.opportunity_id,
+    lead_id: item.lead_id,
     status: item.status || 'Scheduled',
     scheduled_date: item.scheduled_date ? item.scheduled_date.split('T')[0] : '',
     scheduled_time: item.scheduled_time || '',
@@ -1624,6 +1601,7 @@ const submitVisitForm = async () => {
     const formData = new FormData();
     formData.append('customer_id', visitForm.customer_id);
     if (visitForm.opportunity_id) formData.append('opportunity_id', visitForm.opportunity_id);
+    if (visitForm.lead_id) formData.append('lead_id', visitForm.lead_id);
     formData.append('status', visitForm.status);
     if (visitForm.scheduled_date) formData.append('scheduled_date', visitForm.scheduled_date);
     if (visitForm.scheduled_time) formData.append('scheduled_time', visitForm.scheduled_time);

@@ -567,5 +567,6 @@ export default {
     photosUploadedSuccessfully: 'تم رفع صور الموقع بنجاح',
     noPhotosYet: 'لم يتم رفع صور للموقع بعد',
     noRoomsYet: 'لم يتم إضافة غرف أو مساحات بعد',
+    viewOrAddForLead: 'حجز / عرض معاينات الموقع',
   },
 };

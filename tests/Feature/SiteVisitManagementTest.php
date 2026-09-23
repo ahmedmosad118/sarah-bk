@@ -217,13 +217,15 @@ class SiteVisitManagementTest extends TestCase
             ->assertJsonPath('data.customer_id', $customer->id)
             ->assertJsonPath('data.opportunity_id', $opportunity->id)
             ->assertJsonPath('data.lead_id', $lead->id)
-            ->assertJsonPath('data.status', 'Scheduled');
+            ->assertJsonPath('data.status', 'Scheduled')
+            ->assertJsonPath('data.assigned_to', null);
 
         $visitId = $response->json('data.id');
         $this->assertDatabaseHas('site_visits', [
             'id' => $visitId,
             'opportunity_id' => $opportunity->id,
             'lead_id' => $lead->id,
+            'assigned_to' => null,
         ]);
     }
 
@@ -523,5 +525,57 @@ class SiteVisitManagementTest extends TestCase
         ]);
 
         $createResponse->assertStatus(403);
+    }
+
+    /**
+     * 9. Test automatic linking of Site Visits when a Lead is converted to an Opportunity.
+     */
+    public function test_site_visits_auto_link_on_lead_conversion(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Auto-link Lead Client',
+            'customer_type' => 'individual',
+            'phone' => '01011223344',
+            'status' => 'active',
+        ]);
+
+        $lead = Lead::create([
+            'customer_id' => $customer->id,
+            'title' => 'Villa Finishing Inquiry',
+            'status' => 'New',
+        ]);
+
+        // Create Site Visit attached to Lead (opportunity_id is null)
+        $visit = SiteVisit::create([
+            'customer_id' => $customer->id,
+            'lead_id' => $lead->id,
+            'opportunity_id' => null,
+            'status' => 'Scheduled',
+            'scheduled_date' => '2026-11-01',
+            'created_by' => $this->ownerA->id,
+        ]);
+
+        $this->assertNull($visit->opportunity_id);
+
+        // Convert Lead to Opportunity via API
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson("/api/leads/{$lead->id}/convert-to-opportunity", [
+            'title' => 'Villa Luxury Finishing Project',
+            'stage' => 'Qualified',
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('success', true);
+
+        $oppId = $response->json('data.id');
+        $this->assertNotNull($oppId);
+
+        // Verify the SiteVisit now has opportunity_id linked
+        $this->assertEquals($oppId, $visit->fresh()->opportunity_id);
     }
 }

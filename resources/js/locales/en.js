@@ -567,5 +567,6 @@ export default {
     photosUploadedSuccessfully: 'Site photos uploaded successfully',
     noPhotosYet: 'No site photos uploaded yet',
     noRoomsYet: 'No rooms or spaces added yet',
+    viewOrAddForLead: 'Schedule / View Site Visits',
   },
 };

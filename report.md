@@ -127,7 +127,15 @@ Table: site_visit_rooms
 
 ---
 
-### 🧪 8. Quality Assurance & Build Status (الجودة والبناء)
-- **بناء الواجهة الأمامية (Vite Build):** ناجح بنسبة 100% بدون أي أخطاء (`✓ built in 13.82s`).
-- **الاختبارات الآلية (Automated Tests):** تغطية شاملة لكافة عمليات الإنشاء، التحويل، دورة الحياة، وتتبع أسباب الفقدان للعملاء المحتملين والفرص التجارية.
-- **جاهزية النظام:** كافة المراحل (العملاء، الليدز، الفرص، المعاينات، والداشبورد) متوافقة ومتصلة ببعضها بسلاسة.
+### 🧪 8. Quality Assurance & Phase 6 Final Sign-off (الجودة والإغلاق النهائي)
+- **إصلاحات وتدقيق Phase 6 (Code & Business Fixes Completed):**
+  1. تصحيح دالة `down()` في ملف migration جدول `site_visits` وإزالة التكرار.
+  2. توحيد حالات المعاينة في التحقق (`customValidationRules`) وحصرها في `Scheduled, Completed, Cancelled, Rescheduled`.
+  3. إضافة صلاحية `site_visits.cancel` في `DefaultPermissionsSeeder` وتوزيعها على الأدوار في `RolePermissionMappingSeeder`.
+  4. ربط المعاينات التابعة للعميل المحتمل تلقائياً بالفرصة التجارية الجديدة عند التحويل (`Lead -> Opportunity`) داخل الـ Transaction، مع تسجيل ذلك في الـ Activity Log واختباره برمجياً.
+  5. إضافة نقطة دخول ورابط مباشر للمعاينة من شاشة تفاصيل العميل المحتمل (`LeadsView.vue`) لدعم مسار الـ Dual-path بالكامل.
+  6. تصحيح إسناد المهندس في `createFromOpportunity()` ليكون `null` افتراضياً لمنع التعيين الخاطئ لموظف المبيعات، مع استخدام endpoint التكليف المستقل.
+- **بناء الواجهة الأمامية (Vite Build):** ناجح بنسبة 100% بدون أي أخطاء (`✓ built in 12.99s`).
+- **الاختبارات الآلية (Automated Tests):** 100% نجاح لكافة الاختبارات في `SiteVisitManagementTest` (9 tests, 49 assertions) و `LeadManagementTest` (11 tests, 99 assertions).
+- **حالة المرحلة:** تم إغلاق وتأكيد Phase 6 (إدارة معاينات الموقع) رسمياً بنجاح تام.
+

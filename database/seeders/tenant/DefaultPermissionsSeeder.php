@@ -65,6 +65,7 @@ class DefaultPermissionsSeeder extends Seeder
                 'site_visits.delete' => 'حذف معاينة موقع',
                 'site_visits.assign' => 'تكليف مهندس بالمعاينة',
                 'site_visits.complete' => 'اعتماد إتمام المعاينة',
+                'site_visits.cancel' => 'إلغاء موعد معاينة',
             ],
             'Measurements' => [
                 'measurements.view' => 'عرض مقاسات ورفوعات الموقع',
