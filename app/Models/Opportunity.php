@@ -6,25 +6,24 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Lead extends Model implements HasMedia
+class Opportunity extends Model implements HasMedia
 {
     use HasFactory, LogsActivity, InteractsWithMedia;
 
     protected $fillable = [
         'customer_id',
+        'lead_id',
         'title',
         'description',
-        'source',
-        'status',
+        'stage',
         'estimated_value',
         'expected_start_date',
+        'expected_close_date',
         'assigned_to',
         'created_by',
         'notes',
@@ -33,12 +32,13 @@ class Lead extends Model implements HasMedia
     protected $casts = [
         'estimated_value' => 'decimal:2',
         'expected_start_date' => 'date:Y-m-d',
+        'expected_close_date' => 'date:Y-m-d',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
     /**
-     * Customer to whom this lead belongs.
+     * Customer associated with this opportunity.
      */
     public function customer(): BelongsTo
     {
@@ -46,7 +46,15 @@ class Lead extends Model implements HasMedia
     }
 
     /**
-     * User assigned to handle this lead.
+     * Originating Lead for this opportunity (if converted from a lead).
+     */
+    public function lead(): BelongsTo
+    {
+        return $this->belongsTo(Lead::class);
+    }
+
+    /**
+     * User assigned to handle this opportunity.
      */
     public function assignedUser(): BelongsTo
     {
@@ -54,7 +62,7 @@ class Lead extends Model implements HasMedia
     }
 
     /**
-     * User who registered/created this lead.
+     * User who created this opportunity.
      */
     public function creator(): BelongsTo
     {
@@ -62,43 +70,11 @@ class Lead extends Model implements HasMedia
     }
 
     /**
-     * Opportunities created from this lead.
+     * Scope query by stage.
      */
-    public function opportunities(): HasMany
+    public function scopeStage(Builder $query, string $stage): Builder
     {
-        return $this->hasMany(Opportunity::class);
-    }
-
-    /**
-     * Primary / latest opportunity converted from this lead.
-     */
-    public function opportunity(): HasOne
-    {
-        return $this->hasOne(Opportunity::class)->latestOfMany();
-    }
-
-    /**
-     * Scope query by status.
-     */
-    public function scopeStatus(Builder $query, string $status): Builder
-    {
-        return $query->where('status', $status);
-    }
-
-    /**
-     * Scope query by source.
-     */
-    public function scopeSource(Builder $query, string $source): Builder
-    {
-        return $query->where('source', $source);
-    }
-
-    /**
-     * Scope query by assigned user.
-     */
-    public function scopeAssignedTo(Builder $query, int $userId): Builder
-    {
-        return $query->where('assigned_to', $userId);
+        return $query->where('stage', $stage);
     }
 
     /**
@@ -110,29 +86,38 @@ class Lead extends Model implements HasMedia
     }
 
     /**
+     * Scope query by assigned user.
+     */
+    public function scopeAssignedTo(Builder $query, int $userId): Builder
+    {
+        return $query->where('assigned_to', $userId);
+    }
+
+    /**
      * Configure Spatie Activity Logging.
      */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->useLogName('leads')
+            ->useLogName('commercial')
             ->logOnly([
                 'title',
                 'customer_id',
-                'source',
-                'status',
+                'lead_id',
+                'stage',
                 'estimated_value',
                 'expected_start_date',
+                'expected_close_date',
                 'assigned_to',
                 'notes',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn(string $eventName) => match($eventName) {
-                'created' => __('activity.lead_model_created', ['title' => $this->title]),
-                'updated' => __('activity.lead_model_updated', ['title' => $this->title]),
-                'deleted' => __('activity.lead_model_deleted', ['title' => $this->title]),
-                default => __('activity.lead_event', ['event' => $eventName, 'title' => $this->title]),
+                'created' => __('activity.opportunity_created', ['title' => $this->title]),
+                'updated' => __('activity.opportunity_updated', ['title' => $this->title]),
+                'deleted' => __('activity.opportunity_deleted', ['title' => $this->title]),
+                default => __('activity.opportunity_event', ['event' => $eventName, 'title' => $this->title]),
             });
     }
 

@@ -83,6 +83,7 @@ class User extends Authenticatable implements HasMedia
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('users')
             ->logOnly(['name', 'email', 'phone', 'job_title_id', 'status', 'joining_date'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
@@ -113,5 +114,21 @@ class User extends Authenticatable implements HasMedia
     public function createdLeads(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(\App\Models\Lead::class, 'created_by');
+    }
+
+    /**
+     * Opportunities assigned to this user.
+     */
+    public function assignedOpportunities(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Opportunity::class, 'assigned_to');
+    }
+
+    /**
+     * Opportunities created by this user.
+     */
+    public function createdOpportunities(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Opportunity::class, 'created_by');
     }
 }

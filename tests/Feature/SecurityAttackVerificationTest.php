@@ -38,7 +38,7 @@ class SecurityAttackVerificationTest extends TestCase
         $res = $this->provisioningService->provision([
             'name' => 'Security Guard Enterprise',
             'slug' => $this->slug,
-            'company_code' => 'SECG-' . rand(100, 999),
+            'company_code' => 'SECG-' . uniqid(),
             'domain' => $this->slug . '.localhost',
         ], [
             'name' => 'Sec Owner',

@@ -50,6 +50,7 @@ class SettingController extends Controller
         }
 
         activity('settings')
+            ->event('updated')
             ->causedBy(auth()->user())
             ->log(__('activity.settings_updated'));
 

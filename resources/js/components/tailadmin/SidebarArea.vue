@@ -71,6 +71,16 @@
               <span>{{ $t('nav.leads') }}</span>
             </router-link>
           </li>
+          <li>
+            <router-link
+              to="/opportunities"
+              active-class="bg-[#00C896]/10 text-[#00A87E] dark:bg-[#00C896]/15 dark:text-[#00C896] font-bold shadow-xs"
+              class="group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800/60 transition-colors"
+            >
+              <Target class="h-4 w-4 shrink-0 text-[#00C896]" />
+              <span>{{ $t('nav.opportunities') }}</span>
+            </router-link>
+          </li>
         </ul>
       </div>
 
@@ -165,6 +175,7 @@ import {
   ShieldCheck,
   Activity,
   Settings,
+  Target,
   X,
 } from 'lucide-vue-next';
 

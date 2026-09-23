@@ -31,7 +31,7 @@ class UserAndRoleManagementTest extends TestCase
         $res = app(TenantProvisioningService::class)->provision([
             'name' => 'Roles Test Company',
             'slug' => $this->slug,
-            'company_code' => 'ROLES-' . rand(10, 99),
+            'company_code' => 'ROLES-' . uniqid(),
             'domain' => $this->slug . '.localhost',
         ], [
             'name' => 'Owner Account',

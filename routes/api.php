@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\JobTitleController;
 use App\Http\Controllers\Api\LeadController;
+use App\Http\Controllers\Api\OpportunityController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\UserController;
@@ -78,8 +79,22 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::put('/{id}', [LeadController::class, 'update']);
         Route::delete('/{ids}', [LeadController::class, 'destroy']);
         Route::post('/{id}/convert', [LeadController::class, 'convert']);
+        Route::post('/{id}/convert-to-opportunity', [LeadController::class, 'convertToOpportunity']);
         Route::post('/{id}/assign', [LeadController::class, 'assign']);
         Route::post('/{id}/qualify', [LeadController::class, 'qualify']);
+    });
+
+    // Opportunities Management (Commercial Pursuit Layer)
+    Route::prefix('opportunities')->group(function () {
+        Route::get('/schema', [OpportunityController::class, 'schema']);
+        Route::get('/', [OpportunityController::class, 'index']);
+        Route::post('/', [OpportunityController::class, 'store']);
+        Route::post('/convert-from-lead/{leadId}', [OpportunityController::class, 'convertFromLead']);
+        Route::get('/{id}', [OpportunityController::class, 'show']);
+        Route::put('/{id}', [OpportunityController::class, 'update']);
+        Route::delete('/{ids}', [OpportunityController::class, 'destroy']);
+        Route::post('/{id}/assign', [OpportunityController::class, 'assign']);
+        Route::post('/{id}/stage', [OpportunityController::class, 'changeStage']);
     });
 
     // Roles & Permissions Management

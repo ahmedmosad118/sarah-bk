@@ -40,6 +40,14 @@ return [
     'job_title_deleted' => 'Job title :name deleted',
     'job_title_event' => 'Action :event on job title :name',
 
+    'opportunity_converted_from_lead' => 'Converted lead (:lead) to new opportunity (:title)',
+    'opportunity_assigned' => 'Assigned opportunity (:title) to specialist (:user)',
+    'opportunity_stage_changed' => 'Updated opportunity (:title) stage to (:stage)',
+    'opportunity_created' => 'New opportunity (:title) created',
+    'opportunity_updated' => 'Opportunity (:title) details updated',
+    'opportunity_deleted' => 'Opportunity (:title) was deleted',
+    'opportunity_event' => 'Action :event on opportunity :title',
+
     'setting_created' => 'Setting :key created',
     'setting_updated' => 'Setting :key updated',
     'setting_event' => 'Action :event on setting :key',

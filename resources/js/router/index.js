@@ -9,6 +9,7 @@ import DashboardView from '../views/dashboard/DashboardView.vue';
 import UsersView from '../views/team/UsersView.vue';
 import CustomersView from '../views/customers/CustomersView.vue';
 import LeadsView from '../views/leads/LeadsView.vue';
+import OpportunitiesView from '../views/opportunities/OpportunitiesView.vue';
 import JobTitlesView from '../views/team/JobTitlesView.vue';
 import RolesView from '../views/team/RolesView.vue';
 import ActivityLogView from '../views/activities/ActivityLogView.vue';
@@ -59,6 +60,11 @@ const routes = [
         path: 'leads',
         name: 'leads',
         component: LeadsView,
+      },
+      {
+        path: 'opportunities',
+        name: 'opportunities',
+        component: OpportunitiesView,
       },
       {
         path: 'team/users',

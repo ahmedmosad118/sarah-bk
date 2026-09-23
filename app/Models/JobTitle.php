@@ -35,6 +35,7 @@ class JobTitle extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('job_titles')
             ->logOnly(['name', 'name_ar', 'name_en', 'code', 'description', 'is_active'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()

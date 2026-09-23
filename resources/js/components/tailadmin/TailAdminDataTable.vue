@@ -109,7 +109,7 @@
               :class="col.cellClass || ''"
             >
               <slot :name="`col-${col.name}`" :item="item" :value="item[col.name]">
-                {{ item[col.name] !== null && item[col.name] !== undefined ? item[col.name] : '—' }}
+                {{ formatCellValue(item[col.name]) }}
               </slot>
             </td>
 
@@ -176,7 +176,19 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Search, Plus, Pencil, Trash2, Inbox, ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { isIsoDateString, formatDate } from '../../utils/date';
+
+const { locale } = useI18n();
+
+const formatCellValue = (val) => {
+  if (val === null || val === undefined || val === '') return '—';
+  if (isIsoDateString(val)) {
+    return formatDate(val, locale.value);
+  }
+  return val;
+};
 
 const props = defineProps({
   columns: {

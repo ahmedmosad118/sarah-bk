@@ -36,7 +36,7 @@ class TenantProvisioningTest extends TestCase
         $tenantData = [
             'name' => 'شركة الاختبار للمقاولات',
             'slug' => $tenantSlug,
-            'company_code' => 'TEST-' . rand(100, 999),
+            'company_code' => 'TEST-' . uniqid(),
             'domain' => $tenantSlug . '.localhost',
             'plan' => 'enterprise',
         ];

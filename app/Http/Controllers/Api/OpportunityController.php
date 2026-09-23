@@ -16,74 +16,68 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class LeadController extends CRUDController
+class OpportunityController extends CRUDController
 {
-    protected string $model = Lead::class;
+    protected string $model = Opportunity::class;
     protected array $searchable = ['title', 'description', 'notes'];
-    protected array $with = ['customer', 'assignedUser', 'creator'];
+    protected array $with = ['customer', 'lead', 'assignedUser', 'creator'];
     protected string $defaultSortBy = 'id';
     protected string $defaultSortOrder = 'desc';
 
     protected function inputMaker(): InputMaker
     {
         return InputMaker::make()
-            ->title('leads.title')
-            ->singularTitle('leads.singular')
-            ->model(Lead::class)
+            ->title('opportunities.title')
+            ->singularTitle('opportunities.singular')
+            ->model(Opportunity::class)
             ->fields([
-                Field::select('customer_id', 'leads.customer', [])
+                Field::select('customer_id', 'opportunities.customer', [])
                     ->required()
                     ->col(6),
 
-                Field::text('title', 'leads.leadTitle')
+                Field::text('title', 'opportunities.opportunityTitle')
                     ->required()
                     ->col(6),
 
-                Field::select('source', 'leads.source', [
-                    ['value' => 'Facebook', 'label' => 'leads.sourceFacebook'],
-                    ['value' => 'Instagram', 'label' => 'leads.sourceInstagram'],
-                    ['value' => 'Google', 'label' => 'leads.sourceGoogle'],
-                    ['value' => 'Website', 'label' => 'leads.sourceWebsite'],
-                    ['value' => 'WhatsApp', 'label' => 'leads.sourceWhatsApp'],
-                    ['value' => 'Referral', 'label' => 'leads.sourceReferral'],
-                    ['value' => 'Phone', 'label' => 'leads.sourcePhone'],
-                    ['value' => 'Walk-in', 'label' => 'leads.sourceWalkIn'],
-                    ['value' => 'Other', 'label' => 'leads.sourceOther'],
-                ])->default('Other')->col(6),
-
-                Field::select('assigned_to', 'leads.assignedTo', [])
+                Field::select('lead_id', 'opportunities.lead', [])
                     ->col(6),
 
-                Field::textarea('description', 'leads.description')
+                Field::select('stage', 'opportunities.stage', [
+                    ['value' => 'New', 'label' => 'opportunities.stageNew'],
+                    ['value' => 'Qualified', 'label' => 'opportunities.stageQualified'],
+                    ['value' => 'Proposal', 'label' => 'opportunities.stageProposal'],
+                    ['value' => 'Negotiation', 'label' => 'opportunities.stageNegotiation'],
+                    ['value' => 'Won', 'label' => 'opportunities.stageWon'],
+                    ['value' => 'Lost', 'label' => 'opportunities.stageLost'],
+                ])->default('New')->col(6),
+
+                Field::number('estimated_value', 'opportunities.estimatedValue')
+                    ->col(6),
+
+                Field::select('assigned_to', 'opportunities.assignedTo', [])
+                    ->col(6),
+
+                Field::date('expected_start_date', 'opportunities.expectedStartDate')
+                    ->col(6),
+
+                Field::date('expected_close_date', 'opportunities.expectedCloseDate')
+                    ->col(6),
+
+                Field::textarea('description', 'opportunities.description')
                     ->col(12),
 
-                Field::textarea('notes', 'leads.notes')
+                Field::textarea('notes', 'opportunities.notes')
                     ->col(12),
-
-                Field::select('status', 'common.status', [
-                    ['value' => 'New', 'label' => 'leads.statusNew'],
-                    ['value' => 'Contacted', 'label' => 'leads.statusContacted'],
-                    ['value' => 'Qualified', 'label' => 'leads.statusQualified'],
-                    ['value' => 'Unqualified', 'label' => 'leads.statusUnqualified'],
-                    ['value' => 'Converted', 'label' => 'leads.statusConverted'],
-                    ['value' => 'Lost', 'label' => 'leads.statusLost'],
-                ])->default('New')->hiddenInForm(),
-
-                Field::number('estimated_value', 'leads.estimatedValue')
-                    ->hiddenInForm(),
-
-                Field::date('expected_start_date', 'leads.expectedStartDate')
-                    ->hiddenInForm(),
             ]);
     }
 
     public function index(Request $request): JsonResponse
     {
-        $this->authorizePermission('leads.view');
+        $this->authorizePermission('opportunities.view');
 
         $query = $this->query();
 
-        // 1. Search Query (supports title, description, notes, and related customer fields)
+        // 1. Search Query (supports title, description, notes, customer name, phone, email, company)
         if ($search = $request->input('search')) {
             $query->where(function (Builder $q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
@@ -98,29 +92,30 @@ class LeadController extends CRUDController
             });
         }
 
-        // 2. Filter by Status
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        // 2. Filter by Stage
+        if ($request->filled('stage')) {
+            $query->where('stage', $request->stage);
         }
 
-        // 3. Filter by Source
-        if ($request->filled('source')) {
-            $query->where('source', $request->source);
-        }
-
-        // 4. Filter by Customer
+        // 3. Filter by Customer
         if ($request->filled('customer_id')) {
             $query->where('customer_id', $request->customer_id);
         }
 
-        // 5. Filter by Assigned User
+        // 4. Filter by Assigned User
         if ($request->filled('assigned_to')) {
             $query->where('assigned_to', $request->assigned_to);
         }
 
-        // 6. Sorting (SQL Injection Whitelisting & Protection)
+        // 5. Filter by Source Lead
+        if ($request->filled('lead_id')) {
+            $query->where('lead_id', $request->lead_id);
+        }
+
+        // 6. Sorting (Safe SQL Injection Whitelisting)
         $rawSortBy = (string) $request->input('sort_by', $this->defaultSortBy);
-        $sortBy = preg_match('/^[a-zA-Z0-9_]+$/', $rawSortBy) ? $rawSortBy : $this->defaultSortBy;
+        $allowedSorts = ['id', 'title', 'stage', 'estimated_value', 'expected_start_date', 'expected_close_date', 'created_at'];
+        $sortBy = in_array($rawSortBy, $allowedSorts, true) ? $rawSortBy : $this->defaultSortBy;
 
         $rawSortOrder = strtolower((string) $request->input('sort_order', $this->defaultSortOrder));
         $sortOrder = in_array($rawSortOrder, ['asc', 'desc'], true) ? $rawSortOrder : 'desc';
@@ -132,16 +127,17 @@ class LeadController extends CRUDController
         $perPage = min(max($rawPerPage, 1), 100);
         $paginated = $query->paginate($perPage);
 
-        // High Performance Stats Summary using direct SQL counts
+        // High Performance Stats Summary via SQL aggregation
         $stats = [
-            'total' => Lead::count(),
-            'new' => Lead::where('status', 'New')->count(),
-            'contacted' => Lead::where('status', 'Contacted')->count(),
-            'qualified' => Lead::where('status', 'Qualified')->count(),
-            'unqualified' => Lead::where('status', 'Unqualified')->count(),
-            'converted' => Lead::where('status', 'Converted')->count(),
-            'lost' => Lead::where('status', 'Lost')->count(),
-            'total_estimated_value' => (float) Lead::sum('estimated_value'),
+            'total' => Opportunity::count(),
+            'new' => Opportunity::where('stage', 'New')->count(),
+            'qualified' => Opportunity::where('stage', 'Qualified')->count(),
+            'proposal' => Opportunity::where('stage', 'Proposal')->count(),
+            'negotiation' => Opportunity::where('stage', 'Negotiation')->count(),
+            'won' => Opportunity::where('stage', 'Won')->count(),
+            'lost' => Opportunity::where('stage', 'Lost')->count(),
+            'total_estimated_value' => (float) Opportunity::sum('estimated_value'),
+            'won_estimated_value' => (float) Opportunity::where('stage', 'Won')->sum('estimated_value'),
         ];
 
         return response()->json([
@@ -160,61 +156,38 @@ class LeadController extends CRUDController
 
     public function show(int|string $id): JsonResponse
     {
-        $this->authorizePermission('leads.view');
+        $this->authorizePermission('opportunities.view');
         return parent::show($id);
     }
 
     public function store(Request $request): JsonResponse
     {
-        $this->authorizePermission('leads.create');
+        $this->authorizePermission('opportunities.create');
         return parent::store($request);
     }
 
     public function update(Request $request, int|string $id): JsonResponse
     {
-        $this->authorizePermission('leads.update');
+        $this->authorizePermission('opportunities.update');
         return parent::update($request, $id);
     }
 
     public function destroy(int|string|Request $ids): JsonResponse
     {
-        $this->authorizePermission('leads.delete');
+        $this->authorizePermission('opportunities.delete');
         return parent::destroy($ids);
     }
 
     /**
-     * Convert lead status to Converted.
+     * Convert an eligible Lead to a new qualified Opportunity atomically.
      */
-    public function convert(Request $request, int|string $id): JsonResponse
+    public function convertFromLead(Request $request, int|string $leadId): JsonResponse
     {
-        $this->authorizePermission('leads.convert');
+        $this->authorizePermission(['opportunities.convert', 'leads.convert']);
 
-        $lead = Lead::findOrFail($id);
-        $lead->status = 'Converted';
-        $lead->save();
+        $lead = Lead::findOrFail($leadId);
 
-        activity('commercial')
-            ->event('updated')
-            ->performedOn($lead)
-            ->causedBy(auth()->user())
-            ->log(__('activity.lead_converted', ['title' => $lead->title]));
-
-        return response()->json([
-            'success' => true,
-            'message' => __('messages.lead_converted_success'),
-            'data' => $lead->fresh($this->with),
-        ]);
-    }
-
-    /**
-     * Convert lead to Opportunity atomically with duplicate prevention.
-     */
-    public function convertToOpportunity(Request $request, int|string $id): JsonResponse
-    {
-        $this->authorizePermission(['leads.convert', 'opportunities.convert']);
-
-        $lead = Lead::findOrFail($id);
-
+        // Prevent duplicate conversions
         if ($lead->status === 'Converted' || Opportunity::where('lead_id', $lead->id)->exists()) {
             throw ValidationException::withMessages([
                 'lead_id' => [__('messages.lead_already_converted')],
@@ -247,15 +220,18 @@ class LeadController extends CRUDController
                 'notes' => array_key_exists('notes', $validated) ? $validated['notes'] : $lead->notes,
             ]);
 
+            // Transition lead status to Converted
             $lead->status = 'Converted';
             $lead->save();
 
+            // Activity log on lead
             activity('commercial')
                 ->event('updated')
                 ->performedOn($lead)
                 ->causedBy(auth()->user())
                 ->log(__('activity.lead_converted', ['title' => $lead->title]));
 
+            // Activity log on opportunity
             activity('commercial')
                 ->event('created')
                 ->performedOn($opp)
@@ -268,108 +244,115 @@ class LeadController extends CRUDController
         return response()->json([
             'success' => true,
             'message' => __('messages.opportunity_converted_success'),
-            'data' => $opportunity->fresh(['customer', 'lead', 'assignedUser', 'creator']),
+            'data' => $opportunity->fresh($this->with),
         ], 201);
     }
 
     /**
-     * Assign lead to a specific tenant user.
+     * Assign Opportunity to a specific tenant user.
      */
     public function assign(Request $request, int|string $id): JsonResponse
     {
-        $this->authorizePermission('leads.assign');
+        $this->authorizePermission('opportunities.assign');
 
         $validated = $request->validate([
             'assigned_to' => ['required', 'integer', 'exists:users,id'],
         ]);
 
-        $lead = Lead::findOrFail($id);
-        $lead->assigned_to = $validated['assigned_to'];
-        $lead->save();
+        $opportunity = Opportunity::findOrFail($id);
+        $opportunity->assigned_to = $validated['assigned_to'];
+        $opportunity->save();
 
         $assignedUser = User::find($validated['assigned_to']);
 
         activity('commercial')
             ->event('updated')
-            ->performedOn($lead)
+            ->performedOn($opportunity)
             ->causedBy(auth()->user())
-            ->log(__('activity.lead_assigned', ['title' => $lead->title, 'user' => $assignedUser?->name]));
+            ->log(__('activity.opportunity_assigned', ['title' => $opportunity->title, 'user' => $assignedUser?->name]));
 
         return response()->json([
             'success' => true,
-            'message' => __('messages.lead_assigned_success'),
-            'data' => $lead->fresh($this->with),
+            'message' => __('messages.opportunity_assigned_success'),
+            'data' => $opportunity->fresh($this->with),
         ]);
     }
 
     /**
-     * Qualify and enrich lead with commercial specifications and pipeline progression.
+     * Update opportunity stage with pipeline tracking.
      */
-    public function qualify(Request $request, int|string $id): JsonResponse
+    public function changeStage(Request $request, int|string $id): JsonResponse
     {
-        $this->authorizePermission(['leads.update', 'leads.convert']);
+        $this->authorizePermission('opportunities.update');
 
         $validated = $request->validate([
-            'status' => ['nullable', 'string', 'in:New,Contacted,Qualified,Unqualified,Converted,Lost'],
-            'estimated_value' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
-            'expected_start_date' => ['nullable', 'date'],
-            'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
+            'stage' => ['required', 'string', 'in:New,Qualified,Proposal,Negotiation,Won,Lost'],
             'notes' => ['nullable', 'string', 'max:5000'],
         ]);
 
-        $lead = Lead::findOrFail($id);
-        $lead->fill(array_filter($validated, fn($val) => $val !== null));
-        $lead->save();
+        $opportunity = Opportunity::findOrFail($id);
+        $oldStage = $opportunity->stage;
+        $opportunity->stage = $validated['stage'];
+        if (isset($validated['notes'])) {
+            $opportunity->notes = $validated['notes'];
+        }
+        $opportunity->save();
 
         activity('commercial')
             ->event('updated')
-            ->performedOn($lead)
+            ->performedOn($opportunity)
             ->causedBy(auth()->user())
-            ->log(__('activity.lead_qualified', ['title' => $lead->title, 'status' => $lead->status]));
+            ->withProperties(['old_stage' => $oldStage, 'new_stage' => $opportunity->stage])
+            ->log(__('activity.opportunity_stage_changed', ['title' => $opportunity->title, 'stage' => $opportunity->stage]));
 
         return response()->json([
             'success' => true,
-            'message' => __('messages.lead_qualified_success'),
-            'data' => $lead->fresh($this->with),
+            'message' => __('messages.opportunity_stage_updated_success'),
+            'data' => $opportunity->fresh($this->with),
         ]);
     }
 
     protected function beforeSave(Model $model, Request $request, bool $isUpdate): void
     {
-        /** @var Lead $model */
+        /** @var Opportunity $model */
         if (!$isUpdate) {
             if (empty($model->created_by)) {
                 $model->created_by = auth()->id();
             }
-            if (empty($model->status)) {
-                $model->status = 'New';
-            }
-            if (empty($model->source)) {
-                $model->source = 'Other';
+            if (empty($model->stage)) {
+                $model->stage = 'New';
             }
         }
     }
 
     protected function customValidationRules(bool $isUpdate = false, mixed $currentId = null): array
     {
-        return [
+        $rules = [
             'customer_id' => ['required', 'integer', 'exists:customers,id'],
+            'lead_id' => ['nullable', 'integer', 'exists:leads,id'],
             'title' => ['required', 'string', 'max:200'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'source' => ['nullable', 'string', 'in:Facebook,Instagram,Google,Website,WhatsApp,Referral,Phone,Walk-in,Other'],
-            'status' => ['nullable', 'string', 'in:New,Contacted,Qualified,Unqualified,Converted,Lost'],
+            'stage' => ['nullable', 'string', 'in:New,Qualified,Proposal,Negotiation,Won,Lost'],
             'estimated_value' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
             'expected_start_date' => ['nullable', 'date'],
+            'expected_close_date' => ['nullable', 'date'],
             'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'documents' => ['nullable'],
             'documents.*' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp', 'max:5120'],
         ];
+
+        // Ensure expected_close_date is not before expected_start_date when both are provided
+        if (request()->filled('expected_start_date') && request()->filled('expected_close_date')) {
+            $rules['expected_close_date'][] = 'after_or_equal:expected_start_date';
+        }
+
+        return $rules;
     }
 
     protected function afterSave(Model $model, Request $request, bool $isUpdate): void
     {
-        /** @var Lead $model */
+        /** @var Opportunity $model */
         if ($request->hasFile('documents')) {
             $files = is_array($request->file('documents')) ? $request->file('documents') : [$request->file('documents')];
             foreach ($files as $file) {

@@ -37,6 +37,16 @@ return [
     'lead_converted_success' => 'Lead converted successfully',
     'lead_assigned_success' => 'Lead assigned successfully',
     'lead_qualified_success' => 'Lead qualified and updated successfully',
+    'lead_already_converted' => 'This lead has already been converted to an opportunity and cannot be converted again.',
+    'lead_not_qualified_for_conversion' => 'The lead must be qualified before converting to an opportunity.',
+
+    // Opportunities
+    'opportunity_created_success' => 'Opportunity created successfully',
+    'opportunity_updated_success' => 'Opportunity updated successfully',
+    'opportunity_deleted_success' => 'Opportunity deleted successfully',
+    'opportunity_assigned_success' => 'Opportunity assigned successfully',
+    'opportunity_stage_updated_success' => 'Opportunity stage updated successfully',
+    'opportunity_converted_success' => 'Lead converted and Opportunity created successfully',
 
     // Settings
     'settings_saved_success' => 'Settings saved successfully',

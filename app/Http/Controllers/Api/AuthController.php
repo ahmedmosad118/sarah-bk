@@ -45,6 +45,7 @@ class AuthController extends Controller
 
         // Log Activity
         activity('auth')
+            ->event('login')
             ->performedOn($user)
             ->causedBy($user)
             ->log(__('activity.login'));
@@ -132,6 +133,7 @@ class AuthController extends Controller
 
         if ($user) {
             activity('auth')
+                ->event('logout')
                 ->performedOn($user)
                 ->causedBy($user)
                 ->log(__('activity.logout'));
@@ -169,6 +171,7 @@ class AuthController extends Controller
         ]);
 
         activity('auth')
+            ->event('updated')
             ->performedOn($user)
             ->causedBy($user)
             ->log(__('activity.password_changed'));
@@ -200,6 +203,7 @@ class AuthController extends Controller
         ]);
 
         activity('auth')
+            ->event('updated')
             ->performedOn($user)
             ->causedBy($user)
             ->log(__('activity.profile_updated'));
@@ -246,6 +250,7 @@ class AuthController extends Controller
             $user->refresh();
 
             activity('auth')
+                ->event('updated')
                 ->performedOn($user)
                 ->causedBy($user)
                 ->log(__('activity.avatar_updated'));

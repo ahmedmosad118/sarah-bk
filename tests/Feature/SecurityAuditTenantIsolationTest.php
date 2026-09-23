@@ -53,7 +53,7 @@ class SecurityAuditTenantIsolationTest extends TestCase
         $resA = $this->provisioningService->provision([
             'name' => 'Sec Alpha Construction',
             'slug' => $this->slugA,
-            'company_code' => 'ALPH-' . rand(100, 999),
+            'company_code' => 'ALPH-' . uniqid(),
             'domain' => $this->slugA . '.localhost',
         ], [
             'name' => 'Alpha Owner',
@@ -68,7 +68,7 @@ class SecurityAuditTenantIsolationTest extends TestCase
         $resB = $this->provisioningService->provision([
             'name' => 'Sec Beta Fit-Out',
             'slug' => $this->slugB,
-            'company_code' => 'BETA-' . rand(100, 999),
+            'company_code' => 'BETA-' . uniqid(),
             'domain' => $this->slugB . '.localhost',
         ], [
             'name' => 'Beta Owner',

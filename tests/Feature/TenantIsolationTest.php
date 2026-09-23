@@ -33,7 +33,7 @@ class TenantIsolationTest extends TestCase
         $resA = $provisioningService->provision([
             'name' => 'Company Alpha',
             'slug' => $slugA,
-            'company_code' => 'ALPHA-' . rand(1000, 9999),
+            'company_code' => 'ALPHA-' . uniqid(),
             'domain' => $slugA . '.localhost',
         ], [
             'name' => 'Alpha Owner',
@@ -45,7 +45,7 @@ class TenantIsolationTest extends TestCase
         $resB = $provisioningService->provision([
             'name' => 'Company Beta',
             'slug' => $slugB,
-            'company_code' => 'BETA-' . rand(1000, 9999),
+            'company_code' => 'BETA-' . uniqid(),
             'domain' => $slugB . '.localhost',
         ], [
             'name' => 'Beta Owner',

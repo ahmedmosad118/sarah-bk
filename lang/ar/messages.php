@@ -37,6 +37,16 @@ return [
     'lead_converted_success' => 'تم تحويل العميل المحتمل بنجاح',
     'lead_assigned_success' => 'تم إسناد العميل المحتمل بنجاح',
     'lead_qualified_success' => 'تم تحديث وتأهيل العميل المحتمل بنجاح',
+    'lead_already_converted' => 'تم تحويل هذا الطلب إلى فرصة بالفعل.',
+    'lead_not_qualified_for_conversion' => 'يجب تأهيل الطلب أولاً قبل تحويله إلى فرصة.',
+
+    // Opportunities
+    'opportunity_created_success' => 'تم إضافة الفرصة بنجاح',
+    'opportunity_updated_success' => 'تم تحديث بيانات الفرصة بنجاح',
+    'opportunity_deleted_success' => 'تم حذف الفرصة بنجاح',
+    'opportunity_assigned_success' => 'تم إسناد الفرصة بنجاح',
+    'opportunity_stage_updated_success' => 'تم تحديث مرحلة الفرصة بنجاح',
+    'opportunity_converted_success' => 'تم تحويل الطلب وإضافة الفرصة بنجاح',
 
     // Settings
     'settings_saved_success' => 'تم حفظ الإعدادات بنجاح',

@@ -217,15 +217,15 @@
             <Eye class="h-3.5 w-3.5" />
           </button>
 
-          <!-- Convert to Client / Converted Action -->
+          <!-- Convert to Opportunity Action -->
           <button
             v-if="item.status !== 'Converted'"
             type="button"
-            @click="convertLead(item)"
-            class="p-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-400 transition-colors cursor-pointer"
-            :title="$t('leads.convertAction')"
+            @click="openConvertOpportunityModal(item)"
+            class="p-1.5 rounded-lg text-gray-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 dark:hover:text-purple-400 transition-colors cursor-pointer"
+            :title="$t('leads.convertToOpportunity')"
           >
-            <Award class="h-3.5 w-3.5" />
+            <Target class="h-3.5 w-3.5" />
           </button>
 
           <!-- Edit -->
@@ -390,17 +390,21 @@
             </div>
           </div>
 
-          <!-- Interactive Pipeline Stage Stepper -->
+          <!-- Quick Status Changer -->
           <div class="pt-2 border-t border-gray-200/60 dark:border-gray-700/60">
-            <p class="text-[11px] font-bold text-gray-400 mb-1.5">{{ $t('leads.pipelineProgress') }}</p>
-            <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5 text-xs font-bold">
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-xs font-bold text-gray-500 dark:text-gray-400">{{ $t('leads.pipelineProgress') }} (تحديث الحالة مباشرة)</p>
+              <span v-if="statusUpdateLoading" class="text-[11px] text-[#00C896] animate-pulse font-medium">جاري التحديث...</span>
+            </div>
+            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2 text-xs font-bold">
               <button
-                v-for="st in ['New', 'Contacted', 'Qualified', 'Converted', 'Unqualified', 'Lost']"
+                v-for="st in ['New', 'Contacted', 'Qualified', 'Unqualified', 'Lost']"
                 :key="st"
                 type="button"
-                @click="qualificationForm.status = st"
-                class="py-1.5 px-2 rounded-xl text-center text-[11px] transition-all cursor-pointer border"
-                :class="qualificationForm.status === st ? 'border-[#00C896] bg-[#00C896] text-white shadow-xs' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
+                @click="updateLeadStatus(st)"
+                :disabled="statusUpdateLoading || selectedLead.status === 'Converted'"
+                class="py-2 px-2.5 rounded-xl text-center text-xs font-bold transition-all cursor-pointer border disabled:opacity-50"
+                :class="selectedLead.status === st ? 'border-[#00C896] bg-[#00C896] text-white shadow-xs' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
               >
                 {{ getStatusLabel(st) }}
               </button>
@@ -456,92 +460,193 @@
         <!-- Description (تفاصيل الطلب) -->
         <div v-if="selectedLead.description" class="space-y-1">
           <h4 class="text-xs font-bold text-gray-700 dark:text-gray-300">{{ $t('leads.description') }}</h4>
-          <p class="text-xs text-gray-600 dark:text-gray-400 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 whitespace-pre-line">
+          <p class="text-xs text-gray-600 dark:text-gray-400 p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 whitespace-pre-line leading-relaxed">
             {{ selectedLead.description }}
           </p>
         </div>
 
-        <!-- Progressive Commercial Qualification Card -->
-        <div class="p-4 rounded-2xl border border-[#00C896]/30 bg-[#00C896]/5 dark:bg-[#00C896]/10 space-y-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <Sparkles class="h-4 w-4 text-[#00A87E] dark:text-[#00C896]" />
-              <h4 class="text-xs font-black text-gray-900 dark:text-white">{{ $t('leads.qualificationSection') }}</h4>
-            </div>
-            <span class="text-[10px] font-bold text-gray-400 hidden sm:inline">{{ $t('leads.qualificationDesc') }}</span>
-          </div>
+        <!-- Lead Internal Notes -->
+        <div v-if="selectedLead.notes" class="space-y-1">
+          <h4 class="text-xs font-bold text-gray-700 dark:text-gray-300">{{ $t('leads.notes') }}</h4>
+          <p class="text-xs text-gray-600 dark:text-gray-400 p-3 rounded-xl bg-amber-50/40 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/40 whitespace-pre-line">
+            {{ selectedLead.notes }}
+          </p>
+        </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <!-- Estimated Value -->
-            <div>
-              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                {{ $t('leads.estimatedValue') }}
-              </label>
-              <div class="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  v-model="qualificationForm.estimated_value"
-                  placeholder="0.00"
-                  class="w-full rounded-xl border border-gray-200 bg-white py-2 px-3 text-xs font-bold font-mono text-gray-900 outline-hidden focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  dir="ltr"
-                />
-                <span class="absolute top-2 left-3 text-[10px] font-bold text-[#00C896]">{{ $t('leads.currencyEGP') }}</span>
-              </div>
-            </div>
-
-            <!-- Expected Start Date -->
-            <div>
-              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                {{ $t('leads.expectedStartDate') }}
-              </label>
-              <input
-                type="date"
-                v-model="qualificationForm.expected_start_date"
-                class="w-full rounded-xl border border-gray-200 bg-white py-2 px-3 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              />
-            </div>
-
-            <!-- Assigned Specialist -->
-            <div>
-              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                {{ $t('leads.assignedTo') }}
-              </label>
-              <SearchableSelect
-                :model-value="qualificationForm.assigned_to"
-                :options="userOptions"
-                :placeholder="$t('leads.selectAssignee')"
-                :clearable="true"
-                @update:model-value="qualificationForm.assigned_to = $event"
-              />
-            </div>
-          </div>
-
-          <!-- Internal Notes & Qualification Notes -->
+        <!-- Modal Actions Footer: Convert to Opportunity or Close -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
           <div>
-            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-              {{ $t('leads.notes') }}
-            </label>
-            <textarea
-              v-model="qualificationForm.notes"
-              rows="2"
-              class="w-full rounded-xl border border-gray-200 bg-white py-2 px-3 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              placeholder="سجل ملاحظات مكالمة التأهيل، تفاصيل المقايسة المبدئية، متطلبات التشطيب..."
-            ></textarea>
+            <button
+              v-if="selectedLead.status !== 'Converted'"
+              type="button"
+              @click="openConvertOpportunityModal(selectedLead)"
+              class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+            >
+              <Target class="h-4 w-4" />
+              <span>{{ $t('leads.convertToOpportunity') }}</span>
+            </button>
+            <span
+              v-else
+              class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-2 rounded-xl"
+            >
+              <CheckCircle2 class="h-4 w-4 text-emerald-500" />
+              <span>{{ $t('leads.alreadyConvertedNotice') }}</span>
+            </span>
           </div>
 
-          <!-- Save Qualification Button -->
-          <div class="flex justify-end">
-            <button
-              type="button"
-              @click="saveQualification"
-              :disabled="qualificationLoading"
-              class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#00C896] text-white hover:bg-[#00A87E] text-xs font-black shadow-xs transition-all cursor-pointer disabled:opacity-50"
+          <button
+            type="button"
+            @click="showDetailsModal = false"
+            class="px-5 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 text-xs font-bold dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            {{ $t('common.close') }}
+          </button>
+        </div>
+      </div>
+    </CrudModal>
+
+    <!-- 3. Convert Lead to Opportunity Modal -->
+    <CrudModal
+      :show="showConvertOpportunityModal"
+      :title="$t('leads.convertToOpportunityModalTitle')"
+      :loading="convertOpportunityLoading"
+      @close="showConvertOpportunityModal = false"
+      @save="submitConvertToOpportunity"
+    >
+      <div class="space-y-4">
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          {{ $t('leads.convertToOpportunityDesc') }}
+        </p>
+
+        <!-- Customer Readonly Reference -->
+        <div v-if="convertLeadTarget?.customer" class="p-3 rounded-xl bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 text-xs">
+          <span class="text-gray-400 block text-[11px]">{{ $t('opportunities.customer') }}</span>
+          <span class="font-bold text-gray-900 dark:text-white">
+            {{ convertLeadTarget.customer.name }}
+            <span v-if="convertLeadTarget.customer.company_name" class="text-gray-500">({{ convertLeadTarget.customer.company_name }})</span>
+          </span>
+        </div>
+
+        <!-- Opportunity Title -->
+        <div>
+          <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+            {{ $t('opportunities.opportunityTitle') }} <span class="text-rose-500">*</span>
+          </label>
+          <input
+            type="text"
+            v-model="convertOpportunityForm.title"
+            required
+            class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
+            :placeholder="$t('opportunities.opportunityTitlePlaceholder')"
+          />
+          <p v-if="convertOpportunityErrors.title" class="mt-1 text-[11px] text-rose-500 font-bold">
+            {{ convertOpportunityErrors.title[0] }}
+          </p>
+        </div>
+
+        <!-- Stage & Estimated Value -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+              {{ $t('opportunities.stage') }}
+            </label>
+            <select
+              v-model="convertOpportunityForm.stage"
+              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-bold text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white cursor-pointer"
             >
-              <CheckCircle2 class="h-3.5 w-3.5" />
-              <span>{{ qualificationLoading ? $t('common.loading') : $t('leads.saveQualification') }}</span>
-            </button>
+              <option value="New">{{ $t('opportunities.stageNew') }}</option>
+              <option value="Qualified">{{ $t('opportunities.stageQualified') }}</option>
+              <option value="Proposal">{{ $t('opportunities.stageProposal') }}</option>
+              <option value="Negotiation">{{ $t('opportunities.stageNegotiation') }}</option>
+              <option value="Won">{{ $t('opportunities.stageWon') }}</option>
+              <option value="Lost">{{ $t('opportunities.stageLost') }}</option>
+            </select>
           </div>
+
+          <div>
+            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+              {{ $t('opportunities.estimatedValue') }}
+            </label>
+            <div class="relative">
+              <input
+                type="number"
+                step="0.01"
+                v-model="convertOpportunityForm.estimated_value"
+                placeholder="0.00"
+                class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-bold font-mono text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
+                dir="ltr"
+              />
+              <span class="absolute top-2.5 left-3.5 text-[10px] font-bold text-[#00C896]">{{ $t('opportunities.currencyEGP') }}</span>
+            </div>
+            <p v-if="convertOpportunityErrors.estimated_value" class="mt-1 text-[11px] text-rose-500 font-bold">
+              {{ convertOpportunityErrors.estimated_value[0] }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Expected Start Date & Expected Close Date -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+              {{ $t('opportunities.expectedStartDate') }}
+            </label>
+            <input
+              type="date"
+              v-model="convertOpportunityForm.expected_start_date"
+              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+              {{ $t('opportunities.expectedCloseDate') }}
+            </label>
+            <input
+              type="date"
+              v-model="convertOpportunityForm.expected_close_date"
+              class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
+            />
+            <p v-if="convertOpportunityErrors.expected_close_date" class="mt-1 text-[11px] text-rose-500 font-bold">
+              {{ convertOpportunityErrors.expected_close_date[0] }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Assigned Specialist -->
+        <div>
+          <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+            {{ $t('opportunities.assignedTo') }}
+          </label>
+          <SearchableSelect
+            :model-value="convertOpportunityForm.assigned_to"
+            :options="userOptions"
+            :placeholder="$t('opportunities.selectAssignee')"
+            :clearable="true"
+            @update:model-value="convertOpportunityForm.assigned_to = $event"
+          />
+        </div>
+
+        <!-- Description & Notes -->
+        <div>
+          <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+            {{ $t('opportunities.description') }}
+          </label>
+          <textarea
+            v-model="convertOpportunityForm.description"
+            rows="2"
+            class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
+          ></textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+            {{ $t('opportunities.notes') }}
+          </label>
+          <textarea
+            v-model="convertOpportunityForm.notes"
+            rows="2"
+            class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3.5 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] focus:bg-white dark:border-gray-700 dark:bg-gray-900/40 dark:text-white"
+          ></textarea>
         </div>
       </div>
     </CrudModal>
@@ -573,6 +678,7 @@ import {
   Trash2,
   Phone,
   MessageSquare,
+  Target,
 } from 'lucide-vue-next';
 
 const { t } = useI18n();
@@ -612,17 +718,10 @@ const columns = computed(() => [
   { name: 'assigned_to', label: t('leads.assignedTo') },
 ]);
 
-// Lead View Details & Qualification Modal State
+// Lead View Details Modal State
 const showDetailsModal = ref(false);
 const selectedLead = ref(null);
-const qualificationLoading = ref(false);
-const qualificationForm = reactive({
-  status: 'New',
-  estimated_value: null,
-  expected_start_date: null,
-  assigned_to: null,
-  notes: '',
-});
+const statusUpdateLoading = ref(false);
 
 // Quick Customer Creation Modal State
 const showQuickCustomerModal = ref(false);
@@ -636,6 +735,22 @@ const quickCustomerForm = reactive({
   whatsapp: '',
   email: '',
   status: 'active',
+});
+
+// Convert Lead to Opportunity Modal State
+const showConvertOpportunityModal = ref(false);
+const convertOpportunityLoading = ref(false);
+const convertLeadTarget = ref(null);
+const convertOpportunityErrors = ref({});
+const convertOpportunityForm = reactive({
+  title: '',
+  description: '',
+  stage: 'New',
+  estimated_value: null,
+  expected_start_date: null,
+  expected_close_date: null,
+  assigned_to: null,
+  notes: '',
 });
 
 const loadDropdownOptions = async () => {
@@ -688,28 +803,23 @@ const resetFilters = () => {
 
 const openLeadDetails = (lead) => {
   selectedLead.value = lead;
-  qualificationForm.status = lead.status || 'New';
-  qualificationForm.estimated_value = lead.estimated_value;
-  qualificationForm.expected_start_date = lead.expected_start_date;
-  qualificationForm.assigned_to = lead.assigned_to;
-  qualificationForm.notes = lead.notes || '';
   showDetailsModal.value = true;
 };
 
-const saveQualification = async () => {
-  if (!selectedLead.value) return;
-  qualificationLoading.value = true;
+const updateLeadStatus = async (newStatus) => {
+  if (!selectedLead.value || selectedLead.value.status === newStatus) return;
+  statusUpdateLoading.value = true;
   try {
-    const res = await api.post(`/leads/${selectedLead.value.id}/qualify`, qualificationForm);
+    const res = await api.post(`/leads/${selectedLead.value.id}/qualify`, { status: newStatus });
     if (res.data?.success) {
-      notify.success(t('leads.qualificationSuccess'));
+      notify.success(t('messages.lead_qualified_success') || 'تم تحديث حالة العميل المحتمل بنجاح');
       selectedLead.value = res.data.data;
       crudRef.value?.loadData();
     }
   } catch (err) {
-    notify.error(err.response?.data?.message || 'Error updating qualification');
+    notify.error(err.response?.data?.message || 'Error updating lead status');
   } finally {
-    qualificationLoading.value = false;
+    statusUpdateLoading.value = false;
   }
 };
 
@@ -734,6 +844,46 @@ const convertLead = async (lead) => {
     }
   } catch (err) {
     notify.error(err.response?.data?.message || 'Failed to convert lead');
+  }
+};
+
+const openConvertOpportunityModal = (lead) => {
+  convertLeadTarget.value = lead;
+  convertOpportunityForm.title = lead.title || '';
+  convertOpportunityForm.description = lead.description || '';
+  convertOpportunityForm.stage = 'New';
+  convertOpportunityForm.estimated_value = lead.estimated_value || null;
+  convertOpportunityForm.expected_start_date = lead.expected_start_date
+    ? String(lead.expected_start_date).substring(0, 10)
+    : null;
+  convertOpportunityForm.expected_close_date = null;
+  convertOpportunityForm.assigned_to = lead.assigned_to || null;
+  convertOpportunityForm.notes = lead.notes || '';
+  convertOpportunityErrors.value = {};
+  showConvertOpportunityModal.value = true;
+};
+
+const submitConvertToOpportunity = async () => {
+  if (!convertLeadTarget.value) return;
+  convertOpportunityLoading.value = true;
+  convertOpportunityErrors.value = {};
+
+  try {
+    const res = await api.post(`/leads/${convertLeadTarget.value.id}/convert-to-opportunity`, convertOpportunityForm);
+    if (res.data?.success) {
+      notify.success(t('messages.opportunity_converted_success') || 'تم تحويل العميل المحتمل وإنشاء الفرصة التجارية بنجاح');
+      showConvertOpportunityModal.value = false;
+      showDetailsModal.value = false;
+      crudRef.value?.loadData();
+    }
+  } catch (err) {
+    if (err.response?.status === 422 && err.response.data?.errors) {
+      convertOpportunityErrors.value = err.response.data.errors;
+    } else {
+      notify.error(err.response?.data?.message || 'Error converting lead to opportunity');
+    }
+  } finally {
+    convertOpportunityLoading.value = false;
   }
 };
 

@@ -40,6 +40,14 @@ return [
     'job_title_deleted' => 'تم حذف المسمى الوظيفي :name',
     'job_title_event' => 'إجراء :event على المسمى الوظيفي :name',
 
+    'opportunity_converted_from_lead' => 'تم تحويل الطلب (:lead) إلى فرصة (:title)',
+    'opportunity_assigned' => 'تم إسناد الفرصة (:title) إلى (:user)',
+    'opportunity_stage_changed' => 'تم تغيير مرحلة الفرصة (:title) إلى (:stage)',
+    'opportunity_created' => 'تم إضافة الفرصة (:title)',
+    'opportunity_updated' => 'تم تحديث بيانات الفرصة (:title)',
+    'opportunity_deleted' => 'تم حذف الفرصة (:title)',
+    'opportunity_event' => 'إجراء :event على الفرصة :title',
+
     'setting_created' => 'تم إنشاء الإعداد :key',
     'setting_updated' => 'تم تحديث الإعداد :key',
     'setting_event' => 'إجراء :event على الإعداد :key',

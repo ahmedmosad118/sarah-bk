@@ -79,6 +79,7 @@ class RoleController extends Controller
             }
 
             activity('roles')
+                ->event('created')
                 ->performedOn($role)
                 ->causedBy(auth()->user())
                 ->log(__('activity.role_created', ['role' => $role->name]));
@@ -142,6 +143,7 @@ class RoleController extends Controller
             }
 
             activity('roles')
+                ->event('updated')
                 ->performedOn($role)
                 ->causedBy(auth()->user())
                 ->log(__('activity.role_updated', ['role' => $role->name]));
@@ -186,6 +188,7 @@ class RoleController extends Controller
         }
 
         activity('roles')
+            ->event('deleted')
             ->performedOn($role)
             ->causedBy(auth()->user())
             ->log(__('activity.role_deleted', ['role' => $role->name]));

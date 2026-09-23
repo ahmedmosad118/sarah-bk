@@ -158,6 +158,7 @@ class UserController extends CRUDController
         $statusLabel = $newStatus === 'active' ? __('activity.status_activated') : __('activity.status_deactivated');
 
         activity('users')
+            ->event('updated')
             ->performedOn($user)
             ->causedBy(auth()->user())
             ->log(__('activity.user_status_changed', ['status' => $statusLabel, 'user' => $user->name]));
@@ -196,6 +197,7 @@ class UserController extends CRUDController
             $model->syncRoles($roles);
 
             activity('roles')
+                ->event('updated')
                 ->performedOn($model)
                 ->causedBy(auth()->user())
                 ->withProperties(['assigned_roles' => $roles])

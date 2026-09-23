@@ -82,6 +82,7 @@ class Customer extends Model implements HasMedia
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('customers')
             ->logOnly(['customer_type', 'name', 'company_name', 'phone', 'whatsapp', 'email', 'address', 'status'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
@@ -104,5 +105,13 @@ class Customer extends Model implements HasMedia
     public function leads(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(\App\Models\Lead::class);
+    }
+
+    /**
+     * Opportunities associated with this customer.
+     */
+    public function opportunities(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Opportunity::class);
     }
 }

@@ -39,6 +39,7 @@ class Setting extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('settings')
             ->logOnly(['key', 'value', 'group'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
