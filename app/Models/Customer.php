@@ -114,4 +114,12 @@ class Customer extends Model implements HasMedia
     {
         return $this->hasMany(\App\Models\Opportunity::class);
     }
+
+    /**
+     * Site visits associated with this customer.
+     */
+    public function siteVisits(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\SiteVisit::class);
+    }
 }

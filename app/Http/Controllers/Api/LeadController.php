@@ -311,6 +311,9 @@ class LeadController extends CRUDController
 
         $validated = $request->validate([
             'status' => ['nullable', 'string', 'in:New,Contacted,Qualified,Unqualified,Converted,Lost'],
+            'loss_reason' => ['nullable', 'string', 'max:100'],
+            'competitor_name' => ['nullable', 'string', 'max:200'],
+            'loss_notes' => ['nullable', 'string', 'max:2000'],
             'estimated_value' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
             'expected_start_date' => ['nullable', 'date'],
             'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
@@ -358,6 +361,9 @@ class LeadController extends CRUDController
             'description' => ['nullable', 'string', 'max:5000'],
             'source' => ['nullable', 'string', 'in:Facebook,Instagram,Google,Website,WhatsApp,Referral,Phone,Walk-in,Other'],
             'status' => ['nullable', 'string', 'in:New,Contacted,Qualified,Unqualified,Converted,Lost'],
+            'loss_reason' => ['nullable', 'string', 'max:100'],
+            'competitor_name' => ['nullable', 'string', 'max:200'],
+            'loss_notes' => ['nullable', 'string', 'max:2000'],
             'estimated_value' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
             'expected_start_date' => ['nullable', 'date'],
             'assigned_to' => ['nullable', 'integer', 'exists:users,id'],

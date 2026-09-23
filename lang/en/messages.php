@@ -48,6 +48,16 @@ return [
     'opportunity_stage_updated_success' => 'Opportunity stage updated successfully',
     'opportunity_converted_success' => 'Lead converted and Opportunity created successfully',
 
+    // Site Visits (Phase 6)
+    'site_visit_created_success' => 'Site visit scheduled and created successfully',
+    'site_visit_updated_success' => 'Site visit details updated successfully',
+    'site_visit_deleted_success' => 'Site visit deleted successfully',
+    'site_visit_assigned_success' => 'Engineer assigned to site visit successfully',
+    'site_visit_scheduled_success' => 'Site visit scheduled successfully',
+    'site_visit_completed_success' => 'Site visit completed and assessment recorded successfully',
+    'site_visit_cancelled_success' => 'Site visit cancelled successfully',
+    'site_visit_photos_uploaded_success' => 'Site photos uploaded successfully',
+
     // Settings
     'settings_saved_success' => 'Settings saved successfully',
 ];

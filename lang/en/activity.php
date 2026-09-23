@@ -48,6 +48,18 @@ return [
     'opportunity_deleted' => 'Opportunity (:title) was deleted',
     'opportunity_event' => 'Action :event on opportunity :title',
 
+    // Site Visits Activity Logs
+    'site_visit_created' => 'Site visit (#:id) registered',
+    'site_visit_updated' => 'Site visit (#:id) updated',
+    'site_visit_deleted' => 'Site visit (#:id) deleted',
+    'site_visit_event' => 'Action :event on site visit (#:id)',
+    'site_visit_created_from_opportunity' => 'Created site visit (#:id) from opportunity (:opportunity)',
+    'site_visit_assigned' => 'Assigned engineer (:user) to site visit (#:id)',
+    'site_visit_scheduled' => 'Scheduled site visit (#:id) for date (:date)',
+    'site_visit_completed' => 'Completed site visit (#:id) with assessment and measurements',
+    'site_visit_cancelled' => 'Cancelled site visit (#:id)',
+    'site_visit_photos_uploaded' => 'Uploaded (:count) site photos for visit (#:id)',
+
     'setting_created' => 'Setting :key created',
     'setting_updated' => 'Setting :key updated',
     'setting_event' => 'Action :event on setting :key',

@@ -125,6 +125,14 @@
             >
               <span>{{ $t('leads.filterConverted') }}</span>
             </button>
+            <button
+              type="button"
+              @click="setStatusFilter('Lost')"
+              class="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+              :class="filterParams.status === 'Lost' ? 'bg-white text-rose-600 shadow-xs dark:bg-gray-800 dark:text-rose-400' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+            >
+              <span>{{ $t('leads.filterLost') }}</span>
+            </button>
           </div>
 
           <!-- Reset Filter Button -->
@@ -390,21 +398,17 @@
             </div>
           </div>
 
-          <!-- Quick Status Changer -->
+          <!-- Interactive Pipeline Stage Stepper -->
           <div class="pt-2 border-t border-gray-200/60 dark:border-gray-700/60">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-xs font-bold text-gray-500 dark:text-gray-400">{{ $t('leads.pipelineProgress') }} (تحديث الحالة مباشرة)</p>
-              <span v-if="statusUpdateLoading" class="text-[11px] text-[#00C896] animate-pulse font-medium">جاري التحديث...</span>
-            </div>
-            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2 text-xs font-bold">
+            <p class="text-[11px] font-bold text-gray-400 mb-1.5">{{ $t('leads.pipelineProgress') }}</p>
+            <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5 text-xs font-bold">
               <button
-                v-for="st in ['New', 'Contacted', 'Qualified', 'Unqualified', 'Lost']"
+                v-for="st in ['New', 'Contacted', 'Qualified', 'Converted', 'Unqualified', 'Lost']"
                 :key="st"
                 type="button"
-                @click="updateLeadStatus(st)"
-                :disabled="statusUpdateLoading || selectedLead.status === 'Converted'"
-                class="py-2 px-2.5 rounded-xl text-center text-xs font-bold transition-all cursor-pointer border disabled:opacity-50"
-                :class="selectedLead.status === st ? 'border-[#00C896] bg-[#00C896] text-white shadow-xs' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
+                @click="qualificationForm.status = st"
+                class="py-1.5 px-2 rounded-xl text-center text-[11px] transition-all cursor-pointer border"
+                :class="qualificationForm.status === st ? 'border-[#00C896] bg-[#00C896] text-white shadow-xs' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
               >
                 {{ getStatusLabel(st) }}
               </button>
@@ -460,47 +464,185 @@
         <!-- Description (تفاصيل الطلب) -->
         <div v-if="selectedLead.description" class="space-y-1">
           <h4 class="text-xs font-bold text-gray-700 dark:text-gray-300">{{ $t('leads.description') }}</h4>
-          <p class="text-xs text-gray-600 dark:text-gray-400 p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 whitespace-pre-line leading-relaxed">
+          <p class="text-xs text-gray-600 dark:text-gray-400 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 whitespace-pre-line">
             {{ selectedLead.description }}
           </p>
         </div>
 
-        <!-- Lead Internal Notes -->
-        <div v-if="selectedLead.notes" class="space-y-1">
-          <h4 class="text-xs font-bold text-gray-700 dark:text-gray-300">{{ $t('leads.notes') }}</h4>
-          <p class="text-xs text-gray-600 dark:text-gray-400 p-3 rounded-xl bg-amber-50/40 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/40 whitespace-pre-line">
-            {{ selectedLead.notes }}
+        <!-- Loss Analysis Card (When lead is lost / disqualified) -->
+        <div v-if="selectedLead.loss_reason" class="p-4 rounded-2xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-black text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
+              <AlertCircle class="h-4 w-4 text-rose-600 dark:text-rose-400" />
+              <span>{{ $t('leads.lossInfoTitle') }}</span>
+            </h4>
+            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-[11px] font-bold text-rose-700 dark:text-rose-300">
+              {{ getLossReasonLabel(selectedLead.loss_reason) }}
+            </span>
+          </div>
+          <div v-if="selectedLead.competitor_name" class="text-xs text-rose-900 dark:text-rose-200">
+            <span class="font-bold">{{ $t('leads.competitorName') }}:</span> {{ selectedLead.competitor_name }}
+          </div>
+          <p v-if="selectedLead.loss_notes" class="text-xs text-gray-700 dark:text-gray-300 bg-white/70 dark:bg-gray-900/40 p-2.5 rounded-xl border border-rose-100 dark:border-rose-900/30 whitespace-pre-line">
+            {{ selectedLead.loss_notes }}
           </p>
         </div>
 
-        <!-- Modal Actions Footer: Convert to Opportunity or Close -->
-        <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-          <div>
-            <button
-              v-if="selectedLead.status !== 'Converted'"
-              type="button"
-              @click="openConvertOpportunityModal(selectedLead)"
-              class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
-            >
-              <Target class="h-4 w-4" />
-              <span>{{ $t('leads.convertToOpportunity') }}</span>
-            </button>
-            <span
-              v-else
-              class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-2 rounded-xl"
-            >
-              <CheckCircle2 class="h-4 w-4 text-emerald-500" />
-              <span>{{ $t('leads.alreadyConvertedNotice') }}</span>
-            </span>
+        <!-- Progressive Commercial Qualification Card -->
+        <div class="p-4 rounded-2xl border border-[#00C896]/30 bg-[#00C896]/5 dark:bg-[#00C896]/10 space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <Sparkles class="h-4 w-4 text-[#00A87E] dark:text-[#00C896]" />
+              <h4 class="text-xs font-black text-gray-900 dark:text-white">{{ $t('leads.qualificationSection') }}</h4>
+            </div>
+            <span class="text-[10px] font-bold text-gray-400 hidden sm:inline">{{ $t('leads.qualificationDesc') }}</span>
           </div>
 
-          <button
-            type="button"
-            @click="showDetailsModal = false"
-            class="px-5 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 text-xs font-bold dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-          >
-            {{ $t('common.close') }}
-          </button>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <!-- Estimated Value -->
+            <div>
+              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                {{ $t('leads.estimatedValue') }}
+              </label>
+              <div class="relative">
+                <input
+                  type="number"
+                  step="0.01"
+                  v-model="qualificationForm.estimated_value"
+                  placeholder="0.00"
+                  class="w-full rounded-xl border border-gray-200 bg-white py-2 px-3 text-xs font-bold font-mono text-gray-900 outline-hidden focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                  dir="ltr"
+                />
+                <span class="absolute top-2 left-3 text-[10px] font-bold text-[#00C896]">{{ $t('leads.currencyEGP') }}</span>
+              </div>
+            </div>
+
+            <!-- Expected Start Date -->
+            <div>
+              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                {{ $t('leads.expectedStartDate') }}
+              </label>
+              <input
+                type="date"
+                v-model="qualificationForm.expected_start_date"
+                class="w-full rounded-xl border border-gray-200 bg-white py-2 px-3 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
+
+            <!-- Assigned Specialist -->
+            <div>
+              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                {{ $t('leads.assignedTo') }}
+              </label>
+              <SearchableSelect
+                :model-value="qualificationForm.assigned_to"
+                :options="userOptions"
+                :placeholder="$t('leads.selectAssignee')"
+                :clearable="true"
+                @update:model-value="qualificationForm.assigned_to = $event"
+              />
+            </div>
+          </div>
+
+          <!-- Loss Tracking Section (When status is Lost or Unqualified) -->
+          <div v-if="qualificationForm.status === 'Lost' || qualificationForm.status === 'Unqualified'" class="p-4 rounded-2xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-3">
+            <div class="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-bold text-xs">
+              <AlertCircle class="h-4 w-4" />
+              <span>{{ $t('leads.lossInfoTitle') }}</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  {{ $t('leads.lossReason') }}
+                </label>
+                <select
+                  v-model="qualificationForm.loss_reason"
+                  class="w-full rounded-xl border border-rose-200 bg-white py-2 px-3 text-xs font-semibold text-gray-900 outline-hidden focus:border-rose-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                >
+                  <option value="">{{ $t('leads.lossReasonSelect') }}</option>
+                  <option value="price_high">{{ $t('leads.lossReasonPrice') }}</option>
+                  <option value="competitor_won">{{ $t('leads.lossReasonCompetitor') }}</option>
+                  <option value="client_postponed">{{ $t('leads.lossReasonPostponed') }}</option>
+                  <option value="client_unresponsive">{{ $t('leads.lossReasonUnresponsive') }}</option>
+                  <option value="scope_mismatch">{{ $t('leads.lossReasonOutOfScope') }}</option>
+                  <option value="budget_insufficient">{{ $t('leads.lossReasonBudget') }}</option>
+                  <option value="other">{{ $t('leads.lossReasonOther') }}</option>
+                </select>
+              </div>
+
+              <div v-if="qualificationForm.loss_reason === 'competitor_won'">
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  {{ $t('leads.competitorName') }}
+                </label>
+                <input
+                  type="text"
+                  v-model="qualificationForm.competitor_name"
+                  :placeholder="$t('leads.competitorNamePlaceholder')"
+                  class="w-full rounded-xl border border-rose-200 bg-white py-2 px-3 text-xs font-medium text-gray-900 outline-hidden focus:border-rose-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                {{ $t('leads.lossNotes') }}
+              </label>
+              <textarea
+                v-model="qualificationForm.loss_notes"
+                rows="2"
+                class="w-full rounded-xl border border-rose-200 bg-white py-2 px-3 text-xs text-gray-900 outline-hidden focus:border-rose-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                :placeholder="$t('leads.lossNotesPlaceholder')"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Internal Notes & Qualification Notes -->
+          <div>
+            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+              {{ $t('leads.notes') }}
+            </label>
+            <textarea
+              v-model="qualificationForm.notes"
+              rows="2"
+              class="w-full rounded-xl border border-gray-200 bg-white py-2 px-3 text-xs font-medium text-gray-900 outline-hidden focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              placeholder="سجل ملاحظات مكالمة التأهيل، تفاصيل المقايسة المبدئية، متطلبات التشطيب..."
+            ></textarea>
+          </div>
+
+          <!-- Action Buttons: Save Qualification & Convert to Opportunity -->
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-200/60 dark:border-gray-700/60">
+            <!-- Left: Convert to Opportunity button (if not converted) -->
+            <div>
+              <button
+                v-if="selectedLead.status !== 'Converted'"
+                type="button"
+                @click="openConvertOpportunityModal(selectedLead)"
+                class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
+              >
+                <Target class="h-3.5 w-3.5" />
+                <span>{{ $t('leads.convertToOpportunity') }}</span>
+              </button>
+              <span
+                v-else
+                class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 rounded-lg"
+              >
+                <CheckCircle2 class="h-3.5 w-3.5" />
+                <span>{{ $t('leads.alreadyConvertedNotice') }}</span>
+              </span>
+            </div>
+
+            <!-- Right: Save Qualification -->
+            <button
+              type="button"
+              @click="saveQualification"
+              :disabled="qualificationLoading"
+              class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#00C896] text-white hover:bg-[#00A87E] text-xs font-black shadow-xs transition-all cursor-pointer disabled:opacity-50"
+            >
+              <CheckCircle2 class="h-3.5 w-3.5" />
+              <span>{{ qualificationLoading ? $t('common.loading') : $t('leads.saveQualification') }}</span>
+            </button>
+          </div>
         </div>
       </div>
     </CrudModal>
@@ -679,6 +821,7 @@ import {
   Phone,
   MessageSquare,
   Target,
+  AlertCircle,
 } from 'lucide-vue-next';
 
 const { t } = useI18n();
@@ -718,10 +861,20 @@ const columns = computed(() => [
   { name: 'assigned_to', label: t('leads.assignedTo') },
 ]);
 
-// Lead View Details Modal State
+// Lead View Details & Qualification Modal State
 const showDetailsModal = ref(false);
 const selectedLead = ref(null);
-const statusUpdateLoading = ref(false);
+const qualificationLoading = ref(false);
+const qualificationForm = reactive({
+  status: 'New',
+  loss_reason: '',
+  competitor_name: '',
+  loss_notes: '',
+  estimated_value: null,
+  expected_start_date: null,
+  assigned_to: null,
+  notes: '',
+});
 
 // Quick Customer Creation Modal State
 const showQuickCustomerModal = ref(false);
@@ -803,23 +956,33 @@ const resetFilters = () => {
 
 const openLeadDetails = (lead) => {
   selectedLead.value = lead;
+  qualificationForm.status = lead.status || 'New';
+  qualificationForm.loss_reason = lead.loss_reason || '';
+  qualificationForm.competitor_name = lead.competitor_name || '';
+  qualificationForm.loss_notes = lead.loss_notes || '';
+  qualificationForm.estimated_value = lead.estimated_value;
+  qualificationForm.expected_start_date = lead.expected_start_date
+    ? String(lead.expected_start_date).substring(0, 10)
+    : null;
+  qualificationForm.assigned_to = lead.assigned_to;
+  qualificationForm.notes = lead.notes || '';
   showDetailsModal.value = true;
 };
 
-const updateLeadStatus = async (newStatus) => {
-  if (!selectedLead.value || selectedLead.value.status === newStatus) return;
-  statusUpdateLoading.value = true;
+const saveQualification = async () => {
+  if (!selectedLead.value) return;
+  qualificationLoading.value = true;
   try {
-    const res = await api.post(`/leads/${selectedLead.value.id}/qualify`, { status: newStatus });
+    const res = await api.post(`/leads/${selectedLead.value.id}/qualify`, qualificationForm);
     if (res.data?.success) {
-      notify.success(t('messages.lead_qualified_success') || 'تم تحديث حالة العميل المحتمل بنجاح');
+      notify.success(t('leads.qualificationSuccess'));
       selectedLead.value = res.data.data;
       crudRef.value?.loadData();
     }
   } catch (err) {
-    notify.error(err.response?.data?.message || 'Error updating lead status');
+    notify.error(err.response?.data?.message || 'Error updating qualification');
   } finally {
-    statusUpdateLoading.value = false;
+    qualificationLoading.value = false;
   }
 };
 
@@ -1012,5 +1175,18 @@ const getStatusDotClass = (status) => {
     Lost: 'bg-rose-500',
   };
   return map[status] || map.New;
+};
+
+const getLossReasonLabel = (reason) => {
+  const map = {
+    price_high: t('leads.lossReasonPrice'),
+    competitor_won: t('leads.lossReasonCompetitor'),
+    client_postponed: t('leads.lossReasonPostponed'),
+    client_unresponsive: t('leads.lossReasonUnresponsive'),
+    scope_mismatch: t('leads.lossReasonOutOfScope'),
+    budget_insufficient: t('leads.lossReasonBudget'),
+    other: t('leads.lossReasonOther'),
+  };
+  return map[reason] || reason;
 };
 </script>

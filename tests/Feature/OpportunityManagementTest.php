@@ -739,4 +739,51 @@ class OpportunityManagementTest extends TestCase
         $this->assertEquals('commercial_proposal_v1.pdf', $opportunity->getFirstMedia('documents')->file_name);
         $this->assertEquals($this->slugA, $opportunity->getFirstMedia('documents')->getCustomProperty('tenant_slug'));
     }
+
+    /**
+     * 11. Test Opportunity Loss Reason Tracking & Post-Mortem Storage.
+     */
+    public function test_opportunity_loss_reason_tracking_and_stage_change(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create(['name' => 'Eng. Hatem', 'customer_type' => 'individual', 'status' => 'active']);
+
+        $res = $this->withHeaders([
+            'X-Tenant-Slug' => $this->slugA,
+            'Authorization' => 'Bearer ' . $this->tokenA,
+        ])->postJson('/api/opportunities', [
+            'customer_id' => $customer->id,
+            'title' => 'مشروع تشطيب مجمع إداري',
+            'stage' => 'Proposal',
+            'estimated_value' => 1200000.00,
+        ]);
+
+        $res->assertStatus(201);
+        $oppId = $res->json('data.id');
+
+        // Transition Opportunity to Lost with competitor name and loss notes
+        $resStage = $this->withHeaders([
+            'X-Tenant-Slug' => $this->slugA,
+            'Authorization' => 'Bearer ' . $this->tokenA,
+        ])->postJson("/api/opportunities/{$oppId}/stage", [
+            'stage' => 'Lost',
+            'loss_reason' => 'competitor_won',
+            'competitor_name' => 'المجموعة المتحدة للمقاولات',
+            'loss_notes' => 'المنافس قدم تخفيض 15% وفاز بالعقد.',
+        ]);
+
+        $resStage->assertStatus(200);
+        $this->assertEquals('Lost', $resStage->json('data.stage'));
+        $this->assertEquals('competitor_won', $resStage->json('data.loss_reason'));
+        $this->assertEquals('المجموعة المتحدة للمقاولات', $resStage->json('data.competitor_name'));
+        $this->assertStringContainsString('تخفيض 15%', $resStage->json('data.loss_notes'));
+
+        // Verify in database
+        $opp = Opportunity::find($oppId);
+        $this->assertEquals('Lost', $opp->stage);
+        $this->assertEquals('competitor_won', $opp->loss_reason);
+        $this->assertEquals('المجموعة المتحدة للمقاولات', $opp->competitor_name);
+        $this->assertNotNull($opp->loss_notes);
+    }
 }

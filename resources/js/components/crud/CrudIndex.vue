@@ -275,6 +275,7 @@ onMounted(() => {
 
 defineExpose({
   loadData,
+  fetchData: loadData,
   openCreateModal,
   openEditModal,
 });

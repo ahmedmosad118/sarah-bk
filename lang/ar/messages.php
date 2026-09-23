@@ -48,6 +48,16 @@ return [
     'opportunity_stage_updated_success' => 'تم تحديث مرحلة الفرصة بنجاح',
     'opportunity_converted_success' => 'تم تحويل الطلب وإضافة الفرصة بنجاح',
 
+    // Site Visits (Phase 6)
+    'site_visit_created_success' => 'تم تسجيل وحجز موعد المعاينة بنجاح',
+    'site_visit_updated_success' => 'تم تحديث بيانات المعاينة بنجاح',
+    'site_visit_deleted_success' => 'تم حذف المعاينة بنجاح',
+    'site_visit_assigned_success' => 'تم تكليف المهندس بالمعاينة بنجاح',
+    'site_visit_scheduled_success' => 'تم جدولة موعد المعاينة بنجاح',
+    'site_visit_completed_success' => 'تم اعتماد وإتمام المعاينة بنجاح',
+    'site_visit_cancelled_success' => 'تم إلغاء موعد المعاينة بنجاح',
+    'site_visit_photos_uploaded_success' => 'تم رفع صور الموقع بنجاح',
+
     // Settings
     'settings_saved_success' => 'تم حفظ الإعدادات بنجاح',
 ];

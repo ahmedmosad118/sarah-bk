@@ -131,4 +131,20 @@ class User extends Authenticatable implements HasMedia
     {
         return $this->hasMany(\App\Models\Opportunity::class, 'created_by');
     }
+
+    /**
+     * Site visits assigned to this engineer/user.
+     */
+    public function assignedSiteVisits(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\SiteVisit::class, 'assigned_to');
+    }
+
+    /**
+     * Site visits created by this user.
+     */
+    public function createdSiteVisits(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\SiteVisit::class, 'created_by');
+    }
 }

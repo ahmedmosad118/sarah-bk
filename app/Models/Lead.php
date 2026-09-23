@@ -23,6 +23,9 @@ class Lead extends Model implements HasMedia
         'description',
         'source',
         'status',
+        'loss_reason',
+        'competitor_name',
+        'loss_notes',
         'estimated_value',
         'expected_start_date',
         'assigned_to',
@@ -75,6 +78,14 @@ class Lead extends Model implements HasMedia
     public function opportunity(): HasOne
     {
         return $this->hasOne(Opportunity::class)->latestOfMany();
+    }
+
+    /**
+     * Site visits originated from this lead.
+     */
+    public function siteVisits(): HasMany
+    {
+        return $this->hasMany(SiteVisit::class);
     }
 
     /**

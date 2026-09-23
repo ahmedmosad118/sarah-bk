@@ -3,11 +3,13 @@
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\JobTitleController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\OpportunityController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SettingController;
+use App\Http\Controllers\Api\SiteVisitController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Central\TenantController;
 use Illuminate\Support\Facades\Route;
@@ -38,6 +40,9 @@ Route::prefix('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+
+    // Dashboard Summary (Commercial Overview)
+    Route::get('/dashboard/summary', [DashboardController::class, 'summary']);
 
     // Auth Profile
     Route::prefix('auth')->group(function () {
@@ -95,6 +100,22 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::delete('/{ids}', [OpportunityController::class, 'destroy']);
         Route::post('/{id}/assign', [OpportunityController::class, 'assign']);
         Route::post('/{id}/stage', [OpportunityController::class, 'changeStage']);
+    });
+
+    // Site Visits Management (Phase 6)
+    Route::prefix('site-visits')->group(function () {
+        Route::get('/schema', [SiteVisitController::class, 'schema']);
+        Route::get('/', [SiteVisitController::class, 'index']);
+        Route::post('/', [SiteVisitController::class, 'store']);
+        Route::post('/from-opportunity/{opportunityId}', [SiteVisitController::class, 'createFromOpportunity']);
+        Route::get('/{id}', [SiteVisitController::class, 'show']);
+        Route::put('/{id}', [SiteVisitController::class, 'update']);
+        Route::delete('/{ids}', [SiteVisitController::class, 'destroy']);
+        Route::post('/{id}/assign', [SiteVisitController::class, 'assign']);
+        Route::post('/{id}/schedule', [SiteVisitController::class, 'schedule']);
+        Route::post('/{id}/complete', [SiteVisitController::class, 'complete']);
+        Route::post('/{id}/cancel', [SiteVisitController::class, 'cancel']);
+        Route::post('/{id}/photos', [SiteVisitController::class, 'uploadPhotos']);
     });
 
     // Roles & Permissions Management

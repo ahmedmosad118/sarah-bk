@@ -287,12 +287,24 @@ class OpportunityController extends CRUDController
 
         $validated = $request->validate([
             'stage' => ['required', 'string', 'in:New,Qualified,Proposal,Negotiation,Won,Lost'],
+            'loss_reason' => ['nullable', 'string', 'max:100'],
+            'competitor_name' => ['nullable', 'string', 'max:200'],
+            'loss_notes' => ['nullable', 'string', 'max:2000'],
             'notes' => ['nullable', 'string', 'max:5000'],
         ]);
 
         $opportunity = Opportunity::findOrFail($id);
         $oldStage = $opportunity->stage;
         $opportunity->stage = $validated['stage'];
+        if (array_key_exists('loss_reason', $validated)) {
+            $opportunity->loss_reason = $validated['loss_reason'];
+        }
+        if (array_key_exists('competitor_name', $validated)) {
+            $opportunity->competitor_name = $validated['competitor_name'];
+        }
+        if (array_key_exists('loss_notes', $validated)) {
+            $opportunity->loss_notes = $validated['loss_notes'];
+        }
         if (isset($validated['notes'])) {
             $opportunity->notes = $validated['notes'];
         }
@@ -302,7 +314,7 @@ class OpportunityController extends CRUDController
             ->event('updated')
             ->performedOn($opportunity)
             ->causedBy(auth()->user())
-            ->withProperties(['old_stage' => $oldStage, 'new_stage' => $opportunity->stage])
+            ->withProperties(['old_stage' => $oldStage, 'new_stage' => $opportunity->stage, 'loss_reason' => $opportunity->loss_reason])
             ->log(__('activity.opportunity_stage_changed', ['title' => $opportunity->title, 'stage' => $opportunity->stage]));
 
         return response()->json([
@@ -333,6 +345,9 @@ class OpportunityController extends CRUDController
             'title' => ['required', 'string', 'max:200'],
             'description' => ['nullable', 'string', 'max:5000'],
             'stage' => ['nullable', 'string', 'in:New,Qualified,Proposal,Negotiation,Won,Lost'],
+            'loss_reason' => ['nullable', 'string', 'max:100'],
+            'competitor_name' => ['nullable', 'string', 'max:200'],
+            'loss_notes' => ['nullable', 'string', 'max:2000'],
             'estimated_value' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
             'expected_start_date' => ['nullable', 'date'],
             'expected_close_date' => ['nullable', 'date'],

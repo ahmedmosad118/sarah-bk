@@ -681,4 +681,52 @@ class LeadManagementTest extends TestCase
         $this->assertEquals('project_tender_specs.pdf', $lead->getFirstMedia('documents')->file_name);
         $this->assertEquals($this->slugA, $lead->getFirstMedia('documents')->getCustomProperty('tenant_slug'));
     }
+
+    /**
+     * 11. Test Lead Loss Reason Tracking & Storage for Future Reports.
+     */
+    public function test_lead_loss_reason_tracking_and_qualification(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create(['name' => 'Dr. Sameh', 'customer_type' => 'individual', 'status' => 'active']);
+
+        $res = $this->withHeaders([
+            'X-Tenant-Slug' => $this->slugA,
+            'Authorization' => 'Bearer ' . $this->tokenA,
+        ])->postJson('/api/leads', [
+            'customer_id' => $customer->id,
+            'title' => 'تشطيب فيلا التجمع الخامس',
+            'source' => 'Facebook',
+            'status' => 'New',
+            'estimated_value' => 750000.00,
+        ]);
+
+        $res->assertStatus(201);
+        $leadId = $res->json('data.id');
+
+        // Qualify lead as Lost with competitor details
+        $resQualify = $this->withHeaders([
+            'X-Tenant-Slug' => $this->slugA,
+            'Authorization' => 'Bearer ' . $this->tokenA,
+        ])->postJson("/api/leads/{$leadId}/qualify", [
+            'status' => 'Lost',
+            'loss_reason' => 'competitor_won',
+            'competitor_name' => 'شركة الديكور الحديث',
+            'loss_notes' => 'العميل فضل العرض المقدم من شركة الديكور الحديث بسبب مدة التسليم الأقصر.',
+        ]);
+
+        $resQualify->assertStatus(200);
+        $this->assertEquals('Lost', $resQualify->json('data.status'));
+        $this->assertEquals('competitor_won', $resQualify->json('data.loss_reason'));
+        $this->assertEquals('شركة الديكور الحديث', $resQualify->json('data.competitor_name'));
+        $this->assertStringContainsString('الديكور الحديث', $resQualify->json('data.loss_notes'));
+
+        // Verify in database
+        $lead = Lead::find($leadId);
+        $this->assertEquals('Lost', $lead->status);
+        $this->assertEquals('competitor_won', $lead->loss_reason);
+        $this->assertEquals('شركة الديكور الحديث', $lead->competitor_name);
+        $this->assertNotNull($lead->loss_notes);
+    }
 }

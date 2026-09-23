@@ -33,6 +33,9 @@ class ActivityLogController extends Controller
                 } elseif ($module === 'opportunities') {
                     $q->whereIn('log_name', ['opportunities', 'opportunity', 'commercial'])
                       ->orWhere('subject_type', \App\Models\Opportunity::class);
+                } elseif ($module === 'site_visits') {
+                    $q->whereIn('log_name', ['site_visits', 'site_visit', 'commercial'])
+                      ->orWhere('subject_type', \App\Models\SiteVisit::class);
                 } elseif ($module === 'users') {
                     $q->whereIn('log_name', ['users', 'user'])
                       ->orWhere('subject_type', \App\Models\User::class);

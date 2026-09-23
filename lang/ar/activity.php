@@ -48,6 +48,18 @@ return [
     'opportunity_deleted' => 'تم حذف الفرصة (:title)',
     'opportunity_event' => 'إجراء :event على الفرصة :title',
 
+    // Site Visits Activity Logs
+    'site_visit_created' => 'تم تسجيل وحجز معاينة موقع جديدة (#:id)',
+    'site_visit_updated' => 'تم تحديث بيانات معاينة الموقع (#:id)',
+    'site_visit_deleted' => 'تم حذف معاينة الموقع (#:id)',
+    'site_visit_event' => 'إجراء :event على معاينة الموقع (#:id)',
+    'site_visit_created_from_opportunity' => 'تم إنشاء معاينة موقع (#:id) مرتبطة بالفرصة (:opportunity)',
+    'site_visit_assigned' => 'تم تكليف المهندس (:user) بمعاينة الموقع (#:id)',
+    'site_visit_scheduled' => 'تم جدولة موعد معاينة الموقع (#:id) بتاريخ (:date)',
+    'site_visit_completed' => 'تم اعتماد وإتمام معاينة الموقع (#:id) وتسجيل التقييم والمقايسات',
+    'site_visit_cancelled' => 'تم إلغاء معاينة الموقع (#:id)',
+    'site_visit_photos_uploaded' => 'تم رفع (:count) صور فوتوغرافية لمعاينة الموقع (#:id)',
+
     'setting_created' => 'تم إنشاء الإعداد :key',
     'setting_updated' => 'تم تحديث الإعداد :key',
     'setting_event' => 'إجراء :event على الإعداد :key',

@@ -18,6 +18,9 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('source', 50)->default('Other')->index(); // Facebook, Instagram, Google, Website, WhatsApp, Referral, Phone, Walk-in, Other
             $table->string('status', 50)->default('New')->index(); // New, Contacted, Qualified, Unqualified, Converted, Lost
+            $table->string('loss_reason', 100)->nullable()->index();
+            $table->string('competitor_name', 200)->nullable();
+            $table->text('loss_notes')->nullable();
             $table->decimal('estimated_value', 15, 2)->unsigned()->nullable();
             $table->date('expected_start_date')->nullable();
             $table->unsignedBigInteger('assigned_to')->nullable()->index();

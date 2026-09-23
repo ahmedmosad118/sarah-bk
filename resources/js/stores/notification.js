@@ -30,6 +30,11 @@ export const useNotificationStore = defineStore('notification', {
       this.addToast({ type: 'info', title, message });
     },
 
+    show(message, type = 'info', title = '') {
+      const resolvedTitle = title || (type === 'success' ? 'تمت العملية بنجاح' : type === 'error' ? 'تنبيه خطأ' : 'إشعار');
+      this.addToast({ type, title: resolvedTitle, message });
+    },
+
     removeToast(id) {
       this.toasts = this.toasts.filter((t) => t.id !== id);
     },

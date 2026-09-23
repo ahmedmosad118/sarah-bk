@@ -6,42 +6,39 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Opportunity extends Model implements HasMedia
+class SiteVisit extends Model implements HasMedia
 {
     use HasFactory, LogsActivity, InteractsWithMedia;
 
     protected $fillable = [
         'customer_id',
+        'opportunity_id',
         'lead_id',
-        'title',
-        'description',
-        'stage',
-        'loss_reason',
-        'competitor_name',
-        'loss_notes',
-        'estimated_value',
-        'expected_start_date',
-        'expected_close_date',
+        'status',
+        'scheduled_date',
+        'scheduled_time',
+        'visit_date',
         'assigned_to',
+        'general_assessment',
+        'internal_notes',
         'created_by',
-        'notes',
     ];
 
     protected $casts = [
-        'estimated_value' => 'decimal:2',
-        'expected_start_date' => 'date:Y-m-d',
-        'expected_close_date' => 'date:Y-m-d',
+        'scheduled_date' => 'date:Y-m-d',
+        'visit_date' => 'date:Y-m-d',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
     /**
-     * Customer associated with this opportunity.
+     * Customer associated with this site visit.
      */
     public function customer(): BelongsTo
     {
@@ -49,7 +46,15 @@ class Opportunity extends Model implements HasMedia
     }
 
     /**
-     * Originating Lead for this opportunity (if converted from a lead).
+     * Commercial Opportunity associated with this site visit (optional/nullable).
+     */
+    public function opportunity(): BelongsTo
+    {
+        return $this->belongsTo(Opportunity::class);
+    }
+
+    /**
+     * Originating Lead for this site visit (if originated from lead).
      */
     public function lead(): BelongsTo
     {
@@ -57,7 +62,7 @@ class Opportunity extends Model implements HasMedia
     }
 
     /**
-     * User assigned to handle this opportunity.
+     * User/Engineer assigned to perform the site visit.
      */
     public function assignedUser(): BelongsTo
     {
@@ -65,7 +70,7 @@ class Opportunity extends Model implements HasMedia
     }
 
     /**
-     * User who created this opportunity.
+     * User who created the site visit record.
      */
     public function creator(): BelongsTo
     {
@@ -73,19 +78,19 @@ class Opportunity extends Model implements HasMedia
     }
 
     /**
-     * Site visits conducted for this opportunity.
+     * Rooms/Spaces inspected and measured during this site visit.
      */
-    public function siteVisits(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function rooms(): HasMany
     {
-        return $this->hasMany(SiteVisit::class);
+        return $this->hasMany(SiteVisitRoom::class);
     }
 
     /**
-     * Scope query by stage.
+     * Scope query by status.
      */
-    public function scopeStage(Builder $query, string $stage): Builder
+    public function scopeStatus(Builder $query, string $status): Builder
     {
-        return $query->where('stage', $stage);
+        return $query->where('status', $status);
     }
 
     /**
@@ -97,7 +102,15 @@ class Opportunity extends Model implements HasMedia
     }
 
     /**
-     * Scope query by assigned user.
+     * Scope query by opportunity.
+     */
+    public function scopeForOpportunity(Builder $query, int $opportunityId): Builder
+    {
+        return $query->where('opportunity_id', $opportunityId);
+    }
+
+    /**
+     * Scope query by assigned engineer/user.
      */
     public function scopeAssignedTo(Builder $query, int $userId): Builder
     {
@@ -112,23 +125,24 @@ class Opportunity extends Model implements HasMedia
         return LogOptions::defaults()
             ->useLogName('commercial')
             ->logOnly([
-                'title',
                 'customer_id',
+                'opportunity_id',
                 'lead_id',
-                'stage',
-                'estimated_value',
-                'expected_start_date',
-                'expected_close_date',
+                'status',
+                'scheduled_date',
+                'scheduled_time',
+                'visit_date',
                 'assigned_to',
-                'notes',
+                'general_assessment',
+                'internal_notes',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn(string $eventName) => match($eventName) {
-                'created' => __('activity.opportunity_created', ['title' => $this->title]),
-                'updated' => __('activity.opportunity_updated', ['title' => $this->title]),
-                'deleted' => __('activity.opportunity_deleted', ['title' => $this->title]),
-                default => __('activity.opportunity_event', ['event' => $eventName, 'title' => $this->title]),
+                'created' => __('activity.site_visit_created', ['id' => $this->id]),
+                'updated' => __('activity.site_visit_updated', ['id' => $this->id]),
+                'deleted' => __('activity.site_visit_deleted', ['id' => $this->id]),
+                default => __('activity.site_visit_event', ['event' => $eventName, 'id' => $this->id]),
             });
     }
 
@@ -137,6 +151,7 @@ class Opportunity extends Model implements HasMedia
      */
     public function registerMediaCollections(): void
     {
+        $this->addMediaCollection('site_photos');
         $this->addMediaCollection('documents');
     }
 }

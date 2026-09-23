@@ -18,6 +18,9 @@ return new class extends Migration
             $table->string('title', 200)->index();
             $table->text('description')->nullable();
             $table->string('stage', 50)->default('New')->index(); // New, Qualified, Proposal, Negotiation, Won, Lost
+            $table->string('loss_reason', 100)->nullable()->index();
+            $table->string('competitor_name', 200)->nullable();
+            $table->text('loss_notes')->nullable();
             $table->decimal('estimated_value', 15, 2)->unsigned()->nullable();
             $table->date('expected_start_date')->nullable();
             $table->date('expected_close_date')->nullable();
