@@ -234,6 +234,16 @@
             <Eye class="h-3.5 w-3.5" />
           </button>
 
+          <!-- View Chain Traceability Report -->
+          <router-link
+            :to="`/opportunities/${item.id}/chain`"
+            class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60 transition-all border border-emerald-200/60 dark:border-emerald-800/40 shadow-2xs"
+            title="تقرير سلسلة التتبع التجارية والفنية (Traceability Report)"
+          >
+            <FileText class="h-3.5 w-3.5" />
+            <span>التقرير</span>
+          </router-link>
+
           <!-- Edit -->
           <button
             type="button"
@@ -283,6 +293,14 @@
               </p>
             </div>
             <div class="flex items-center gap-2">
+              <router-link
+                :to="`/opportunities/${selectedOpportunity.id}/chain`"
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 text-xs font-bold transition-all"
+              >
+                <GitFork class="h-3.5 w-3.5" />
+                <span>المسار التجاري والتقني</span>
+              </router-link>
+
               <span
                 class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
                 :class="getStageClass(selectedOpportunity.stage)"
@@ -309,6 +327,31 @@
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- Commercial & Technical Chain Traceability Report Banner -->
+        <div class="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div class="flex items-center gap-3">
+            <div class="p-2.5 rounded-xl bg-emerald-600 text-white shadow-xs">
+              <FileText class="h-5 w-5" />
+            </div>
+            <div>
+              <h4 class="text-xs font-black text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5">
+                <span>تقرير سلسلة التتبع التجارية والفنية (Traceability Report)</span>
+                <span class="px-2 py-0.5 rounded-full bg-emerald-200/70 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 text-[10px] font-bold">تقرير تفاعلي + طباعة</span>
+              </h4>
+              <p class="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+                تتبع مسار العملية بالكامل: العميل ← الطلب ← المعاينة الميدانية ← المقايسة الهندسية ← نطاق الأعمال والمطابقة
+              </p>
+            </div>
+          </div>
+          <router-link
+            :to="`/opportunities/${selectedOpportunity.id}/chain`"
+            class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition-colors shrink-0 cursor-pointer"
+          >
+            <span>فتح تقرير السلسلة الكاملة</span>
+            <ExternalLink class="h-3.5 w-3.5" />
+          </router-link>
         </div>
 
         <!-- Client Profile Card -->
@@ -820,6 +863,9 @@ import {
   Plus,
   ExternalLink,
   GitBranch,
+  GitFork,
+  FileText,
+  Printer,
 } from 'lucide-vue-next';
 
 const { t } = useI18n();

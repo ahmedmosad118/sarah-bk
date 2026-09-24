@@ -10,6 +10,7 @@ import UsersView from '../views/team/UsersView.vue';
 import CustomersView from '../views/customers/CustomersView.vue';
 import LeadsView from '../views/leads/LeadsView.vue';
 import OpportunitiesView from '../views/opportunities/OpportunitiesView.vue';
+import OpportunityChainView from '../views/opportunities/OpportunityChainView.vue';
 import SiteVisitsView from '../views/site-visits/SiteVisitsView.vue';
 import MeasurementsView from '../views/measurements/MeasurementsView.vue';
 import ScopesView from '../views/scopes/ScopesView.vue';
@@ -68,6 +69,11 @@ const routes = [
         path: 'opportunities',
         name: 'opportunities',
         component: OpportunitiesView,
+      },
+      {
+        path: 'opportunities/:id/chain',
+        name: 'opportunities.chain',
+        component: OpportunityChainView,
       },
       {
         path: 'site-visits',

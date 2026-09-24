@@ -102,6 +102,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::delete('/{ids}', [OpportunityController::class, 'destroy']);
         Route::post('/{id}/assign', [OpportunityController::class, 'assign']);
         Route::post('/{id}/stage', [OpportunityController::class, 'changeStage']);
+        Route::get('/{id}/chain', [OpportunityController::class, 'chain']);
     });
 
     // Site Visits Management (Phase 6)

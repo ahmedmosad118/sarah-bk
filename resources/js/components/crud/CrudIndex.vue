@@ -8,10 +8,12 @@
 
     <!-- TailAdmin Data Table -->
     <TailAdminDataTable
+      ref="tableRef"
       :columns="tableColumns"
       :items="items"
       :loading="loading"
       :meta="meta"
+      :selectable="true"
       :allow-create="allowCreate"
       :create-button-text="createButtonTextComputed"
       :search-placeholder="searchPlaceholderComputed"
@@ -20,6 +22,7 @@
       @create="openCreateModal"
       @edit="openEditModal"
       @delete="confirmDelete"
+      @bulk-delete="confirmBulkDelete"
     >
       <template #filters>
         <slot name="filters" />
@@ -107,6 +110,7 @@ const emit = defineEmits(['loaded', 'record-saved', 'record-deleted', 'open-moda
 
 const { t, te, locale } = useI18n();
 const notificationStore = useNotificationStore();
+const tableRef = ref(null);
 const schema = ref(null);
 const items = ref([]);
 const meta = ref(null);
@@ -267,6 +271,55 @@ const confirmDelete = async (id) => {
   } catch (err) {
     notificationStore.error(err.response?.data?.message || 'Error deleting record.');
   }
+};
+
+const confirmBulkDelete = async (ids) => {
+  if (!ids || ids.length === 0) return;
+
+  const confirmed = await alertService.confirmDelete({
+    title: locale.value === 'ar' ? 'تأكيد حذف العناصر المحددة' : 'Confirm Bulk Deletion',
+    text: locale.value === 'ar'
+      ? `هل أنت متأكد من رغبتك في حذف ${ids.length} سجل محدد نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`
+      : `Are you sure you want to permanently delete ${ids.length} selected records?`,
+    confirmButtonText: locale.value === 'ar' ? `نعم، احذف (${ids.length})` : 'Yes, Delete',
+    cancelButtonText: locale.value === 'ar' ? 'إلغاء الأمر' : 'Cancel',
+  });
+
+  if (!confirmed) {
+    return;
+  }
+
+  loading.value = true;
+  let successCount = 0;
+  let failErrors = [];
+
+  for (const id of ids) {
+    try {
+      await api.delete(`${props.endpoint}/${id}`);
+      successCount++;
+    } catch (err) {
+      failErrors.push(err.response?.data?.message || `ID ${id} failed`);
+    }
+  }
+
+  if (successCount > 0) {
+    notificationStore.success(
+      locale.value === 'ar'
+        ? `تم حذف ${successCount} سجل بنجاح.`
+        : `Successfully deleted ${successCount} records.`
+    );
+    emit('record-deleted', ids);
+  }
+  if (failErrors.length > 0) {
+    notificationStore.error(
+      locale.value === 'ar'
+        ? `تعذر حذف بعض العناصر (${failErrors.length}) نظراً لارتباطها ببيانات حيوية أخرى.`
+        : `Failed to delete ${failErrors.length} items.`
+    );
+  }
+
+  tableRef.value?.clearSelection?.();
+  await loadData(currentPage.value, currentSearch.value);
 };
 
 onMounted(() => {

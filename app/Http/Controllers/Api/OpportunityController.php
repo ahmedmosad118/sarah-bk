@@ -7,9 +7,12 @@ use App\Core\CRUD\Field;
 use App\Core\CRUD\InputMaker;
 use App\Models\Customer;
 use App\Models\Lead;
+use App\Models\Measurement;
 use App\Models\Opportunity;
+use App\Models\Scope;
 use App\Models\SiteVisit;
 use App\Models\User;
+use Spatie\Activitylog\Models\Activity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -398,5 +401,277 @@ class OpportunityController extends CRUDController
                 $model->addMedia($file)->toMediaCollection('documents');
             }
         }
+    }
+
+    /**
+     * Commercial & Technical Chain Traceability for a specific Opportunity.
+     * Full vertical visibility: Customer -> Lead -> Opportunity -> Site Visits -> Measurements -> Scopes.
+     */
+    public function chain(int|string $id): JsonResponse
+    {
+        $this->authorizePermission('opportunities.view');
+
+        $opportunity = Opportunity::with([
+            'customer',
+            'lead.assignedUser',
+            'assignedUser',
+            'creator',
+            'siteVisits' => function ($q) {
+                $q->with(['assignedUser', 'creator', 'rooms'])->orderBy('scheduled_date', 'desc')->orderBy('id', 'desc');
+            },
+            'measurements' => function ($q) {
+                $q->with(['measuredUser', 'approvedUser', 'items'])->orderBy('version', 'desc')->orderBy('id', 'desc');
+            },
+            'approvedMeasurement.items',
+            'scopes' => function ($q) {
+                $q->with([
+                    'preparedUser',
+                    'reviewedUser',
+                    'approvedUser',
+                    'measurement',
+                    'items.measurementItems',
+                ])->orderBy('version', 'desc')->orderBy('id', 'desc');
+            },
+            'approvedScope.items.measurementItems',
+        ])->findOrFail($id);
+
+        // 1. Gather all entity IDs for the unified activity history
+        $oppIds = [$opportunity->id];
+        $customerIds = array_filter([$opportunity->customer_id]);
+        $leadIds = array_filter([$opportunity->lead_id]);
+        $visitIds = $opportunity->siteVisits->pluck('id')->all();
+        $measurementIds = $opportunity->measurements->pluck('id')->all();
+        $scopeIds = $opportunity->scopes->pluck('id')->all();
+
+        $timeline = Activity::with('causer')
+            ->where(function ($q) use ($oppIds, $customerIds, $leadIds, $visitIds, $measurementIds, $scopeIds) {
+                $q->where(function ($sub) use ($oppIds) {
+                    $sub->where('subject_type', Opportunity::class)->whereIn('subject_id', $oppIds);
+                });
+                if (!empty($customerIds)) {
+                    $q->orWhere(function ($sub) use ($customerIds) {
+                        $sub->where('subject_type', Customer::class)->whereIn('subject_id', $customerIds);
+                    });
+                }
+                if (!empty($leadIds)) {
+                    $q->orWhere(function ($sub) use ($leadIds) {
+                        $sub->where('subject_type', Lead::class)->whereIn('subject_id', $leadIds);
+                    });
+                }
+                if (!empty($visitIds)) {
+                    $q->orWhere(function ($sub) use ($visitIds) {
+                        $sub->where('subject_type', SiteVisit::class)->whereIn('subject_id', $visitIds);
+                    });
+                }
+                if (!empty($measurementIds)) {
+                    $q->orWhere(function ($sub) use ($measurementIds) {
+                        $sub->where('subject_type', Measurement::class)->whereIn('subject_id', $measurementIds);
+                    });
+                }
+                if (!empty($scopeIds)) {
+                    $q->orWhere(function ($sub) use ($scopeIds) {
+                        $sub->where('subject_type', Scope::class)->whereIn('subject_id', $scopeIds);
+                    });
+                }
+            })
+            ->latest('id')
+            ->limit(30)
+            ->get()
+            ->map(function ($act) {
+                return [
+                    'id' => $act->id,
+                    'description' => $act->description,
+                    'event' => $act->event,
+                    'subject_type' => class_basename($act->subject_type),
+                    'subject_id' => $act->subject_id,
+                    'causer_name' => $act->causer?->name ?? 'النظام',
+                    'created_at' => $act->created_at?->toIso8601String(),
+                ];
+            });
+
+        // 2. Compute Next Logical Action & Chain Status
+        $approvedMeasurement = $opportunity->approvedMeasurement;
+        $approvedScope = $opportunity->approvedScope;
+        $hasVisits = $opportunity->siteVisits->isNotEmpty();
+        $hasMeasurements = $opportunity->measurements->isNotEmpty();
+        $hasScopes = $opportunity->scopes->isNotEmpty();
+
+        $nextAction = null;
+        if (!$hasVisits) {
+            $nextAction = [
+                'stage' => 'site_visit',
+                'key' => 'schedule_site_visit',
+                'title' => 'جدولة أول معاينة ميدانية للموقع',
+                'description' => 'لم يتم تسجيل أي معاينة ميدانية بعد لهذه الفرصة. الخطوة المنطقية التالية هي تحديد موعد لمعاينة الموقع وفحص الواقع على الطبيعة.',
+                'action_label' => '+ جدولة موعد معاينة',
+                'action_type' => 'route',
+                'action_target' => '/site-visits',
+                'permission' => 'site_visits.create',
+            ];
+        } elseif (!$hasMeasurements) {
+            $nextAction = [
+                'stage' => 'measurement',
+                'key' => 'create_measurement',
+                'title' => 'إعداد المقايسة والحصر الهندسي',
+                'description' => 'تمت المعاينة الميدانية بنجاح. الخطوة التالية هي تحويل المشاهدات والأبعاد إلى حصر هندسي ومقايسة فنية دقيقة.',
+                'action_label' => '+ إنشاء مقايسة هندسية',
+                'action_type' => 'route',
+                'action_target' => '/measurements',
+                'permission' => 'measurements.create',
+            ];
+        } elseif (!$approvedMeasurement) {
+            $underReviewM = $opportunity->measurements->firstWhere('status', 'Under Review');
+            if ($underReviewM) {
+                $nextAction = [
+                    'stage' => 'measurement',
+                    'key' => 'approve_measurement',
+                    'title' => 'استكمال واعتماد المراجعة الفنية للمقايسة',
+                    'description' => 'توجد مقايسة قيد المراجعة الفنية. يجب اعتمادها رسمياً لتكون المصدر الموثوق الوحيد للكميات قبل الانتقال لتحديد نطاق الأعمال.',
+                    'action_label' => 'مراجعة واعتماد المقايسة',
+                    'action_type' => 'route',
+                    'action_target' => '/measurements',
+                    'permission' => 'measurements.approve',
+                ];
+            } else {
+                $nextAction = [
+                    'stage' => 'measurement',
+                    'key' => 'submit_measurement_for_review',
+                    'title' => 'تقديم المقايسة للمراجعة الفنية',
+                    'description' => 'المقايسة الحالية مسودة (Draft). الخطوة التالية هي مراجعة الأبعاد وتدقيق الخصومات وتقديمها للمراجعة الفنية.',
+                    'action_label' => 'استعراض وتقديم المقايسة',
+                    'action_type' => 'route',
+                    'action_target' => '/measurements',
+                    'permission' => 'measurements.edit',
+                ];
+            }
+        } elseif (!$hasScopes) {
+            $nextAction = [
+                'stage' => 'scope',
+                'key' => 'create_scope',
+                'title' => 'إعداد وثيقة نطاق الأعمال (Scope of Work)',
+                'description' => 'تم اعتماد المقايسة الهندسية بنجاح! الخطوة التالية هي توصيف حزم الأعمال وطريقة التنفيذ والاشتمالات والاستثناءات بناءً على الكميات المعتمدة.',
+                'action_label' => '+ إعداد نطاق الأعمال',
+                'action_type' => 'route',
+                'action_target' => '/scopes',
+                'permission' => 'scopes.create',
+            ];
+        } elseif (!$approvedScope) {
+            $underReviewS = $opportunity->scopes->firstWhere('status', 'Under Review');
+            if ($underReviewS) {
+                $nextAction = [
+                    'stage' => 'scope',
+                    'key' => 'approve_scope',
+                    'title' => 'مراجعة واعتماد وثيقة نطاق الأعمال',
+                    'description' => 'وثيقة نطاق الأعمال قيد التدقيق الهندسي. يجب اعتمادها رسمياً لغلق التوصيفات الفنية للعملية.',
+                    'action_label' => 'مراجعة واعتماد النطاق',
+                    'action_type' => 'route',
+                    'action_target' => '/scopes',
+                    'permission' => 'scopes.approve',
+                ];
+            } else {
+                $nextAction = [
+                    'stage' => 'scope',
+                    'key' => 'submit_scope_for_review',
+                    'title' => 'استكمال وتقديم نطاق الأعمال للمراجعة',
+                    'description' => 'وثيقة نطاق الأعمال ما زالت في حالة مسودة (Draft). يجب ربط البنود وتقديمها للاعتماد الفني.',
+                    'action_label' => 'استكمال وتقديم النطاق',
+                    'action_type' => 'route',
+                    'action_target' => '/scopes',
+                    'permission' => 'scopes.edit',
+                ];
+            }
+        } else {
+            $nextAction = [
+                'stage' => 'boq',
+                'key' => 'ready_for_boq',
+                'title' => 'جاهز للانتقال لمرحلة جدول الكميات (Ready for BOQ)',
+                'description' => 'اكتملت السلسلة التجارية والهندسية بنجاح! المقايسة معتمدة ونطاق الأعمال معتمد، والعملية جاهزة تماماً للبدء في جدول الكميات (BOQ) والتسعير وحساب التكاليف.',
+                'action_label' => null,
+                'action_type' => 'info',
+                'action_target' => null,
+                'permission' => null,
+            ];
+        }
+
+        // 3. Traceability Matrix between Scopes and Measurement Items
+        $traceabilityMatrix = $opportunity->scopes->map(function ($scope) use ($approvedMeasurement) {
+            $isReferencingApproved = $approvedMeasurement && $scope->measurement_id === $approvedMeasurement->id;
+            return [
+                'scope_id' => $scope->id,
+                'scope_number' => $scope->scope_number,
+                'version' => $scope->version,
+                'status' => $scope->status,
+                'referenced_measurement' => [
+                    'id' => $scope->measurement_id,
+                    'measurement_number' => $scope->measurement?->measurement_number,
+                    'version' => $scope->measurement?->version,
+                    'status' => $scope->measurement?->status,
+                    'is_approved_current' => $isReferencingApproved,
+                    'is_historical_superseded' => $scope->measurement?->status === 'Superseded',
+                ],
+                'items' => $scope->items->map(function ($scopeItem) {
+                    return [
+                        'id' => $scopeItem->id,
+                        'trade_category' => $scopeItem->trade_category,
+                        'item_name' => $scopeItem->item_name,
+                        'specification' => $scopeItem->specification,
+                        'inclusions' => $scopeItem->inclusions,
+                        'exclusions' => $scopeItem->exclusions,
+                        'linked_measurements' => $scopeItem->measurementItems->map(function ($mItem) {
+                            return [
+                                'id' => $mItem->id,
+                                'room_name' => $mItem->room_name,
+                                'item_name' => $mItem->item_name,
+                                'net_quantity' => (float)$mItem->net_quantity,
+                                'unit' => $mItem->unit,
+                                'measurement_type' => $mItem->measurement_type,
+                            ];
+                        }),
+                    ];
+                }),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'opportunity' => $opportunity,
+                'customer' => $opportunity->customer,
+                'lead' => $opportunity->lead,
+                'site_visits' => $opportunity->siteVisits,
+                'measurements' => $opportunity->measurements,
+                'approved_measurement' => $approvedMeasurement,
+                'scopes' => $opportunity->scopes,
+                'approved_scope' => $approvedScope,
+                'traceability_matrix' => $traceabilityMatrix,
+                'current_status' => [
+                    'commercial' => [
+                        'stage' => $opportunity->stage,
+                        'is_qualified' => in_array($opportunity->stage, ['Qualified', 'Proposal', 'Negotiation', 'Won']),
+                    ],
+                    'technical' => [
+                        'has_approved' => (bool)$approvedMeasurement,
+                        'status' => $approvedMeasurement ? 'Approved' : ($opportunity->measurements->first()?->status ?? 'None'),
+                        'version' => $approvedMeasurement ? "V{$approvedMeasurement->version}" : null,
+                        'code' => $approvedMeasurement?->measurement_number,
+                        'total_area' => $approvedMeasurement ? (float)$approvedMeasurement->total_area : 0,
+                        'items_count' => $approvedMeasurement ? $approvedMeasurement->items->count() : 0,
+                    ],
+                    'scope' => [
+                        'has_approved' => (bool)$approvedScope,
+                        'status' => $approvedScope ? 'Approved' : ($opportunity->scopes->first()?->status ?? 'None'),
+                        'version' => $approvedScope ? "V{$approvedScope->version}" : null,
+                        'code' => $approvedScope?->scope_number,
+                        'items_count' => $approvedScope ? $approvedScope->items->count() : 0,
+                        'referenced_measurement_version' => $approvedScope && $approvedScope->measurement 
+                            ? "V{$approvedScope->measurement->version}" 
+                            : null,
+                    ],
+                    'is_complete' => (bool)($approvedMeasurement && $approvedScope),
+                ],
+                'next_action' => $nextAction,
+                'timeline' => $timeline,
+            ],
+        ]);
     }
 }

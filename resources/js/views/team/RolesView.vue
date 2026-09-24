@@ -59,6 +59,7 @@
 
     <!-- Roles Data Table -->
     <TailAdminDataTable
+      ref="rolesTableRef"
       :columns="columns"
       :items="filteredRoles"
       :loading="loading"
@@ -67,6 +68,7 @@
       :search-placeholder="$t('roles.searchPlaceholder')"
       @search="onSearch"
       @create="openCreateRoleModal"
+      @bulk-delete="confirmBulkDeleteRoles"
     >
       <!-- Filter Segmented Tabs -->
       <template #filters>
@@ -567,6 +569,56 @@ const deleteRole = async (role) => {
   } catch (err) {
     notificationStore.error(err.response?.data?.message || 'Error deleting role.');
   }
+};
+
+const rolesTableRef = ref(null);
+
+const confirmBulkDeleteRoles = async (ids) => {
+  if (!ids || ids.length === 0) return;
+
+  const selectedRoles = roles.value.filter((r) => ids.includes(r.id));
+  const deletableRoles = selectedRoles.filter((r) => !isSystemRole(r));
+  const systemRolesCount = selectedRoles.length - deletableRoles.length;
+
+  if (deletableRoles.length === 0) {
+    notificationStore.error(
+      locale.value === 'ar'
+        ? 'لا يمكن حذف أدوار النظام الأساسية.'
+        : 'System core roles cannot be deleted.'
+    );
+    rolesTableRef.value?.clearSelection?.();
+    return;
+  }
+
+  const confirmed = await alertService.confirmDelete({
+    title: locale.value === 'ar' ? 'تأكيد حذف الأدوار المحددة' : 'Confirm Bulk Delete Roles',
+    text: locale.value === 'ar'
+      ? `هل أنت متأكد من رغبتك في حذف ${deletableRoles.length} دور محدد نهائياً؟${systemRolesCount > 0 ? ` (تم استثناء ${systemRolesCount} أدوار نظام أساسية)` : ''}`
+      : `Are you sure you want to permanently delete ${deletableRoles.length} selected roles?`,
+    confirmButtonText: locale.value === 'ar' ? `نعم، احذف (${deletableRoles.length})` : 'Yes, Delete',
+    cancelButtonText: locale.value === 'ar' ? 'إلغاء الأمر' : 'Cancel',
+  });
+
+  if (!confirmed) return;
+
+  loading.value = true;
+  let successCount = 0;
+  for (const r of deletableRoles) {
+    try {
+      await api.delete(`/roles/${r.id}`);
+      successCount++;
+    } catch (err) {}
+  }
+
+  if (successCount > 0) {
+    notificationStore.success(
+      locale.value === 'ar'
+        ? `تم حذف ${successCount} دور بنجاح.`
+        : `Successfully deleted ${successCount} roles.`
+    );
+  }
+  rolesTableRef.value?.clearSelection?.();
+  await loadRoles();
 };
 
 onMounted(() => {

@@ -148,6 +148,46 @@
       </div>
     </div>
 
+    <!-- Bulk Actions Bar for Measurements -->
+    <div
+      v-if="selectedMeasurementIds.length > 0"
+      class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 mb-4 rounded-2xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 shadow-xs animate-in fade-in duration-200"
+    >
+      <div class="flex items-center gap-2.5">
+        <span class="flex h-7 w-7 items-center justify-center rounded-xl bg-rose-600 text-white font-mono font-black text-xs shadow-2xs">
+          {{ selectedMeasurementIds.length }}
+        </span>
+        <div>
+          <p class="text-xs font-black text-rose-950 dark:text-rose-200">
+            تم تحديد {{ selectedMeasurementIds.length }} مقايسة من الجدول
+          </p>
+          <p class="text-[11px] text-rose-700/80 dark:text-rose-400">
+            يمكنك حذف المقايسات المحددة (المسودات وقيد المراجعة). المقايسات المعتمدة محمية للحفاظ على سلامة الحصر.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          @click="confirmBulkDeleteMeasurements"
+          class="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2 text-xs font-black text-white shadow-xs transition-colors cursor-pointer"
+        >
+          <Trash2 class="h-3.5 w-3.5" />
+          <span>حذف المحدد (Delete Selected)</span>
+        </button>
+
+        <button
+          type="button"
+          @click="selectedMeasurementIds = []"
+          class="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-white dark:bg-gray-800 dark:border-rose-900/50 px-3 py-2 text-xs font-bold text-rose-700 dark:text-rose-300 hover:bg-rose-100 transition-colors cursor-pointer"
+        >
+          <X class="h-3.5 w-3.5" />
+          <span>إلغاء التحديد</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Measurements Table -->
     <div class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
       <div v-if="loading" class="flex h-64 items-center justify-center">
@@ -166,6 +206,14 @@
         <table class="w-full text-right text-xs">
           <thead class="border-b border-gray-100 bg-gray-50/75 text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
             <tr>
+              <th class="py-3.5 px-4 w-10">
+                <input
+                  type="checkbox"
+                  :checked="isAllMeasurementsSelected"
+                  @change="toggleSelectAllMeasurements"
+                  class="rounded-md border-gray-300 text-[#00C896] focus:ring-[#00C896] cursor-pointer"
+                />
+              </th>
               <th class="py-3.5 px-4 font-bold">{{ $t('measurements.measurementNumber') }}</th>
               <th class="py-3.5 px-4 font-bold">{{ $t('measurements.opportunity') }}</th>
               <th class="py-3.5 px-4 font-bold">{{ $t('measurements.siteVisit') }}</th>
@@ -181,6 +229,14 @@
               :key="item.id"
               class="group hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors"
             >
+              <td class="py-3.5 px-4 w-10">
+                <input
+                  type="checkbox"
+                  :value="item.id"
+                  v-model="selectedMeasurementIds"
+                  class="rounded-md border-gray-300 text-[#00C896] focus:ring-[#00C896] cursor-pointer"
+                />
+              </td>
               <td class="py-3.5 px-4">
                 <div class="flex items-center gap-2">
                   <span class="font-black text-gray-900 dark:text-white">{{ item.measurement_number }}</span>
@@ -1150,6 +1206,19 @@ const engineers = ref([]);
 
 const searchQuery = ref('');
 const selectedStatus = ref('');
+const selectedMeasurementIds = ref([]);
+
+const isAllMeasurementsSelected = computed(() => {
+  return measurements.value.length > 0 && selectedMeasurementIds.value.length === measurements.value.length;
+});
+
+const toggleSelectAllMeasurements = () => {
+  if (isAllMeasurementsSelected.value) {
+    selectedMeasurementIds.value = [];
+  } else {
+    selectedMeasurementIds.value = measurements.value.map((m) => m.id);
+  }
+};
 const stats = reactive({
   total: 0,
   draft: 0,
@@ -1420,6 +1489,7 @@ const fetchMeasurements = async () => {
     if (filterOpportunityId.value) params.opportunity_id = filterOpportunityId.value;
 
     const res = await api.get('/measurements', { params });
+    selectedMeasurementIds.value = [];
     if (res.data?.success) {
       measurements.value = res.data.data;
       if (res.data.stats) {
@@ -2083,6 +2153,52 @@ const deleteMeasurement = async (item) => {
       message: err.response?.data?.message || 'تعذر حذف المقايسة.',
     });
   }
+};
+
+const confirmBulkDeleteMeasurements = async () => {
+  if (selectedMeasurementIds.value.length === 0) return;
+
+  const selectedItems = measurements.value.filter((m) => selectedMeasurementIds.value.includes(m.id));
+  const deletableItems = selectedItems.filter((m) => m.status !== 'Approved');
+  const approvedCount = selectedItems.length - deletableItems.length;
+
+  if (deletableItems.length === 0) {
+    notificationStore.addToast({
+      type: 'warning',
+      title: 'تنبيه النظام',
+      message: 'كافة المقايسات المحددة معتمدة رسمياً ولا يمكن حذفها للحفاظ على سلامة الحصر وسجل المشروع.',
+    });
+    return;
+  }
+
+  const confirmed = await alertService.confirmDelete({
+    title: 'تأكيد حذف المقايسات المحددة',
+    text: `هل أنت متأكد من رغبتك في حذف ${deletableItems.length} مقايسة محددة؟ لا يمكن التراجع عن هذا الإجراء.${approvedCount > 0 ? ` (تم استثناء ${approvedCount} مقايسة معتمدة رسمياً)` : ''}`,
+    confirmButtonText: `نعم، احذف (${deletableItems.length})`,
+    cancelButtonText: 'إلغاء الأمر',
+  });
+
+  if (!confirmed) return;
+
+  loading.value = true;
+  let successCount = 0;
+  for (const item of deletableItems) {
+    try {
+      await api.delete(`/measurements/${item.id}`);
+      successCount++;
+    } catch (err) {}
+  }
+
+  if (successCount > 0) {
+    notificationStore.addToast({
+      type: 'success',
+      title: 'تم الحذف بنجاح',
+      message: `تم حذف ${successCount} مقايسة بنجاح.`,
+    });
+  }
+
+  selectedMeasurementIds.value = [];
+  await fetchMeasurements();
 };
 
 const printMeasurementSheet = () => {

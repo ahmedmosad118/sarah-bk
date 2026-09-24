@@ -284,19 +284,19 @@
             <Eye class="h-3.5 w-3.5" />
           </button>
 
-          <!-- Schedule / Reschedule -->
-          <button
-            type="button"
-            @click="openScheduleModal(item)"
-            class="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors cursor-pointer"
-            :title="$t('siteVisits.scheduleAction')"
+          <!-- If Completed: Quick link to Measurement / BOQ -->
+          <router-link
+            v-if="item.status === 'Completed'"
+            :to="`/measurements?site_visit_id=${item.id}&opportunity_id=${item.opportunity_id || ''}`"
+            class="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
+            title="الانتقال إلى المقايسة وحصر الكميات (Measurements & BOQ)"
           >
-            <Calendar class="h-3.5 w-3.5" />
-          </button>
+            <Ruler class="h-3.5 w-3.5" />
+          </router-link>
 
-          <!-- Complete -->
+          <!-- Complete (Only for Active/Scheduled/Requested visits) -->
           <button
-            v-if="item.status !== 'Completed'"
+            v-if="item.status !== 'Completed' && item.status !== 'Cancelled'"
             type="button"
             @click="openCompleteModal(item)"
             class="p-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-400 transition-colors cursor-pointer"
@@ -305,8 +305,20 @@
             <CheckCircle2 class="h-3.5 w-3.5" />
           </button>
 
-          <!-- Edit -->
+          <!-- Schedule / Reschedule (Only for Active/Scheduled/Requested visits) -->
           <button
+            v-if="item.status !== 'Completed' && item.status !== 'Cancelled'"
+            type="button"
+            @click="openScheduleModal(item)"
+            class="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors cursor-pointer"
+            :title="$t('siteVisits.scheduleAction')"
+          >
+            <Calendar class="h-3.5 w-3.5" />
+          </button>
+
+          <!-- Edit (Only for Active/Scheduled/Requested visits) -->
+          <button
+            v-if="item.status !== 'Completed' && item.status !== 'Cancelled'"
             type="button"
             @click="openEditModal(item)"
             class="p-1.5 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 dark:hover:text-amber-400 transition-colors cursor-pointer"
@@ -784,8 +796,9 @@
 
           <!-- Action Buttons Bar -->
           <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-200/60 dark:border-gray-700/60">
+            <!-- Complete Button: ONLY if NOT Completed and NOT Cancelled -->
             <button
-              v-if="selectedVisit.status !== 'Completed'"
+              v-if="selectedVisit.status !== 'Completed' && selectedVisit.status !== 'Cancelled'"
               type="button"
               @click="openCompleteModal(selectedVisit)"
               class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
@@ -794,7 +807,9 @@
               <span>{{ $t('siteVisits.completeAction') }}</span>
             </button>
 
+            <!-- Schedule / Reschedule Button: ONLY if NOT Completed and NOT Cancelled -->
             <button
+              v-if="selectedVisit.status !== 'Completed' && selectedVisit.status !== 'Cancelled'"
               type="button"
               @click="openScheduleModal(selectedVisit)"
               class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
@@ -803,17 +818,29 @@
               <span>{{ $t('siteVisits.scheduleAction') }}</span>
             </button>
 
+            <!-- Link to Measurements (If Completed) -->
+            <router-link
+              v-if="selectedVisit.status === 'Completed'"
+              :to="`/measurements?site_visit_id=${selectedVisit.id}&opportunity_id=${selectedVisit.opportunity_id || ''}`"
+              class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+            >
+              <Ruler class="h-3.5 w-3.5" />
+              <span>إنشاء / استعراض المقايسة الهندسية</span>
+            </router-link>
+
+            <!-- Upload Photos: Available for viewing/uploading photos -->
             <button
               type="button"
               @click="openPhotosModal(selectedVisit)"
               class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 text-xs font-bold transition-all cursor-pointer"
             >
               <Camera class="h-3.5 w-3.5" />
-              <span>{{ $t('siteVisits.uploadPhotosAction') }}</span>
+              <span>{{ selectedVisit.status === 'Completed' ? 'استعراض ورفع صور الموقع' : $t('siteVisits.uploadPhotosAction') }}</span>
             </button>
 
+            <!-- Cancel Button: ONLY if NOT Completed and NOT Cancelled -->
             <button
-              v-if="selectedVisit.status !== 'Cancelled'"
+              v-if="selectedVisit.status !== 'Completed' && selectedVisit.status !== 'Cancelled'"
               type="button"
               @click="cancelVisitAction(selectedVisit)"
               class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300 text-xs font-bold transition-all cursor-pointer"
@@ -1251,6 +1278,7 @@ import {
   LayoutGrid,
   ExternalLink,
   UploadCloud,
+  Ruler,
 } from 'lucide-vue-next';
 
 const { t } = useI18n();

@@ -37,6 +37,46 @@
       </div>
     </div>
 
+    <!-- Bulk Actions Floating/Highlight Bar -->
+    <div
+      v-if="selectable && selectedIds.length > 0"
+      class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 mx-5 my-3 rounded-2xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 shadow-xs animate-in fade-in duration-200"
+    >
+      <div class="flex items-center gap-2.5">
+        <span class="flex h-7 w-7 items-center justify-center rounded-xl bg-rose-600 text-white font-mono font-black text-xs shadow-2xs">
+          {{ selectedIds.length }}
+        </span>
+        <div>
+          <p class="text-xs font-black text-rose-950 dark:text-rose-200">
+            تم تحديد {{ selectedIds.length }} عنصر من الجدول
+          </p>
+          <p class="text-[11px] text-rose-700/80 dark:text-rose-400">
+            يمكنك تطبيق إجراء الحذف الجماعي على كافة السجلات المحددة.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          @click="onBulkDeleteClick"
+          class="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2 text-xs font-black text-white shadow-xs transition-colors cursor-pointer"
+        >
+          <Trash2 class="h-3.5 w-3.5" />
+          <span>حذف المحدد (Delete Selected)</span>
+        </button>
+
+        <button
+          type="button"
+          @click="clearSelection"
+          class="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-white dark:bg-gray-800 dark:border-rose-900/50 px-3 py-2 text-xs font-bold text-rose-700 dark:text-rose-300 hover:bg-rose-100 transition-colors cursor-pointer"
+        >
+          <X class="h-3.5 w-3.5" />
+          <span>إلغاء التحديد</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Table Container -->
     <div class="max-w-full overflow-x-auto">
       <table class="w-full table-auto" :class="$i18n.locale === 'ar' ? 'text-right' : 'text-left'">
@@ -93,12 +133,12 @@
             :key="item.id || index"
             class="hover:bg-gray-50/80 dark:hover:bg-gray-700/30 transition-colors"
           >
-            <td v-if="selectable" class="py-3 px-4">
+            <td v-if="selectable" class="py-3 px-4 w-10">
               <input
                 type="checkbox"
                 :value="item.id"
                 v-model="selectedIds"
-                class="rounded-md border-gray-300 text-blue-600 focus:ring-blue-500"
+                class="rounded-md border-gray-300 text-[#00C896] focus:ring-[#00C896] cursor-pointer"
               />
             </td>
 
@@ -175,9 +215,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Search, Plus, Pencil, Trash2, Inbox, ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { Search, Plus, Pencil, Trash2, Inbox, ChevronLeft, ChevronRight, X, CheckSquare } from 'lucide-vue-next';
 import { isIsoDateString, formatDate } from '../../utils/date';
 
 const { locale } = useI18n();
@@ -221,7 +261,7 @@ const props = defineProps({
   },
   selectable: {
     type: Boolean,
-    default: false,
+    default: true,
   },
 });
 
@@ -256,4 +296,21 @@ const toggleSelectAll = () => {
     selectedIds.value = props.items.map((i) => i.id);
   }
 };
+
+const onBulkDeleteClick = () => {
+  emit('bulk-delete', [...selectedIds.value]);
+};
+
+const clearSelection = () => {
+  selectedIds.value = [];
+};
+
+watch(() => props.items, () => {
+  selectedIds.value = [];
+});
+
+defineExpose({
+  clearSelection,
+  selectedIds,
+});
 </script>

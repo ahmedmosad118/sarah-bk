@@ -2,23 +2,19 @@
   <div class="relative" ref="dropdownRef">
     <button
       @click="isOpen = !isOpen"
-      class="flex items-center gap-2 sm:gap-3 p-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors"
+      class="flex items-center gap-1.5 p-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors cursor-pointer group"
+      :title="authStore.user?.name || $t('header.user')"
     >
-      <img
-        :src="currentAvatarUrl"
-        @error="handleAvatarError"
-        alt="User"
-        class="h-9 w-9 rounded-xl object-cover ring-2 ring-[#00C896]/40 bg-emerald-50 dark:bg-slate-800"
-      />
-      <div class="hidden lg:block" :class="$i18n.locale === 'ar' ? 'text-right' : 'text-left'">
-        <span class="block text-xs font-bold text-gray-900 dark:text-white">
-          {{ authStore.user?.name || $t('header.user') }}
-        </span>
-        <span class="block text-[11px] font-semibold text-[#00A87E] dark:text-[#00C896]">
-          {{ authStore.user?.job_title || authStore.roles[0] || $t('header.member') }}
-        </span>
+      <div class="relative">
+        <img
+          :src="currentAvatarUrl"
+          @error="handleAvatarError"
+          alt="User"
+          class="h-9 w-9 rounded-xl object-cover ring-2 ring-[#00C896]/40 group-hover:ring-[#00C896] bg-emerald-50 dark:bg-slate-800 transition-all shadow-xs"
+        />
+        <span class="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[#00C896] ring-2 ring-white dark:ring-gray-900"></span>
       </div>
-      <ChevronDown class="h-4 w-4 text-gray-400 hidden lg:block" />
+      <ChevronDown class="h-3.5 w-3.5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200 transition-transform duration-200" :class="{ 'rotate-180': isOpen }" />
     </button>
 
     <!-- Dropdown Menu -->

@@ -147,6 +147,47 @@
     </div>
 
     <!-- Scopes Table -->
+    <!-- Bulk Actions Bar for Scopes -->
+    <div
+      v-if="selectedScopeIds.length > 0"
+      class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 mb-4 rounded-2xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 shadow-xs animate-in fade-in duration-200"
+    >
+      <div class="flex items-center gap-2.5">
+        <span class="flex h-7 w-7 items-center justify-center rounded-xl bg-rose-600 text-white font-mono font-black text-xs shadow-2xs">
+          {{ selectedScopeIds.length }}
+        </span>
+        <div>
+          <p class="text-xs font-black text-rose-950 dark:text-rose-200">
+            تم تحديد {{ selectedScopeIds.length }} نطاق عمل من الجدول
+          </p>
+          <p class="text-[11px] text-rose-700/80 dark:text-rose-400">
+            يمكنك حذف نطاقات العمل المحددة (المسودات وقيد المراجعة). النطاقات المعتمدة محمية للحفاظ على سلامة بنود الأعمال التعاقدية.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          @click="confirmBulkDeleteScopes"
+          class="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2 text-xs font-black text-white shadow-xs transition-colors cursor-pointer"
+        >
+          <Trash2 class="h-3.5 w-3.5" />
+          <span>حذف المحدد (Delete Selected)</span>
+        </button>
+
+        <button
+          type="button"
+          @click="selectedScopeIds = []"
+          class="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-white dark:bg-gray-800 dark:border-rose-900/50 px-3 py-2 text-xs font-bold text-rose-700 dark:text-rose-300 hover:bg-rose-100 transition-colors cursor-pointer"
+        >
+          <X class="h-3.5 w-3.5" />
+          <span>إلغاء التحديد</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Scopes Table -->
     <div class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
       <div v-if="loading" class="flex h-64 items-center justify-center">
         <Loader2 class="h-8 w-8 animate-spin text-[#00C896]" />
@@ -164,6 +205,14 @@
         <table class="w-full text-right text-xs">
           <thead class="border-b border-gray-100 bg-gray-50/75 text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
             <tr>
+              <th class="py-3.5 px-4 w-10">
+                <input
+                  type="checkbox"
+                  :checked="isAllScopesSelected"
+                  @change="toggleSelectAllScopes"
+                  class="rounded-md border-gray-300 text-[#00C896] focus:ring-[#00C896] cursor-pointer"
+                />
+              </th>
               <th class="py-3.5 px-4 font-bold">{{ $t('scopes.scopeNumber') }}</th>
               <th class="py-3.5 px-4 font-bold">{{ $t('scopes.opportunity') }}</th>
               <th class="py-3.5 px-4 font-bold">{{ $t('scopes.basedOnMeasurement') }}</th>
@@ -179,6 +228,14 @@
               :key="item.id"
               class="group hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors"
             >
+              <td class="py-3.5 px-4 w-10">
+                <input
+                  type="checkbox"
+                  :value="item.id"
+                  v-model="selectedScopeIds"
+                  class="rounded-md border-gray-300 text-[#00C896] focus:ring-[#00C896] cursor-pointer"
+                />
+              </td>
               <td class="py-3.5 px-4">
                 <div class="flex items-center gap-2">
                   <span class="font-black text-gray-900 dark:text-white">{{ item.scope_number }}</span>
@@ -242,6 +299,15 @@
                     class="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white transition-colors cursor-pointer"
                   >
                     <Eye class="h-4 w-4" />
+                  </button>
+
+                  <!-- Quick Print Button -->
+                  <button
+                    @click="quickPrintScope(item)"
+                    title="طباعة وثيقة نطاق الأعمال الرسمية"
+                    class="rounded-lg p-1.5 text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors cursor-pointer"
+                  >
+                    <Printer class="h-4 w-4" />
                   </button>
 
                   <!-- Edit (Draft or Under Review only) -->
@@ -667,7 +733,7 @@
         </div>
 
         <!-- Details Content -->
-        <div class="flex-1 overflow-y-auto p-6 space-y-6" id="printable-scope-sheet">
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
           <!-- Status Notice Banner -->
           <div
             v-if="selectedScope.status === 'Approved'"
@@ -824,6 +890,280 @@
         </div>
       </div>
     </div>
+
+    <!-- ============================================================ -->
+    <!-- OFFICIAL CORPORATE PRINTABLE DOCUMENT (Visible ONLY on print) -->
+    <!-- ============================================================ -->
+    <div v-if="selectedScope" id="official-printable-scope" class="hidden text-slate-900 bg-white">
+      <!-- 1. Corporate Header / Letterhead -->
+      <div class="border-b-2 border-slate-900 pb-4 mb-4">
+        <div class="flex items-start justify-between gap-4">
+          <!-- Right: Company Info -->
+          <div class="text-right flex-1">
+            <h1 class="text-base font-black text-slate-900 tracking-tight">
+              {{ authStore.tenant?.name || 'شركة الصرح للمقاولات العامة والتشطيبات' }}
+            </h1>
+            <p class="text-[11px] font-bold text-slate-600 mt-0.5">
+              إدارة المكتب الفني وحساب الكميات • قسم العقود والتوصيف الهندسي
+            </p>
+            <p class="text-[10px] text-slate-500 font-mono mt-0.5">
+              سجل تجاري: 1084920 | بطاقة ضريبية: 492-381-092 | بنها - القليوبية
+            </p>
+          </div>
+
+          <!-- Center: Document Title & Badges -->
+          <div class="text-center px-4 shrink-0">
+            <div class="inline-block border-2 border-slate-900 bg-slate-50 px-4 py-1.5 rounded-lg shadow-2xs">
+              <h2 class="text-sm font-black text-slate-900">وثيقة نطاق الأعمال والاشتراطات الفنية</h2>
+              <p class="text-[9px] font-black uppercase tracking-wider text-slate-600">Approved Technical Scope of Work (SOW)</p>
+            </div>
+            <div class="mt-1.5 flex items-center justify-center gap-2 text-[10px]">
+              <span class="font-mono font-bold text-slate-800">كود: {{ selectedScope.scope_number }}</span>
+              <span class="text-slate-400">•</span>
+              <span
+                class="font-bold px-2 py-0.5 rounded text-[10px]"
+                :class="selectedScope.status === 'Approved' ? 'text-emerald-800 bg-emerald-100 border border-emerald-300' : 'text-amber-800 bg-amber-100 border border-amber-300'"
+              >
+                {{ selectedScope.status === 'Approved' ? 'معتمد رسمياً (Approved)' : selectedScope.status }}
+              </span>
+              <span class="text-slate-400">•</span>
+              <span class="font-bold text-slate-700">إصدار: V{{ selectedScope.version }}</span>
+            </div>
+          </div>
+
+          <!-- Left: Logo & Print Date -->
+          <div class="text-left flex flex-col items-end shrink-0">
+            <div class="flex items-center gap-2 border border-slate-400 rounded-lg px-2.5 py-1 bg-slate-50">
+              <div class="h-6 w-6 rounded bg-emerald-700 text-white flex items-center justify-center font-black text-xs">
+                S
+              </div>
+              <span class="font-black text-xs text-slate-800 font-mono tracking-wider">SARH ERP</span>
+            </div>
+            <div class="mt-2 text-[10px] text-slate-500 font-mono text-left space-y-0.5">
+              <p>تاريخ الإعداد: {{ selectedScope.prepared_at || selectedScope.created_at?.slice(0, 10) }}</p>
+              <p v-if="selectedScope.approved_at">تاريخ الاعتماد: {{ selectedScope.approved_at?.slice(0, 10) }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Project & Commercial Identification Table -->
+      <div class="mb-4 border border-slate-400 rounded-lg overflow-hidden text-xs">
+        <div class="bg-slate-100 px-3 py-1.5 border-b border-slate-300 flex items-center justify-between font-bold">
+          <span class="text-[11px] font-black text-slate-800">بيانات العملية والارتباط التجاري والهندسي:</span>
+          <span class="text-[10px] text-slate-500 font-mono">Commercial & Engineering Scope File</span>
+        </div>
+        <div class="grid grid-cols-2 divide-x divide-x-reverse divide-y divide-slate-300">
+          <div class="p-2 flex items-start gap-2">
+            <span class="font-bold text-slate-600 min-w-24">الفرصة / المشروع:</span>
+            <span class="font-black text-slate-900">{{ selectedScope.opportunity?.title || '—' }}</span>
+          </div>
+          <div class="p-2 flex items-start gap-2">
+            <span class="font-bold text-slate-600 min-w-24">الطرف الثاني (العميل):</span>
+            <span class="font-black text-slate-900">
+              {{ selectedScope.opportunity?.customer?.name || '—' }}
+              <span v-if="selectedScope.opportunity?.customer?.company_name" class="font-normal text-slate-600">
+                ({{ selectedScope.opportunity?.customer?.company_name }})
+              </span>
+            </span>
+          </div>
+          <div class="p-2 flex items-start gap-2">
+            <span class="font-bold text-slate-600 min-w-24">المقايسة المرجعية:</span>
+            <span class="font-black text-emerald-800">
+              مقايسة رقم #{{ selectedScope.measurement?.measurement_number }}
+              (الإصدار V{{ selectedScope.measurement?.version }} - معتمدة فنياً)
+            </span>
+          </div>
+          <div class="p-2 flex items-start gap-2">
+            <span class="font-bold text-slate-600 min-w-24">إجمالي المسطحات:</span>
+            <span class="font-black text-slate-900">
+              {{ Number(selectedScope.measurement?.total_area || 0).toFixed(2) }} متر مربع (م²)
+            </span>
+          </div>
+          <div class="p-2 flex items-start gap-2">
+            <span class="font-bold text-slate-600 min-w-24">عنوان نطاق العمل:</span>
+            <span class="font-black text-slate-900">{{ selectedScope.title || '—' }}</span>
+          </div>
+          <div class="p-2 flex items-start gap-2">
+            <span class="font-bold text-slate-600 min-w-24">مسؤولية الاعتماد:</span>
+            <span class="font-black text-slate-900">
+              إعداد: {{ selectedScope.prepared_user?.name || selectedScope.creator?.name || 'مكتب فني' }} |
+              اعتماد: {{ selectedScope.approved_user?.name || 'الإدارة الهندسية' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. General Inclusions & Exclusions (Contract Boundaries) -->
+      <div class="grid grid-cols-2 gap-3 mb-4 print-avoid-break">
+        <!-- Inclusions -->
+        <div class="border border-emerald-700/60 rounded-lg p-2.5 bg-emerald-50/25">
+          <div class="flex items-center gap-1.5 border-b border-emerald-600/30 pb-1 mb-1.5">
+            <span class="h-2 w-2 rounded-full bg-emerald-700"></span>
+            <h3 class="text-xs font-black text-emerald-950">الاشتمالات والالتزامات العامة (المتضمن تعاقدياً):</h3>
+          </div>
+          <p class="text-[11px] leading-relaxed text-slate-800 whitespace-pre-line text-justify">
+            {{ selectedScope.general_inclusions || 'لا توجد اشتمالات خاصة مدونة.' }}
+          </p>
+        </div>
+
+        <!-- Exclusions -->
+        <div class="border border-rose-700/60 rounded-lg p-2.5 bg-rose-50/25">
+          <div class="flex items-center gap-1.5 border-b border-rose-600/30 pb-1 mb-1.5">
+            <span class="h-2 w-2 rounded-full bg-rose-700"></span>
+            <h3 class="text-xs font-black text-rose-950">الاستثناءات والحدود العامة (خارج نطاق التعاقد):</h3>
+          </div>
+          <p class="text-[11px] leading-relaxed text-slate-800 whitespace-pre-line text-justify">
+            {{ selectedScope.general_exclusions || 'لا توجد استثناءات مدونة.' }}
+          </p>
+        </div>
+      </div>
+
+      <!-- 4. Detailed Technical Specifications Table -->
+      <div class="mb-4">
+        <div class="bg-slate-900 text-white px-3 py-1.5 rounded-t-lg flex items-center justify-between">
+          <h3 class="text-xs font-black">جدول حزم وبنود الأعمال والمواصفات الفنية التفصيلية ({{ selectedScope.items?.length || 0 }} بند)</h3>
+          <span class="text-[10px] text-slate-300 font-mono">Detailed Work Breakdown & Specifications</span>
+        </div>
+
+        <table class="w-full text-right border-collapse border border-slate-400 text-[11px]">
+          <thead>
+            <tr class="bg-slate-100 text-slate-900 border-b border-slate-400 font-bold">
+              <th class="p-2 border-l border-slate-400 text-center w-8">#</th>
+              <th class="p-2 border-l border-slate-400 w-44">بند العمل والتصنيف</th>
+              <th class="p-2 border-l border-slate-400">المواصفة الفنية التفصيلية وطريقة التنفيذ</th>
+              <th class="p-2 border-l border-slate-400 w-48">الاشتمالات والاستثناءات</th>
+              <th class="p-2 w-48">بنود الحصر والمقايسة المرتبطة</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(it, idx) in selectedScope.items"
+              :key="it.id"
+              class="border-b border-slate-400 align-top print-avoid-break"
+              :class="idx % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'"
+            >
+              <!-- 1. Index -->
+              <td class="p-2 border-l border-slate-400 text-center font-bold font-mono">
+                {{ idx + 1 }}
+              </td>
+
+              <!-- 2. Item Name & Trade -->
+              <td class="p-2 border-l border-slate-400">
+                <p class="font-black text-slate-900 text-xs leading-snug">{{ it.item_name }}</p>
+                <span class="inline-block mt-1 bg-slate-200 text-slate-800 text-[9px] font-bold px-1.5 py-0.5 rounded border border-slate-300">
+                  {{ it.trade_category }}
+                </span>
+                <p v-if="it.notes" class="mt-1 text-[10px] text-slate-500 italic">ملاحظة: {{ it.notes }}</p>
+              </td>
+
+              <!-- 3. Technical Spec -->
+              <td class="p-2 border-l border-slate-400 leading-relaxed text-slate-800 whitespace-pre-line text-justify">
+                {{ it.specification || 'حسب أصول الصناعة ومواصفات الكود.' }}
+              </td>
+
+              <!-- 4. Inclusions & Exclusions -->
+              <td class="p-2 border-l border-slate-400 text-[10px] space-y-1.5">
+                <div v-if="it.inclusions" class="bg-emerald-50 p-1.5 rounded border border-emerald-300">
+                  <span class="font-bold text-emerald-900 block">المتضمن بالبند:</span>
+                  <span class="text-slate-800 leading-snug block mt-0.5">{{ it.inclusions }}</span>
+                </div>
+                <div v-if="it.exclusions" class="bg-rose-50 p-1.5 rounded border border-rose-300">
+                  <span class="font-bold text-rose-900 block">المستثنى من البند:</span>
+                  <span class="text-slate-800 leading-snug block mt-0.5">{{ it.exclusions }}</span>
+                </div>
+                <span v-if="!it.inclusions && !it.exclusions" class="text-slate-400 italic">طبقاً للمواصفات العامة</span>
+              </td>
+
+              <!-- 5. Linked Measurement Items -->
+              <td class="p-2">
+                <div v-if="it.measurement_items && it.measurement_items.length > 0" class="space-y-1">
+                  <div
+                    v-for="m in it.measurement_items"
+                    :key="m.id"
+                    class="border border-slate-300 rounded p-1 bg-slate-50 text-[10px]"
+                  >
+                    <div class="flex items-center justify-between gap-1">
+                      <span class="font-bold text-slate-800 truncate">{{ m.room_name }}</span>
+                      <span class="font-mono font-black text-slate-900 text-[9px] bg-white border border-slate-400 px-1 rounded">
+                        {{ Number(m.net_quantity) }} {{ m.unit }}
+                      </span>
+                    </div>
+                    <p class="text-[9px] text-slate-600 truncate mt-0.5">{{ m.item_name }}</p>
+                  </div>
+                </div>
+                <span v-else class="text-slate-400 text-[10px] italic">غير مرتبط ببنود مقايسة مفردة</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 5. General Contractual Conditions -->
+      <div v-if="selectedScope.notes" class="mb-4 border border-slate-400 rounded-lg p-2.5 bg-slate-50/60 print-avoid-break">
+        <h4 class="text-xs font-black text-slate-900 mb-1">ملاحظات واشتراطات إضافية:</h4>
+        <p class="text-[10px] leading-relaxed text-slate-700">{{ selectedScope.notes }}</p>
+      </div>
+
+      <!-- 6. Engineering Standards & Handover -->
+      <div class="mb-4 border border-slate-400 rounded-lg p-2.5 bg-slate-50/80 print-avoid-break">
+        <h4 class="text-xs font-black text-slate-900 mb-1">الاشتراطات الهندسية وأصول الصناعة والتسليم:</h4>
+        <ol class="list-decimal list-inside text-[10px] leading-relaxed text-slate-700 space-y-0.5">
+          <li>تعتبر هذه الوثيقة المرجع الفني والهندسي الملزم لتحديد حدود ومواصفات الأعمال وطريقة تنفيذها.</li>
+          <li>تلتزم جهة التنفيذ بتقديم عينات معتمدة لجميع المواد والخامات لمهندس الإشراف قبل التوريد أو التركيب.</li>
+          <li>كافة القياسات والكميات المذكورة مبنية على المقايسة الهندسية المعتمدة رقم (#{{ selectedScope.measurement?.measurement_number }} - V{{ selectedScope.measurement?.version }}).</li>
+          <li>لا يعتد بأي تعديلات في نطاق الأعمال إلا بموجب ملحق رسمي وإصدار جديد معتمد (New Scope Revision).</li>
+        </ol>
+      </div>
+
+      <!-- 7. Official Signatures Block -->
+      <div class="border border-slate-400 rounded-lg p-3 bg-white print-avoid-break mb-3">
+        <h4 class="text-center text-xs font-black text-slate-900 mb-2.5 border-b border-slate-200 pb-1">
+          الاعتماد والتوثيق التعاقدي الرسمي لوثيقة نطاق الأعمال
+        </h4>
+        <div class="grid grid-cols-4 gap-2.5 text-center text-[10px]">
+          <!-- 1. Technical Office -->
+          <div class="border border-slate-300 rounded p-2 bg-slate-50/50">
+            <span class="font-bold text-slate-500 block mb-1">إعداد المكتب الفني:</span>
+            <p class="font-black text-slate-900 text-[11px] mb-5">{{ selectedScope.prepared_user?.name || selectedScope.creator?.name || 'مهندس المكتب الفني' }}</p>
+            <div class="border-t border-dashed border-slate-400 pt-1 text-[9px] text-slate-400">التوقيع والتاريخ</div>
+          </div>
+
+          <!-- 2. Project Manager -->
+          <div class="border border-slate-300 rounded p-2 bg-slate-50/50">
+            <span class="font-bold text-slate-500 block mb-1">مراجعة إدارة المشروعات:</span>
+            <p class="font-black text-slate-900 text-[11px] mb-5">{{ selectedScope.reviewed_user?.name || 'مدير المشروعات' }}</p>
+            <div class="border-t border-dashed border-slate-400 pt-1 text-[9px] text-slate-400">التوقيع والتاريخ</div>
+          </div>
+
+          <!-- 3. Approved Executive -->
+          <div class="border border-slate-300 rounded p-2 bg-slate-50/50 relative overflow-hidden">
+            <span class="font-bold text-slate-500 block mb-1">الاعتماد الفني والهندسي:</span>
+            <p class="font-black text-emerald-900 text-[11px] mb-5">{{ selectedScope.approved_user?.name || 'الإدارة الهندسية' }}</p>
+            <!-- Stamp simulation -->
+            <div v-if="selectedScope.status === 'Approved'" class="absolute inset-x-0 bottom-5 flex justify-center opacity-90 pointer-events-none">
+              <div class="border-2 border-emerald-700 text-emerald-800 font-black text-[9px] px-2 py-0.5 rounded uppercase rotate-[-6deg] bg-white/95 shadow-2xs">
+                معتمد رسمياً • APPROVED
+              </div>
+            </div>
+            <div class="border-t border-dashed border-slate-400 pt-1 text-[9px] text-slate-400">التوقيع والختم</div>
+          </div>
+
+          <!-- 4. Client Acceptance -->
+          <div class="border border-slate-300 rounded p-2 bg-slate-50/50">
+            <span class="font-bold text-slate-500 block mb-1">موافقة الطرف الثاني (العميل):</span>
+            <p class="font-black text-slate-900 text-[11px] mb-5">{{ selectedScope.opportunity?.customer?.name || 'السيد العميل' }}</p>
+            <div class="border-t border-dashed border-slate-400 pt-1 text-[9px] text-slate-400">التوقيع والصفة</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 8. Document Footer -->
+      <div class="flex items-center justify-between text-[9px] text-slate-500 border-t border-slate-300 pt-1.5 font-mono">
+        <span>نظام SARH ERP المتكامل لإدارة المقاولات والتشطيبات • وثيقة صادرة إلكترونياً</span>
+        <span>تاريخ وتوقيت الطباعة: {{ new Date().toLocaleString('ar-EG') }}</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -832,6 +1172,7 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../../services/api';
+import alertService from '../../services/alert';
 import { useNotificationStore } from '../../stores/notification';
 import { useAuthStore } from '../../stores/auth';
 import {
@@ -880,6 +1221,19 @@ const approvedMeasurements = ref([]);
 
 const searchQuery = ref('');
 const selectedStatus = ref('');
+const selectedScopeIds = ref([]);
+
+const isAllScopesSelected = computed(() => {
+  return scopes.value.length > 0 && selectedScopeIds.value.length === scopes.value.length;
+});
+
+const toggleSelectAllScopes = () => {
+  if (isAllScopesSelected.value) {
+    selectedScopeIds.value = [];
+  } else {
+    selectedScopeIds.value = scopes.value.map((s) => s.id);
+  }
+};
 const stats = reactive({
   total: 0,
   draft: 0,
@@ -1018,6 +1372,7 @@ const fetchScopes = async () => {
     if (filterOpportunityId.value) params.opportunity_id = filterOpportunityId.value;
 
     const res = await api.get('/scopes', { params });
+    selectedScopeIds.value = [];
     if (res.data?.success) {
       scopes.value = res.data.data;
       if (res.data.stats) {
@@ -1297,8 +1652,61 @@ const deleteScope = async (scope) => {
   }
 };
 
+const confirmBulkDeleteScopes = async () => {
+  if (selectedScopeIds.value.length === 0) return;
+
+  const selectedItems = scopes.value.filter((s) => selectedScopeIds.value.includes(s.id));
+  const deletableItems = selectedItems.filter((s) => s.status !== 'Approved');
+  const approvedCount = selectedItems.length - deletableItems.length;
+
+  if (deletableItems.length === 0) {
+    notificationStore.addToast({
+      type: 'warning',
+      title: 'تنبيه النظام',
+      message: 'كافة نطاقات الأعمال المحددة معتمدة رسمياً ولا يمكن حذفها للحفاظ على سلامة بنود الأعمال والتعاقد.',
+    });
+    return;
+  }
+
+  const confirmed = await alertService.confirmDelete({
+    title: 'تأكيد حذف نطاقات الأعمال المحددة',
+    text: `هل أنت متأكد من رغبتك في حذف ${deletableItems.length} نطاق عمل محدد؟ لا يمكن التراجع عن هذا الإجراء.${approvedCount > 0 ? ` (تم استثناء ${approvedCount} نطاق عمل معتمد رسمياً)` : ''}`,
+    confirmButtonText: `نعم، احذف (${deletableItems.length})`,
+    cancelButtonText: 'إلغاء الأمر',
+  });
+
+  if (!confirmed) return;
+
+  loading.value = true;
+  let successCount = 0;
+  for (const item of deletableItems) {
+    try {
+      await api.delete(`/scopes/${item.id}`);
+      successCount++;
+    } catch (err) {}
+  }
+
+  if (successCount > 0) {
+    notificationStore.addToast({
+      type: 'success',
+      title: 'تم الحذف بنجاح',
+      message: `تم حذف ${successCount} نطاق عمل بنجاح.`,
+    });
+  }
+
+  selectedScopeIds.value = [];
+  await fetchScopes();
+};
+
 const printScopeSheet = () => {
   window.print();
+};
+
+const quickPrintScope = (scope) => {
+  selectedScope.value = scope;
+  setTimeout(() => {
+    window.print();
+  }, 120);
 };
 
 onMounted(() => {
@@ -1308,19 +1716,70 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@media screen {
+  #official-printable-scope {
+    display: none !important;
+  }
+}
+
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 10mm 12mm 10mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Completely hide all screen elements, headers, modals, and backdrop */
   body * {
-    visibility: hidden;
+    visibility: hidden !important;
   }
-  #printable-scope-sheet,
-  #printable-scope-sheet * {
-    visibility: visible;
+
+  /* Make our official engineering document visible */
+  #official-printable-scope,
+  #official-printable-scope * {
+    visibility: visible !important;
   }
-  #printable-scope-sheet {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+
+  #official-printable-scope {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-family: 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    direction: rtl !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .print-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
   }
 }
 

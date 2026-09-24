@@ -72,6 +72,7 @@
       :loading="loading"
       :meta="meta"
       :allow-create="false"
+      :selectable="false"
       :search-placeholder="$t('activities.searchPlaceholder')"
       @search="onSearch"
       @page-change="loadLogs"
