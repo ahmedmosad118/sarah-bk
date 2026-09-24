@@ -257,6 +257,12 @@ class OpportunityManagementTest extends TestCase
     {
         TenantDatabaseManager::switchToTenant($this->tenantA);
 
+        $customer = Customer::create([
+            'customer_type' => 'individual',
+            'name' => 'عميل التحقق',
+            'status' => 'active',
+        ]);
+
         // 1. Missing required fields (customer_id, title)
         $res = $this->withHeaders([
             'X-Tenant-Slug' => $this->slugA,
@@ -271,7 +277,7 @@ class OpportunityManagementTest extends TestCase
             'X-Tenant-Slug' => $this->slugA,
             'Authorization' => 'Bearer ' . $this->tokenA,
         ])->postJson('/api/opportunities', [
-            'customer_id' => 1,
+            'customer_id' => $customer->id,
             'title' => 'فرصة غير صالحة',
             'stage' => 'INVALID_STAGE_XYZ',
         ]);
@@ -284,7 +290,7 @@ class OpportunityManagementTest extends TestCase
             'X-Tenant-Slug' => $this->slugA,
             'Authorization' => 'Bearer ' . $this->tokenA,
         ])->postJson('/api/opportunities', [
-            'customer_id' => 1,
+            'customer_id' => $customer->id,
             'title' => 'فرصة غير صالحة',
             'stage' => 'New',
             'estimated_value' => -1000,
@@ -298,7 +304,7 @@ class OpportunityManagementTest extends TestCase
             'X-Tenant-Slug' => $this->slugA,
             'Authorization' => 'Bearer ' . $this->tokenA,
         ])->postJson('/api/opportunities', [
-            'customer_id' => 1,
+            'customer_id' => $customer->id,
             'title' => 'فرصة غير صالحة',
             'stage' => 'New',
             'expected_start_date' => '2026-12-01',

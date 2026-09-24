@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Core\Concerns\HasApprovalWorkflow;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,7 +15,12 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 
 class Scope extends Model implements HasMedia
 {
-    use HasFactory, LogsActivity, InteractsWithMedia;
+    use HasFactory, LogsActivity, InteractsWithMedia, HasApprovalWorkflow;
+
+    protected function numberColumn(): string
+    {
+        return 'scope_number';
+    }
 
     protected $fillable = [
         'opportunity_id',
@@ -100,42 +106,7 @@ class Scope extends Model implements HasMedia
         return $this->hasMany(ScopeItem::class)->orderBy('sort_order')->orderBy('id');
     }
 
-    // Status Helpers
-    public function isDraft(): bool
-    {
-        return $this->status === 'Draft';
-    }
-
-    public function isUnderReview(): bool
-    {
-        return $this->status === 'Under Review';
-    }
-
-    public function isApproved(): bool
-    {
-        return $this->status === 'Approved';
-    }
-
-    public function isSuperseded(): bool
-    {
-        return $this->status === 'Superseded';
-    }
-
-    public function canBeEdited(): bool
-    {
-        return in_array($this->status, ['Draft', 'Under Review'], true);
-    }
-
-    public function canBeApproved(): bool
-    {
-        return in_array($this->status, ['Draft', 'Under Review'], true);
-    }
-
     // Query Scopes
-    public function scopeStatus(Builder $query, string $status): Builder
-    {
-        return $query->where('status', $status);
-    }
 
     public function scopeForOpportunity(Builder $query, int $opportunityId): Builder
     {

@@ -567,4 +567,127 @@ class ScopeManagementTest extends TestCase
             );
         }
     }
+
+    /**
+     * SCENARIO 8: Status Bypass Protection — Passing 'status' => 'Approved' in store() is completely ignored and forced to Draft.
+     */
+    public function test_store_scope_ignores_status_field_and_forces_draft(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Bypass Test Customer',
+            'customer_type' => 'individual',
+            'phone' => '01012345678',
+            'status' => 'active',
+        ]);
+
+        $opportunity = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Bypass Test Opp',
+            'stage' => 'Proposal',
+        ]);
+
+        $measurement = Measurement::create([
+            'opportunity_id' => $opportunity->id,
+            'measurement_number' => 'M-BYP-001',
+            'status' => 'Approved',
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson('/api/scopes', [
+            'opportunity_id' => $opportunity->id,
+            'measurement_id' => $measurement->id,
+            'title' => 'Malicious Status Injection Scope',
+            'status' => 'Approved', // Injection attempt!
+            'version' => 99, // Injection attempt!
+            'approved_by' => 1,
+            'approved_at' => now()->toDateTimeString(),
+            'items' => [
+                [
+                    'trade_category' => 'أعمال عامة',
+                    'item_name' => 'بند تجريبي',
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', 'Draft')
+            ->assertJsonPath('data.version', 1);
+
+        $scopeId = $response->json('data.id');
+        $storedScope = Scope::find($scopeId);
+
+        $this->assertEquals('Draft', $storedScope->status);
+        $this->assertEquals(1, $storedScope->version);
+        $this->assertNull($storedScope->approved_by);
+        $this->assertNull($storedScope->approved_at);
+    }
+
+    /**
+     * SCENARIO 9: Cannot have two approved scopes via direct status injection.
+     */
+    public function test_cannot_have_two_approved_scopes_via_direct_status_injection(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Dual Approve Customer',
+            'customer_type' => 'individual',
+            'phone' => '01087654321',
+            'status' => 'active',
+        ]);
+
+        $opportunity = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Dual Approve Opp',
+            'stage' => 'Proposal',
+        ]);
+
+        $measurement = Measurement::create([
+            'opportunity_id' => $opportunity->id,
+            'measurement_number' => 'M-DUAL-001',
+            'status' => 'Approved',
+        ]);
+
+        // Legitimate approved Scope 1
+        $scope1 = Scope::create([
+            'opportunity_id' => $opportunity->id,
+            'measurement_id' => $measurement->id,
+            'scope_number' => 'SC-LEGIT-001',
+            'status' => 'Approved',
+            'approved_by' => $this->ownerA->id,
+            'approved_at' => now(),
+        ]);
+
+        // Attacker attempts to post a second scope with status: Approved
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson('/api/scopes', [
+            'opportunity_id' => $opportunity->id,
+            'measurement_id' => $measurement->id,
+            'title' => 'Illegitimate Second Approved Scope',
+            'status' => 'Approved',
+            'items' => [
+                [
+                    'trade_category' => 'أعمال عامة',
+                    'item_name' => 'بند تجريبي 2',
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.status', 'Draft');
+
+        // Only scope 1 remains Approved
+        $approvedScopes = Scope::where('opportunity_id', $opportunity->id)->where('status', 'Approved')->get();
+        $this->assertCount(1, $approvedScopes);
+        $this->assertEquals($scope1->id, $approvedScopes->first()->id);
+    }
 }

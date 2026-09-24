@@ -60,20 +60,4 @@ class SettingController extends Controller
             'data' => Setting::all()->groupBy('group'),
         ]);
     }
-
-    private function authorizePermission(string $permission): void
-    {
-        $user = auth()->user();
-        if (!$user) {
-            return;
-        }
-
-        if ($user->hasRole('Owner') || $user->hasRole('Super Admin')) {
-            return;
-        }
-
-        if (!$user->hasPermissionTo($permission)) {
-            abort(403, __('messages.permission_denied', ['permission' => $permission]));
-        }
-    }
 }

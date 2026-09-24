@@ -227,29 +227,4 @@ class UserController extends CRUDController
             'avatar' => ['nullable', 'image', 'max:5120'], // max 5MB
         ];
     }
-
-    private function authorizePermission(string|array $permission): void
-    {
-        $user = auth()->user();
-        if (!$user) {
-            return;
-        }
-
-        if ($user->hasRole('Owner') || $user->hasRole('Super Admin')) {
-            return;
-        }
-
-        $perms = is_array($permission) ? $permission : [$permission];
-        $hasAny = false;
-        foreach ($perms as $perm) {
-            if ($user->hasPermissionTo($perm)) {
-                $hasAny = true;
-                break;
-            }
-        }
-
-        if (!$hasAny) {
-            abort(403, __('messages.permissions_denied_any', ['permissions' => implode(', ', $perms)]));
-        }
-    }
 }

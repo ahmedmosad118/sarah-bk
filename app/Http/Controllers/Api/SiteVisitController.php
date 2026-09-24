@@ -214,7 +214,6 @@ class SiteVisitController extends CRUDController
         $opportunity = Opportunity::findOrFail($opportunityId);
 
         $validated = $request->validate([
-            'status' => ['nullable', 'string', 'in:Scheduled,Completed,Cancelled,Rescheduled'],
             'scheduled_date' => ['nullable', 'date'],
             'scheduled_time' => ['nullable', 'string', 'max:20'],
             'visit_date' => ['nullable', 'date'],
@@ -232,7 +231,7 @@ class SiteVisitController extends CRUDController
                 'customer_id' => $opportunity->customer_id,
                 'opportunity_id' => $opportunity->id,
                 'lead_id' => $opportunity->lead_id,
-                'status' => $validated['status'] ?? 'Scheduled',
+                'status' => 'Scheduled',
                 'scheduled_date' => $validated['scheduled_date'] ?? null,
                 'scheduled_time' => $validated['scheduled_time'] ?? null,
                 'visit_date' => $validated['visit_date'] ?? null,
@@ -485,9 +484,7 @@ class SiteVisitController extends CRUDController
             if (empty($model->created_by)) {
                 $model->created_by = auth()->id();
             }
-            if (empty($model->status)) {
-                $model->status = 'Scheduled';
-            }
+            $model->status = 'Scheduled';
         }
 
         // Auto default visit_date to today if marked completed without explicit date
@@ -498,11 +495,10 @@ class SiteVisitController extends CRUDController
 
     protected function customValidationRules(bool $isUpdate = false, mixed $currentId = null): array
     {
-        return [
+        $rules = [
             'customer_id' => ['required', 'integer', 'exists:customers,id'],
             'opportunity_id' => ['nullable', 'integer', 'exists:opportunities,id'],
             'lead_id' => ['nullable', 'integer', 'exists:leads,id'],
-            'status' => ['nullable', 'string', 'in:Scheduled,Completed,Cancelled,Rescheduled'],
             'scheduled_date' => ['nullable', 'date'],
             'scheduled_time' => ['nullable', 'string', 'max:20'],
             'visit_date' => ['nullable', 'date'],
@@ -518,6 +514,12 @@ class SiteVisitController extends CRUDController
             'documents' => ['nullable'],
             'documents.*' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp', 'max:5120'],
         ];
+
+        if ($isUpdate) {
+            $rules['status'] = ['nullable', 'string', 'in:Scheduled,Completed,Cancelled,Rescheduled'];
+        }
+
+        return $rules;
     }
 
     protected function afterSave(Model $model, Request $request, bool $isUpdate): void
@@ -562,31 +564,6 @@ class SiteVisitController extends CRUDController
                 }
                 $model->addMedia($file)->toMediaCollection('documents');
             }
-        }
-    }
-
-    private function authorizePermission(string|array $permission): void
-    {
-        $user = auth()->user();
-        if (!$user) {
-            return;
-        }
-
-        if ($user->hasRole('Owner') || $user->hasRole('Super Admin')) {
-            return;
-        }
-
-        $perms = is_array($permission) ? $permission : [$permission];
-        $hasAny = false;
-        foreach ($perms as $perm) {
-            if ($user->hasPermissionTo($perm)) {
-                $hasAny = true;
-                break;
-            }
-        }
-
-        if (!$hasAny) {
-            abort(403, __('messages.permissions_denied_any', ['permissions' => implode(', ', $perms)]));
         }
     }
 }

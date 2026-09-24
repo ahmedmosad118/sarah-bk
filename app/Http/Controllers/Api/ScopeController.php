@@ -185,8 +185,6 @@ class ScopeController extends CRUDController
             'opportunity_id' => ['required', 'integer', 'exists:opportunities,id'],
             'measurement_id' => ['required', 'integer', 'exists:measurements,id'],
             'scope_number' => ['nullable', 'string', 'max:50'],
-            'version' => ['nullable', 'integer', 'min:1'],
-            'status' => ['nullable', 'string', 'in:Draft,Under Review,Approved,Superseded'],
             'title' => ['nullable', 'string', 'max:255'],
             'general_inclusions' => ['nullable', 'string', 'max:10000'],
             'general_exclusions' => ['nullable', 'string', 'max:10000'],
@@ -244,8 +242,8 @@ class ScopeController extends CRUDController
                 'opportunity_id' => $opportunity->id,
                 'measurement_id' => $measurement->id,
                 'scope_number' => $number,
-                'version' => $validated['version'] ?? 1,
-                'status' => $validated['status'] ?? 'Draft',
+                'version' => 1,
+                'status' => 'Draft',
                 'title' => $validated['title'] ?? "نطاق أعمال مشروع {$opportunity->title}",
                 'general_inclusions' => $validated['general_inclusions'] ?? null,
                 'general_exclusions' => $validated['general_exclusions'] ?? null,
@@ -540,8 +538,7 @@ class ScopeController extends CRUDController
 
         $revision = DB::transaction(function () use ($parent) {
             $newVersion = $parent->version + 1;
-            $baseNumber = preg_replace('/-V\d+$/i', '', $parent->scope_number);
-            $newNumber = "{$baseNumber}-V{$newVersion}";
+            $newNumber = $parent->nextRevisionNumber();
 
             $newScope = Scope::create([
                 'opportunity_id' => $parent->opportunity_id,
@@ -622,30 +619,5 @@ class ScopeController extends CRUDController
         $next = $count + 1;
         $padded = str_pad((string) $next, 4, '0', STR_PAD_LEFT);
         return "SC-OPP{$opportunityId}-{$padded}";
-    }
-
-    private function authorizePermission(string|array $permission): void
-    {
-        $user = auth()->user();
-        if (!$user) {
-            return;
-        }
-
-        if ($user->hasRole('Owner') || $user->hasRole('Super Admin')) {
-            return;
-        }
-
-        $perms = is_array($permission) ? $permission : [$permission];
-        $hasAny = false;
-        foreach ($perms as $perm) {
-            if ($user->hasPermissionTo($perm)) {
-                $hasAny = true;
-                break;
-            }
-        }
-
-        if (!$hasAny) {
-            abort(403, __('messages.permissions_denied_any', ['permissions' => implode(', ', $perms)]));
-        }
     }
 }

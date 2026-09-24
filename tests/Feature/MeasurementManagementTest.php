@@ -1042,4 +1042,51 @@ class MeasurementManagementTest extends TestCase
         $this->assertEquals($m3->id, $opp->latestMeasurement->id);
         $this->assertEquals(3, $opp->latestMeasurement->version);
     }
+
+    /**
+     * SCENARIO 21: Status Bypass Protection — Passing 'status' => 'Approved' in store() is completely ignored and forced to Draft.
+     */
+    public function test_store_measurement_ignores_status_field_and_forces_draft(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Measurement Bypass Customer',
+            'customer_type' => 'individual',
+            'phone' => '01011223344',
+            'status' => 'active',
+        ]);
+
+        $opportunity = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Measurement Bypass Opp',
+            'stage' => 'Proposal',
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson('/api/measurements', [
+            'opportunity_id' => $opportunity->id,
+            'status' => 'Approved', // Injection attempt!
+            'version' => 10, // Injection attempt!
+            'approved_by' => 1,
+            'approved_at' => now()->toDateTimeString(),
+            'notes' => 'Test injection notes',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', 'Draft')
+            ->assertJsonPath('data.version', 1);
+
+        $measId = $response->json('data.id');
+        $storedMeas = Measurement::find($measId);
+
+        $this->assertEquals('Draft', $storedMeas->status);
+        $this->assertEquals(1, $storedMeas->version);
+        $this->assertNull($storedMeas->approved_by);
+        $this->assertNull($storedMeas->approved_at);
+    }
 }

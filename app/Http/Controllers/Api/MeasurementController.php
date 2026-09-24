@@ -178,8 +178,6 @@ class MeasurementController extends CRUDController
             'opportunity_id' => ['required', 'integer', 'exists:opportunities,id'],
             'site_visit_id' => ['nullable', 'integer', 'exists:site_visits,id'],
             'measurement_number' => ['nullable', 'string', 'max:50'],
-            'version' => ['nullable', 'integer', 'min:1'],
-            'status' => ['nullable', 'string', 'in:Draft,Under Review,Approved,Superseded'],
             'measured_by' => ['nullable', 'integer', 'exists:users,id'],
             'measured_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -234,8 +232,8 @@ class MeasurementController extends CRUDController
                 'opportunity_id' => $validated['opportunity_id'],
                 'site_visit_id' => $validated['site_visit_id'] ?? null,
                 'measurement_number' => $number,
-                'version' => $validated['version'] ?? 1,
-                'status' => $validated['status'] ?? 'Draft',
+                'version' => 1,
+                'status' => 'Draft',
                 'measured_by' => $validated['measured_by'] ?? auth()->id(),
                 'measured_at' => $validated['measured_at'] ?? Carbon::today()->toDateString(),
                 'total_area' => $summary['total_area'],
@@ -754,8 +752,7 @@ class MeasurementController extends CRUDController
 
         $revision = DB::transaction(function () use ($parent) {
             $newVersion = $parent->version + 1;
-            $baseNumber = preg_replace('/-V\d+$/i', '', $parent->measurement_number);
-            $newNumber = "{$baseNumber}-V{$newVersion}";
+            $newNumber = $parent->nextRevisionNumber();
 
             $newMeasurement = Measurement::create([
                 'opportunity_id' => $parent->opportunity_id,
@@ -816,30 +813,5 @@ class MeasurementController extends CRUDController
         $next = $count + 1;
         $padded = str_pad((string) $next, 4, '0', STR_PAD_LEFT);
         return "M-OPP{$opportunityId}-{$padded}";
-    }
-
-    private function authorizePermission(string|array $permission): void
-    {
-        $user = auth()->user();
-        if (!$user) {
-            return;
-        }
-
-        if ($user->hasRole('Owner') || $user->hasRole('Super Admin')) {
-            return;
-        }
-
-        $perms = is_array($permission) ? $permission : [$permission];
-        $hasAny = false;
-        foreach ($perms as $perm) {
-            if ($user->hasPermissionTo($perm)) {
-                $hasAny = true;
-                break;
-            }
-        }
-
-        if (!$hasAny) {
-            abort(403, __('messages.permissions_denied_any', ['permissions' => implode(', ', $perms)]));
-        }
     }
 }

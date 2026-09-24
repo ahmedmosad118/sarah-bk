@@ -353,9 +353,7 @@ class OpportunityController extends CRUDController
             if (empty($model->created_by)) {
                 $model->created_by = auth()->id();
             }
-            if (empty($model->stage)) {
-                $model->stage = 'New';
-            }
+            $model->stage = 'New';
         }
     }
 
@@ -366,7 +364,6 @@ class OpportunityController extends CRUDController
             'lead_id' => ['nullable', 'integer', 'exists:leads,id'],
             'title' => ['required', 'string', 'max:200'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'stage' => ['nullable', 'string', 'in:New,Qualified,Proposal,Negotiation,Won,Lost'],
             'loss_reason' => ['nullable', 'string', 'max:100'],
             'competitor_name' => ['nullable', 'string', 'max:200'],
             'loss_notes' => ['nullable', 'string', 'max:2000'],
@@ -374,6 +371,7 @@ class OpportunityController extends CRUDController
             'expected_start_date' => ['nullable', 'date'],
             'expected_close_date' => ['nullable', 'date'],
             'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
+            'stage' => ['nullable', 'string', 'in:New,Qualified,Proposal,Negotiation,Won,Lost'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'documents' => ['nullable'],
             'documents.*' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp', 'max:5120'],
@@ -399,31 +397,6 @@ class OpportunityController extends CRUDController
                 }
                 $model->addMedia($file)->toMediaCollection('documents');
             }
-        }
-    }
-
-    private function authorizePermission(string|array $permission): void
-    {
-        $user = auth()->user();
-        if (!$user) {
-            return;
-        }
-
-        if ($user->hasRole('Owner') || $user->hasRole('Super Admin')) {
-            return;
-        }
-
-        $perms = is_array($permission) ? $permission : [$permission];
-        $hasAny = false;
-        foreach ($perms as $perm) {
-            if ($user->hasPermissionTo($perm)) {
-                $hasAny = true;
-                break;
-            }
-        }
-
-        if (!$hasAny) {
-            abort(403, __('messages.permissions_denied_any', ['permissions' => implode(', ', $perms)]));
         }
     }
 }
