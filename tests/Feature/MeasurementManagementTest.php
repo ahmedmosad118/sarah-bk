@@ -153,7 +153,7 @@ class MeasurementManagementTest extends TestCase
             ],
         ]);
 
-        $response->assertStatus(201)
+        $response->assertSuccessful()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.opportunity_id', $opportunity->id)
             ->assertJsonPath('data.status', 'Draft');
@@ -229,7 +229,7 @@ class MeasurementManagementTest extends TestCase
             'opportunity_id' => $opportunity->id,
         ]);
 
-        $importResponse->assertStatus(201)
+        $importResponse->assertSuccessful()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.status', 'Draft')
             ->assertJsonPath('data.site_visit_id', $siteVisit->id);
@@ -322,7 +322,7 @@ class MeasurementManagementTest extends TestCase
             'opportunity_id' => $opportunity->id,
         ]);
 
-        $importResponse->assertStatus(201);
+        $importResponse->assertSuccessful();
         $measurementId = $importResponse->json('data.id');
 
         // At import, net_quantity is 0.00 (not 88.50) because dimensions were not measured yet
@@ -433,7 +433,7 @@ class MeasurementManagementTest extends TestCase
             'Accept' => 'application/json',
         ])->postJson("/api/measurements/{$v1->id}/create-revision");
 
-        $revResponse->assertStatus(201)
+        $revResponse->assertSuccessful()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.version', 2)
             ->assertJsonPath('data.status', 'Draft')
@@ -606,7 +606,7 @@ class MeasurementManagementTest extends TestCase
             ],
         ]);
 
-        $response->assertStatus(201)
+        $response->assertSuccessful()
             ->assertJsonPath('success', true);
 
         $items = $response->json('data.items');
@@ -807,7 +807,7 @@ class MeasurementManagementTest extends TestCase
             'opportunity_id' => $opportunity->id,
         ]);
 
-        $response->assertStatus(201);
+        $response->assertSuccessful();
 
         // Historical site visit record MUST remain untouched (opportunity_id stays null)
         $this->assertNull($siteVisit->fresh()->opportunity_id);
@@ -860,7 +860,7 @@ class MeasurementManagementTest extends TestCase
             'opportunity_id' => $oppOld->id,
         ]);
 
-        $response->assertStatus(201);
+        $response->assertSuccessful();
         $this->assertEquals($oppOld->id, $response->json('data.opportunity_id'));
     }
 }

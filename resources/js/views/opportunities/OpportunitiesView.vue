@@ -467,7 +467,7 @@
                 </div>
               </div>
 
-              <div class="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">
+              <div v-if="!hasActiveMeasurement" class="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">
                 <button
                   v-if="hasCompletedSiteVisit"
                   type="button"
@@ -527,12 +527,34 @@
                   </div>
                 </div>
 
-                <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <div class="flex items-center gap-2 shrink-0 self-end sm:self-center flex-wrap">
+                  <button
+                    v-if="m.status === 'Approved'"
+                    type="button"
+                    @click="createRevisionFromOpportunity(m)"
+                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-300 font-bold text-xs transition-colors cursor-pointer"
+                    title="إنشاء إصدار جديد (Revision v2) لتعديل المقايسة المعتمدة"
+                  >
+                    <GitBranch class="h-3 w-3" />
+                    <span>إصدار جديد</span>
+                  </button>
+
+                  <button
+                    v-if="m.status === 'Draft' || m.status === 'Under Review'"
+                    type="button"
+                    @click="deleteMeasurementFromOpportunity(m)"
+                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 dark:text-rose-300 font-bold text-xs transition-colors cursor-pointer"
+                    title="حذف هذه المسودة للبدء من جديد"
+                  >
+                    <Trash2 class="h-3 w-3" />
+                    <span>حذف المسودة</span>
+                  </button>
+
                   <router-link
                     :to="`/measurements?opportunity_id=${selectedOpportunity.id}`"
                     class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-300 font-bold text-xs transition-colors"
                   >
-                    <span>فتح جدول المقايسة</span>
+                    <span>{{ m.status === 'Approved' ? 'عرض جدول المقايسة' : 'فتح وتعديل المقايسة' }}</span>
                     <ExternalLink class="h-3 w-3" />
                   </router-link>
                 </div>
@@ -797,6 +819,7 @@ import {
   CheckCircle2,
   Plus,
   ExternalLink,
+  GitBranch,
 } from 'lucide-vue-next';
 
 const { t } = useI18n();
@@ -992,6 +1015,11 @@ const completedSiteVisit = computed(() => {
   return selectedOpportunity.value.site_visits.find((v) => v.status === 'Completed');
 });
 
+const hasActiveMeasurement = computed(() => {
+  const list = selectedOpportunity.value?.measurements || [];
+  return list.some((m) => m.status !== 'Superseded');
+});
+
 const createMeasurementFromCompletedVisit = async () => {
   if (!completedSiteVisit.value || !selectedOpportunity.value) return;
   try {
@@ -1017,6 +1045,47 @@ const createBlankMeasurement = async () => {
     }
   } catch (err) {
     notify.error(err.response?.data?.message || 'حدث خطأ أثناء إنشاء المقايسة');
+  }
+};
+
+const createRevisionFromOpportunity = async (measurement) => {
+  const confirmed = await alertService.confirmAction({
+    title: 'إنشاء إصدار جديد (Revision)',
+    text: `هل تريد إنشاء إصدار جديد (v${(measurement.version || 1) + 1}) من هذه المقايسة المعتمدة؟`,
+    icon: 'info',
+    confirmButtonText: 'نعم، أنشئ الإصدار',
+    cancelButtonText: 'إلغاء',
+  });
+  if (!confirmed) return;
+
+  try {
+    const res = await api.post(`/measurements/${measurement.id}/create-revision`);
+    if (res.data?.success) {
+      notify.success('تم إنشاء إصدار مسودة جديد بنجاح');
+      await refreshSelectedOpportunity(selectedOpportunity.value.id);
+    }
+  } catch (err) {
+    notify.error(err.response?.data?.message || 'تعذر إنشاء الإصدار الجديد');
+  }
+};
+
+const deleteMeasurementFromOpportunity = async (measurement) => {
+  const confirmed = await alertService.confirmDelete({
+    title: 'تأكيد حذف المقايسة',
+    text: `هل أنت متأكد من حذف المسودة رقم ${measurement.measurement_number || measurement.id}؟ يمكنك بعد حذفها إنشاء أو استيراد مقايسة جديدة.`,
+    confirmButtonText: 'نعم، احذف المسودة',
+    cancelButtonText: 'إلغاء',
+  });
+  if (!confirmed) return;
+
+  try {
+    const res = await api.delete(`/measurements/${measurement.id}`);
+    if (res.data?.success) {
+      notify.success('تم حذف المقايسة بنجاح');
+      await refreshSelectedOpportunity(selectedOpportunity.value.id);
+    }
+  } catch (err) {
+    notify.error(err.response?.data?.message || 'تعذر حذف المقايسة');
   }
 };
 

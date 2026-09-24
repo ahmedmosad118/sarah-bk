@@ -242,7 +242,7 @@ class MeasurementController extends CRUDController
             'success' => true,
             'message' => __('messages.measurement_created_success'),
             'data' => $measurement->fresh($this->with),
-        ], 201);
+        ], 200);
     }
 
     public function update(Request $request, int|string $id): JsonResponse
@@ -482,7 +482,7 @@ class MeasurementController extends CRUDController
             'success' => true,
             'message' => __('messages.site_visit_rooms_imported_success'),
             'data' => $measurement->fresh($this->with),
-        ], 201);
+        ], 200);
     }
 
     /**
@@ -608,7 +608,7 @@ class MeasurementController extends CRUDController
             'success' => true,
             'message' => __('messages.dxf_imported_success'),
             'data' => $measurement->fresh($this->with),
-        ], 201);
+        ], 200);
     }
 
     /**
@@ -763,7 +763,7 @@ class MeasurementController extends CRUDController
             'success' => true,
             'message' => __('messages.measurement_revision_created_success'),
             'data' => $revision->fresh($this->with),
-        ], 201);
+        ], 200);
     }
 
     /**
