@@ -267,6 +267,15 @@
                     <Edit3 class="h-4 w-4" />
                   </button>
 
+                  <router-link
+                    v-if="item.status === 'Approved'"
+                    :to="`/scopes?opportunity_id=${item.opportunity_id}`"
+                    title="نطاق الأعمال والمواصفات (Scope of Work)"
+                    class="rounded-lg p-1.5 text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors"
+                  >
+                    <ClipboardList class="h-4 w-4" />
+                  </router-link>
+
                   <button
                     v-if="item.status === 'Approved'"
                     @click="createRevision(item)"
@@ -1117,6 +1126,7 @@ import {
   UploadCloud,
   Info,
   AlertCircle,
+  ClipboardList,
 } from 'lucide-vue-next';
 import SearchableSelect from '../../components/common/SearchableSelect.vue';
 

@@ -78,6 +78,22 @@ return [
     'site_visit_belongs_to_another_opportunity' => 'The site visit is already linked to another opportunity.',
     'measurement_unit_type_mismatch' => 'The specified unit is incompatible with the measurement type.',
 
+    // Scope of Work (Phase 8)
+    'scope_created_success' => 'Scope of work and technical specifications created successfully',
+    'scope_updated_success' => 'Scope of work updated successfully',
+    'scope_deleted_success' => 'Scope of work deleted successfully',
+    'scope_submitted_review_success' => 'Scope of work submitted for engineering review successfully',
+    'scope_approved_success' => 'Scope of work approved successfully',
+    'scope_revision_created_success' => 'Scope of work revision created successfully',
+    'scope_requires_approved_measurement' => 'Scope of work requires an Approved Measurement link.',
+    'approved_scope_cannot_be_edited' => 'Approved scopes cannot be edited. Please create a revision instead.',
+    'approved_scope_cannot_be_deleted' => 'Approved scopes cannot be deleted to preserve technical specifications history.',
+    'only_draft_scope_can_be_submitted_for_review' => 'Only draft scopes can be submitted for review.',
+    'scope_cannot_be_approved_in_current_state' => 'Scope cannot be approved in its current state.',
+    'cannot_approve_empty_scope' => 'Cannot approve an empty scope of work with no work items.',
+    'scope_measurement_item_mismatch' => 'A selected measurement item does not belong to the approved measurement linked with this scope.',
+    'measurement_opportunity_mismatch' => 'The selected measurement does not belong to the same commercial opportunity.',
+
     // Settings
     'settings_saved_success' => 'Settings saved successfully',
 ];

@@ -142,4 +142,97 @@ Table: measurement_items
    - اختيار الـ Layers والفرصة التجارية عبر مكون `SearchableSelect`.
    - جدول معاينة تفاعلي حي يعرض الغرف والمساحات المحسوبة والمحيط مع إمكانية التعديل اليدوي قبل الحفظ النهائي.
 
+---
+
+### 📦 10. Phase 8 — Scope of Work Module (نطاق الأعمال والمواصفات الفنية)
+
+#### 🎯 1. المفهوم والقاعدة التجارية الجوهرية (Core Business Principles):
+- **Scope = "إيه الشغل والمواصفات الفنية اللي هنلتزم بيها؟"** (مش "قد إيه الكمية؟" ومش "بكام؟").
+- **Zero Pricing Standard الصارم:** خلو وثائق نطاق العمل تماماً من أي أسعار، تكاليف، أو هوامش ربح (مسؤولية BOQ & Estimation اللاحقة).
+- **الارتباط بإصدار مقايسة معتمد محدد (`measurement_id` بحالة `Approved` إجبارياً):**
+  - لا يمكن إنشاء Scope على مقايسة في حالة `Draft` أو `Under Review`.
+  - كل نطاق عمل مربوط بـ ID المقايسة المعتمدة تحديداً، مما يضمن الحفاظ على التتبع التاريخي (`Traceability`) حتى في حال إصدار مراجعة لاحقة للمقايسة ($V_2$).
+- **حماية النطاق المعتمد وعدم قابليته للتعديل المباشر (Immutability & Versioning):**
+  - النطاق المعتمد (`Approved`) مغلق ضد التعديل أو الحذف المباشر (إرجاع `422 Unprocessable Entity`).
+  - التعديل يتم فقط عبر دورة إصدارات صريحة (`createRevision`)، حيث يتم استنساخ $V_N \rightarrow V_{N+1}$ كمسودة جديدة، مع بقاء $V_N$ سارية حتى اعتماد $V_{N+1}$، وعندها تتحول السابقة إلى `Superseded`.
+- **الربط المتعدد بين بنود النطاق وبنود المقايسة (Many-to-Many Linkage):**
+  - بند نطاق العمل الواحد (مثل: "توريد وتركيب دهانات جوتن") يمكنه تغطية عدة بنود قياس (دهان الريسبشن، دهان الماستر روم، دهان الممر).
+  - تحقق خادم صارم (`Cross-Measurement Integrity`): يمنع ربط أي `measurement_item` لا ينتمي لنفس الـ `measurement_id` الخاصة بالنطاق.
+- **عزل المستأجرين الكامل (Tenant Isolation):** عزل تام ومحكم لكل جداول `scopes` و `scope_items` وجدول الربط `scope_item_measurement_item`.
+
+#### 🗄️ 2. الهيكل البياني لقاعدة البيانات (Data Architecture):
+```text
+Table: scopes
+├── id (BIGINT, Primary Key)
+├── opportunity_id (BIGINT, Foreign Key -> opportunities.id ON DELETE CASCADE)
+├── measurement_id (BIGINT, Foreign Key -> measurements.id ON DELETE RESTRICT) [Approved Measurement]
+├── scope_number (VARCHAR 50, Indexed) [e.g. SC-OPP1-0001]
+├── version (INT, Default 1)
+├── status (VARCHAR 50: Draft, Under Review, Approved, Superseded)
+├── title (VARCHAR 255)
+├── general_inclusions (TEXT, Nullable)
+├── general_exclusions (TEXT, Nullable) [مهم جداً لتفادي النزاعات التجارية]
+├── prepared_by (BIGINT, Nullable, Foreign Key -> users.id)
+├── prepared_at (DATETIME, Nullable)
+├── reviewed_by (BIGINT, Nullable, Foreign Key -> users.id)
+├── reviewed_at (DATETIME, Nullable)
+├── approved_by (BIGINT, Nullable, Foreign Key -> users.id)
+├── approved_at (DATETIME, Nullable)
+├── notes (TEXT, Nullable)
+├── created_by (BIGINT, Foreign Key -> users.id)
+└── created_at, updated_at (TIMESTAMPS)
+
+Table: scope_items
+├── id (BIGINT, Primary Key)
+├── scope_id (BIGINT, Foreign Key -> scopes.id ON DELETE CASCADE)
+├── trade_category (VARCHAR 100) [تصنيف الحرفة/التخصص]
+├── item_name (VARCHAR 255) [اسم بند العمل]
+├── specification (LONGTEXT) [المواصفة الفنية التفصيلية وطريقة التنفيذ]
+├── inclusions (TEXT, Nullable) [المتضمن في البند]
+├── exclusions (TEXT, Nullable) [المستثنى من البند]
+├── notes (TEXT, Nullable)
+├── sort_order (INT, Default 0)
+└── created_at, updated_at (TIMESTAMPS)
+
+Table: scope_item_measurement_item (Many-to-Many Pivot)
+├── scope_item_id (BIGINT, Foreign Key -> scope_items.id ON DELETE CASCADE)
+├── measurement_item_id (BIGINT, Foreign Key -> measurement_items.id ON DELETE CASCADE)
+└── UNIQUE INDEX (scope_item_id, measurement_item_id)
+```
+
+#### 🌐 3. واجهات الـ API ومسارات النظام (REST API Endpoints):
+```text
+GET    /api/scopes                                  # استعراض نطاقات الأعمال مع الفلاتر والإحصائيات
+POST   /api/scopes                                  # إنشاء نطاق أعمال جديد مربوط بمقايسة معتمدة
+GET    /api/scopes/{id}                             # استعراض تفاصيل نطاق العمل وبنوده وبنود الحصر المرتبطة
+PUT    /api/scopes/{id}                             # تعديل نطاق العمل (فقط للمسودات وقيد المراجعة)
+DELETE /api/scopes/{id}                             # حذف نطاق العمل (فقط للمسودات وقيد المراجعة)
+POST   /api/scopes/{id}/submit-review               # تحويل حالة النطاق إلى قيد المراجعة (Under Review)
+POST   /api/scopes/{id}/approve                     # اعتماد النطاق رسمياً وقفل التعديل عليه (Approved)
+POST   /api/scopes/{id}/create-revision             # إنشاء إصدار جديد قابل للتعديل (Draft Revision)
+POST   /api/scopes/from-measurement/{measurementId} # إنشاء نطاق أعمال مهيأ ومربوط بمقايسة معتمدة محددة
+```
+
+#### 🖥️ 4. واجهة المستخدم (Vue 3 / ScopesView.vue):
+- **الجدول والإحصائيات التفاعلية:** كروت KPI لعرض إجمالي النطاقات، المسودات، قيد المراجعة، المعتمدة، وبنود الأعمال.
+- **تصفية سياقية للفرصة البيعية (`?opportunity_id=...`):** تصفية تلقائية لنطاقات الفرصة المحددة مع زر إنشاء فوري.
+- **مُنشئ حزم الأعمال (Work Packages Builder):**
+  - اختيار التخصص (`Trade Category`) من قائمة مهنية موحدة للتشطيبات والمقاولات.
+  - محرر المواصفات الفنية التفصيلية وطريقة التنفيذ والاشتمالات والاستثناءات لكل بند.
+  - أداة ربط تفاعلية مع بنود المقايسة المعتمدة (`Measurement Items Linker`) متعددة الاختيار.
+- **نافذة عرض واعتماد وطباعة وثيقة نطاق العمل (`Printable Sheet`):** عرض رسمي متكامل للمواصفات والاشتمالات والاستثناءات وتوقيعات مهندسي الإعداد والمراجعة والاعتماد.
+
+#### 🧪 5. مصفوفة الاختبارات الآلية والتحقق (Automated Test Suite):
+تم تنفيذ ملف الاختبارات الشامل `tests/Feature/ScopeManagementTest.php` بـ 7 سيناريوهات اختبارية دقيقة:
+1. **Scenario 1:** دورة العمل الكاملة (إنشاء نطاق على مقايسة معتمدة $\rightarrow$ ربط بنود $\rightarrow$ تقديم للمراجعة $\rightarrow$ اعتماد) $\rightarrow$ **PASS**.
+2. **Scenario 2:** الرفض الصارم لإنشاء Scope على مقايسة في حالة Draft أو غير معتمدة $\rightarrow$ **PASS (422)**.
+3. **Scenario 3:** الرفض الصارم لربط بند Scope ببند قياس يتبع مقايسة أخرى (Cross-Measurement Integrity) $\rightarrow$ **PASS (422)**.
+4. **Scenario 4:** حماية النطاق المعتمد من التعديل أو الحذف المباشر $\rightarrow$ **PASS (422)**.
+5. **Scenario 5:** دورة الإصدارات (Revisions) وحفظ النسخ التاريخية السابقة كـ `Superseded` $\rightarrow$ **PASS**.
+6. **Scenario 6:** عزل المستأجرين الكامل ومنع ثغرات IDOR بين المستأجرين $\rightarrow$ **PASS (404)**.
+7. **Scenario 7:** التحقق الصارم من انعدام حقول التسعير في جداول النطاق (Zero Pricing Standard) $\rightarrow$ **PASS**.
+
+**نتيجة الفحص النهائي:** `OK (7 tests, 75 assertions) — 100% Success`.
+
+
 

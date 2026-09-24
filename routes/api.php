@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\MeasurementController;
 use App\Http\Controllers\Api\OpportunityController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\ScopeController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\SiteVisitController;
 use App\Http\Controllers\Api\UserController;
@@ -134,6 +135,20 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/{id}/submit-review', [MeasurementController::class, 'submitReview']);
         Route::post('/{id}/approve', [MeasurementController::class, 'approve']);
         Route::post('/{id}/create-revision', [MeasurementController::class, 'createRevision']);
+    });
+
+    // Scope of Work Management (Phase 8 - Technical Specifications & Work Packages)
+    Route::prefix('scopes')->group(function () {
+        Route::get('/schema', [ScopeController::class, 'schema']);
+        Route::get('/', [ScopeController::class, 'index']);
+        Route::post('/', [ScopeController::class, 'store']);
+        Route::post('/from-measurement/{measurementId}', [ScopeController::class, 'createFromMeasurement']);
+        Route::get('/{id}', [ScopeController::class, 'show']);
+        Route::put('/{id}', [ScopeController::class, 'update']);
+        Route::delete('/{ids}', [ScopeController::class, 'destroy']);
+        Route::post('/{id}/submit-review', [ScopeController::class, 'submitReview']);
+        Route::post('/{id}/approve', [ScopeController::class, 'approve']);
+        Route::post('/{id}/create-revision', [ScopeController::class, 'createRevision']);
     });
 
     // Roles & Permissions Management

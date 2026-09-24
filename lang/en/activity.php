@@ -60,6 +60,22 @@ return [
     'site_visit_cancelled' => 'Cancelled site visit (#:id)',
     'site_visit_photos_uploaded' => 'Uploaded (:count) site photos for visit (#:id)',
 
+    // Measurements
+    'measurement_created' => 'Measurement (#:number) created',
+    'measurement_updated' => 'Measurement (#:number) updated',
+    'measurement_deleted' => 'Measurement (#:number) deleted',
+    'measurement_event' => 'Action :event on measurement (#:number)',
+    'measurement_submitted_for_review' => 'Measurement (#:number) submitted for review',
+    'measurement_approved' => 'Measurement (#:number) approved',
+
+    // Scopes (Phase 8)
+    'scope_created' => 'Scope of work (#:number) created',
+    'scope_updated' => 'Scope of work (#:number) updated',
+    'scope_deleted' => 'Scope of work (#:number) deleted',
+    'scope_event' => 'Action :event on scope (#:number)',
+    'scope_submitted_for_review' => 'Scope of work (#:number) submitted for review',
+    'scope_approved' => 'Scope of work (#:number) approved',
+
     'setting_created' => 'Setting :key created',
     'setting_updated' => 'Setting :key updated',
     'setting_event' => 'Action :event on setting :key',

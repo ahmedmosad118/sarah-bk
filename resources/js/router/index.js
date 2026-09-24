@@ -12,6 +12,7 @@ import LeadsView from '../views/leads/LeadsView.vue';
 import OpportunitiesView from '../views/opportunities/OpportunitiesView.vue';
 import SiteVisitsView from '../views/site-visits/SiteVisitsView.vue';
 import MeasurementsView from '../views/measurements/MeasurementsView.vue';
+import ScopesView from '../views/scopes/ScopesView.vue';
 import JobTitlesView from '../views/team/JobTitlesView.vue';
 import RolesView from '../views/team/RolesView.vue';
 import ActivityLogView from '../views/activities/ActivityLogView.vue';
@@ -77,6 +78,11 @@ const routes = [
         path: 'measurements',
         name: 'measurements',
         component: MeasurementsView,
+      },
+      {
+        path: 'scopes',
+        name: 'scopes',
+        component: ScopesView,
       },
       {
         path: 'team/users',

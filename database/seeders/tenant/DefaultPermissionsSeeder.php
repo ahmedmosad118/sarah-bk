@@ -80,6 +80,11 @@ class DefaultPermissionsSeeder extends Seeder
                 'scope.update' => 'تعديل نطاق الأعمال',
                 'scope.delete' => 'حذف بند نطاق أعمال',
                 'scope.approve' => 'اعتماد نطاق الأعمال',
+                'scopes.view' => 'عرض نطاق الأعمال والمواصفات',
+                'scopes.create' => 'إعداد وتحديد نطاق الأعمال',
+                'scopes.update' => 'تعديل نطاق الأعمال والمواصفات',
+                'scopes.delete' => 'حذف نطاق الأعمال',
+                'scopes.approve' => 'اعتماد نطاق الأعمال النهائي',
             ],
             'BOQ' => [
                 'boq.view' => 'عرض جداول الكميات (BOQ)',

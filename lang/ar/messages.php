@@ -80,6 +80,22 @@ return [
     'site_visit_belongs_to_another_opportunity' => 'المعاينة الميدانية مرتبطة بالفعل بفرصة تجارية أخرى.',
     'measurement_unit_type_mismatch' => 'وحدة القياس المحددة غير متوافقة مع نوع الحصر.',
 
+    // Scope of Work (Phase 8)
+    'scope_created_success' => 'تم إنشاء نطاق الأعمال وتوصيف البنود بنجاح',
+    'scope_updated_success' => 'تم تحديث نطاق الأعمال والمواصفات بنجاح',
+    'scope_deleted_success' => 'تم حذف نطاق الأعمال بنجاح',
+    'scope_submitted_review_success' => 'تم إرسال نطاق الأعمال للمراجعة الفنية بنجاح',
+    'scope_approved_success' => 'تم اعتماد نطاق الأعمال والمواصفات الفنية بنجاح',
+    'scope_revision_created_success' => 'تم إنشاء مراجعة وإصدار جديد من نطاق الأعمال بنجاح',
+    'scope_requires_approved_measurement' => 'نطاق الأعمال يتطلب ربطاً بمقايسة هندسية معتمدة (Approved Measurement).',
+    'approved_scope_cannot_be_edited' => 'نطاق الأعمال المعتمد غير قابل للتعديل المباشر. يرجى إنشاء مراجعة جديدة (Revision).',
+    'approved_scope_cannot_be_deleted' => 'لا يمكن حذف نطاق أعمال معتمد للحفاظ على تاريخ وحصر المواصفات الفنية.',
+    'only_draft_scope_can_be_submitted_for_review' => 'يمكن فقط تقديم نطاق الأعمال في حالة المسودة للمراجعة.',
+    'scope_cannot_be_approved_in_current_state' => 'لا يمكن اعتماد نطاق الأعمال في حالته الحالية.',
+    'cannot_approve_empty_scope' => 'لا يمكن اعتماد نطاق أعمال فارغ بدون بنود عمل ومواصفات.',
+    'scope_measurement_item_mismatch' => 'أحد بنود القياس المختارة لا ينتمي لنفس المقايسة الهندسية المعتمدة المرتبطة بنطاق الأعمال.',
+    'measurement_opportunity_mismatch' => 'المقايسة الهندسية المختارة لا تنتمي لنفس الفرصة التجارية.',
+
     // Settings
     'settings_saved_success' => 'تم حفظ الإعدادات بنجاح',
 ];

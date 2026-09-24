@@ -105,6 +105,30 @@ class Opportunity extends Model implements HasMedia
     }
 
     /**
+     * Scopes of work prepared for this commercial opportunity.
+     */
+    public function scopes(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Scope::class);
+    }
+
+    /**
+     * Authoritative approved scope of work for this commercial opportunity.
+     */
+    public function approvedScope(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Scope::class)->where('status', 'Approved');
+    }
+
+    /**
+     * Latest scope of work revision for this commercial opportunity.
+     */
+    public function latestScope(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Scope::class)->latestOfMany('version');
+    }
+
+    /**
      * Scope query by stage.
      */
     public function scopeStage(Builder $query, string $stage): Builder

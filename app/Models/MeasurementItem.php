@@ -47,4 +47,13 @@ class MeasurementItem extends Model
     {
         return $this->belongsTo(Measurement::class);
     }
+
+    /**
+     * Scope items covering this measurement item.
+     */
+    public function scopeItems(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(ScopeItem::class, 'scope_item_measurement_item')
+            ->withTimestamps();
+    }
 }

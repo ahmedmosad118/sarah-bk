@@ -12,45 +12,40 @@ use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Measurement extends Model implements HasMedia
+class Scope extends Model implements HasMedia
 {
     use HasFactory, LogsActivity, InteractsWithMedia;
 
     protected $fillable = [
         'opportunity_id',
-        'site_visit_id',
-        'measurement_number',
+        'measurement_id',
+        'scope_number',
         'version',
         'status',
-        'measured_by',
-        'measured_at',
+        'title',
+        'general_inclusions',
+        'general_exclusions',
+        'prepared_by',
+        'prepared_at',
         'reviewed_by',
         'reviewed_at',
         'approved_by',
         'approved_at',
-        'total_area',
-        'total_volume',
-        'total_linear',
-        'total_count',
         'notes',
         'created_by',
     ];
 
     protected $casts = [
         'version' => 'integer',
-        'measured_at' => 'date:Y-m-d',
+        'prepared_at' => 'date:Y-m-d',
         'reviewed_at' => 'datetime',
         'approved_at' => 'datetime',
-        'total_area' => 'decimal:2',
-        'total_volume' => 'decimal:2',
-        'total_linear' => 'decimal:2',
-        'total_count' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
     /**
-     * Parent Commercial Opportunity for this measurement.
+     * Parent Commercial Opportunity.
      */
     public function opportunity(): BelongsTo
     {
@@ -58,23 +53,23 @@ class Measurement extends Model implements HasMedia
     }
 
     /**
-     * Optional originating Site Visit (nullable).
+     * Associated Approved Engineering Measurement revision.
      */
-    public function siteVisit(): BelongsTo
+    public function measurement(): BelongsTo
     {
-        return $this->belongsTo(SiteVisit::class);
+        return $this->belongsTo(Measurement::class);
     }
 
     /**
-     * Engineer responsible for taking measurements.
+     * Technical engineer who prepared the scope of work.
      */
-    public function measuredUser(): BelongsTo
+    public function preparedUser(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'measured_by');
+        return $this->belongsTo(User::class, 'prepared_by');
     }
 
     /**
-     * Engineer/Manager who reviewed the measurement.
+     * Technical/Engineering manager who reviewed the scope.
      */
     public function reviewedUser(): BelongsTo
     {
@@ -82,7 +77,7 @@ class Measurement extends Model implements HasMedia
     }
 
     /**
-     * Engineer/Manager who approved the measurement.
+     * Manager/Executive who approved the scope.
      */
     public function approvedUser(): BelongsTo
     {
@@ -90,7 +85,7 @@ class Measurement extends Model implements HasMedia
     }
 
     /**
-     * User who created the measurement record.
+     * User who created the scope record.
      */
     public function creator(): BelongsTo
     {
@@ -98,19 +93,11 @@ class Measurement extends Model implements HasMedia
     }
 
     /**
-     * Line items for this measurement.
+     * Work package items within this scope.
      */
     public function items(): HasMany
     {
-        return $this->hasMany(MeasurementItem::class)->orderBy('sort_order')->orderBy('id');
-    }
-
-    /**
-     * Scopes of work built on this measurement revision.
-     */
-    public function scopes(): HasMany
-    {
-        return $this->hasMany(Scope::class);
+        return $this->hasMany(ScopeItem::class)->orderBy('sort_order')->orderBy('id');
     }
 
     // Status Helpers
@@ -155,14 +142,9 @@ class Measurement extends Model implements HasMedia
         return $query->where('opportunity_id', $opportunityId);
     }
 
-    public function scopeForSiteVisit(Builder $query, int $siteVisitId): Builder
+    public function scopeForMeasurement(Builder $query, int $measurementId): Builder
     {
-        return $query->where('site_visit_id', $siteVisitId);
-    }
-
-    public function scopeMeasuredBy(Builder $query, int $userId): Builder
-    {
-        return $query->where('measured_by', $userId);
+        return $query->where('measurement_id', $measurementId);
     }
 
     public function scopeApproved(Builder $query): Builder
@@ -179,29 +161,28 @@ class Measurement extends Model implements HasMedia
             ->useLogName('commercial')
             ->logOnly([
                 'opportunity_id',
-                'site_visit_id',
-                'measurement_number',
+                'measurement_id',
+                'scope_number',
                 'version',
                 'status',
-                'measured_by',
-                'measured_at',
+                'title',
+                'general_inclusions',
+                'general_exclusions',
+                'prepared_by',
+                'prepared_at',
                 'reviewed_by',
                 'reviewed_at',
                 'approved_by',
                 'approved_at',
-                'total_area',
-                'total_volume',
-                'total_linear',
-                'total_count',
                 'notes',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn(string $eventName) => match($eventName) {
-                'created' => __('activity.measurement_created', ['number' => $this->measurement_number]),
-                'updated' => __('activity.measurement_updated', ['number' => $this->measurement_number]),
-                'deleted' => __('activity.measurement_deleted', ['number' => $this->measurement_number]),
-                default => __('activity.measurement_event', ['event' => $eventName, 'number' => $this->measurement_number]),
+                'created' => __('activity.scope_created', ['number' => $this->scope_number]),
+                'updated' => __('activity.scope_updated', ['number' => $this->scope_number]),
+                'deleted' => __('activity.scope_deleted', ['number' => $this->scope_number]),
+                default => __('activity.scope_event', ['event' => $eventName, 'number' => $this->scope_number]),
             });
     }
 

@@ -68,6 +68,14 @@ return [
     'measurement_submitted_for_review' => 'تم إرسال المقايسة (#:number) للمراجعة الهندسية',
     'measurement_approved' => 'تم اعتماد المقايسة (#:number) رسمياً كمصدر حقيقة للكميات',
 
+    // Scopes (Phase 8)
+    'scope_created' => 'تم إنشاء نطاق الأعمال وتوصيف البنود (#:number)',
+    'scope_updated' => 'تم تحديث نطاق الأعمال والمواصفات (#:number)',
+    'scope_deleted' => 'تم حذف نطاق الأعمال (#:number)',
+    'scope_event' => 'إجراء :event على نطاق الأعمال (#:number)',
+    'scope_submitted_for_review' => 'تم إرسال نطاق الأعمال (#:number) للمراجعة الفنية',
+    'scope_approved' => 'تم اعتماد نطاق الأعمال (#:number) والمواصفات الفنية رسمياً',
+
     'setting_created' => 'تم إنشاء الإعداد :key',
     'setting_updated' => 'تم تحديث الإعداد :key',
     'setting_event' => 'إجراء :event على الإعداد :key',
