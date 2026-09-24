@@ -197,14 +197,35 @@ class MeasurementController extends CRUDController
             'items.*.sort_order' => ['nullable', 'integer'],
         ]);
 
-        $measurement = DB::transaction(function () use ($validated, $request) {
+        $opportunity = Opportunity::findOrFail($validated['opportunity_id']);
+        if (!empty($validated['site_visit_id'])) {
+            $siteVisit = SiteVisit::findOrFail($validated['site_visit_id']);
+            if ($siteVisit->customer_id && $opportunity->customer_id !== $siteVisit->customer_id) {
+                throw ValidationException::withMessages([
+                    'site_visit_id' => [__('messages.opportunity_customer_mismatch')],
+                ]);
+            }
+            if ($siteVisit->opportunity_id && $siteVisit->opportunity_id !== $opportunity->id) {
+                throw ValidationException::withMessages([
+                    'site_visit_id' => [__('messages.site_visit_belongs_to_another_opportunity')],
+                ]);
+            }
+        }
+
+        $measurement = DB::transaction(function () use ($validated, $opportunity, $request) {
             $number = $validated['measurement_number'] ?? $this->generateMeasurementNumber($validated['opportunity_id']);
             $itemsData = $validated['items'] ?? [];
 
             $calculatedItems = [];
             foreach ($itemsData as $idx => $item) {
-                $item['sort_order'] = $item['sort_order'] ?? $idx;
-                $calculatedItems[] = $this->calculationService->calculateItem($item);
+                try {
+                    $item['sort_order'] = $item['sort_order'] ?? $idx;
+                    $calculatedItems[] = $this->calculationService->calculateItem($item);
+                } catch (\InvalidArgumentException $e) {
+                    throw ValidationException::withMessages([
+                        "items.{$idx}.unit" => [$e->getMessage()],
+                    ]);
+                }
             }
 
             $summary = $this->calculationService->calculateSummary($calculatedItems);
@@ -249,7 +270,7 @@ class MeasurementController extends CRUDController
     {
         $this->authorizePermission('measurements.update');
 
-        $measurement = Measurement::findOrFail($id);
+        $measurement = Measurement::with('opportunity')->findOrFail($id);
 
         if (!$measurement->canBeEdited()) {
             throw ValidationException::withMessages([
@@ -277,6 +298,20 @@ class MeasurementController extends CRUDController
             'items.*.sort_order' => ['nullable', 'integer'],
         ]);
 
+        if (isset($validated['site_visit_id']) && $validated['site_visit_id'] !== null) {
+            $siteVisit = SiteVisit::findOrFail($validated['site_visit_id']);
+            if ($siteVisit->customer_id && $measurement->opportunity && $measurement->opportunity->customer_id !== $siteVisit->customer_id) {
+                throw ValidationException::withMessages([
+                    'site_visit_id' => [__('messages.opportunity_customer_mismatch')],
+                ]);
+            }
+            if ($siteVisit->opportunity_id && $siteVisit->opportunity_id !== $measurement->opportunity_id) {
+                throw ValidationException::withMessages([
+                    'site_visit_id' => [__('messages.site_visit_belongs_to_another_opportunity')],
+                ]);
+            }
+        }
+
         $measurement = DB::transaction(function () use ($measurement, $validated, $request) {
             if (isset($validated['site_visit_id'])) {
                 $measurement->site_visit_id = $validated['site_visit_id'];
@@ -298,8 +333,14 @@ class MeasurementController extends CRUDController
                 $itemsData = $validated['items'] ?? [];
                 $calculatedItems = [];
                 foreach ($itemsData as $idx => $item) {
-                    $item['sort_order'] = $item['sort_order'] ?? $idx;
-                    $calculatedItems[] = $this->calculationService->calculateItem($item);
+                    try {
+                        $item['sort_order'] = $item['sort_order'] ?? $idx;
+                        $calculatedItems[] = $this->calculationService->calculateItem($item);
+                    } catch (\InvalidArgumentException $e) {
+                        throw ValidationException::withMessages([
+                            "items.{$idx}.unit" => [$e->getMessage()],
+                        ]);
+                    }
                 }
 
                 $summary = $this->calculationService->calculateSummary($calculatedItems);

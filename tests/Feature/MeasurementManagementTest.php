@@ -863,4 +863,183 @@ class MeasurementManagementTest extends TestCase
         $response->assertSuccessful();
         $this->assertEquals($oppOld->id, $response->json('data.opportunity_id'));
     }
+
+    /**
+     * TEST 5: Contradictory Unit <-> Measurement Type is strictly rejected server-side.
+     */
+    public function test_unit_and_measurement_type_mismatch_is_rejected(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Unit Mismatch Customer',
+            'customer_type' => 'individual',
+            'phone' => '01011113333',
+            'status' => 'active',
+        ]);
+
+        $opportunity = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Unit Validation Opp',
+            'stage' => 'Qualified',
+        ]);
+
+        // Attempting to send m2 with volume -> MUST return 422
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson('/api/measurements', [
+            'opportunity_id' => $opportunity->id,
+            'items' => [
+                [
+                    'room_name' => 'Room 1',
+                    'item_name' => 'Contradictory Item',
+                    'unit' => 'm2',
+                    'measurement_type' => 'volume', // Invalid combination!
+                    'count' => 1,
+                    'length' => 5,
+                    'width' => 4,
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['items.0.unit']);
+
+        // Attempting to send pcs with linear -> MUST return 422
+        $response2 = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson('/api/measurements', [
+            'opportunity_id' => $opportunity->id,
+            'items' => [
+                [
+                    'room_name' => 'Room 2',
+                    'item_name' => 'Contradictory Count Item',
+                    'unit' => 'pcs',
+                    'measurement_type' => 'linear', // Invalid combination!
+                    'count' => 5,
+                ],
+            ],
+        ]);
+
+        $response2->assertStatus(422)
+            ->assertJsonValidationErrors(['items.0.unit']);
+    }
+
+    /**
+     * TEST 6: Store Measurement rejects site visit belonging to a different customer.
+     */
+    public function test_store_measurement_rejects_mismatched_site_visit_customer(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customerA = Customer::create([
+            'name' => 'Customer Alpha Context',
+            'customer_type' => 'individual',
+            'phone' => '01044445555',
+            'status' => 'active',
+        ]);
+
+        $customerB = Customer::create([
+            'name' => 'Customer Beta Context',
+            'customer_type' => 'company',
+            'phone' => '01066667777',
+            'status' => 'active',
+        ]);
+
+        $opportunityA = Opportunity::create([
+            'customer_id' => $customerA->id,
+            'title' => 'Opp for Customer A',
+            'stage' => 'Qualified',
+        ]);
+
+        $siteVisitB = SiteVisit::create([
+            'customer_id' => $customerB->id,
+            'status' => 'Completed',
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->tokenA,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ])->postJson('/api/measurements', [
+            'opportunity_id' => $opportunityA->id,
+            'site_visit_id' => $siteVisitB->id, // Mismatched customer!
+            'items' => [
+                [
+                    'room_name' => 'Hall',
+                    'item_name' => 'Flooring',
+                    'unit' => 'm2',
+                    'count' => 1,
+                    'length' => 5,
+                    'width' => 4,
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['site_visit_id']);
+    }
+
+    /**
+     * TEST 7: Opportunity approvedMeasurement relation accurately resolves approved revision and enables Scope traceability.
+     */
+    public function test_opportunity_approved_measurement_helper_relation(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create([
+            'name' => 'Scope Traceability Customer',
+            'customer_type' => 'company',
+            'phone' => '01088889990',
+            'status' => 'active',
+        ]);
+
+        $opportunity = Opportunity::create([
+            'customer_id' => $customer->id,
+            'title' => 'Future Scope Commercial Hub',
+            'stage' => 'Qualified',
+        ]);
+
+        // V1 (Superseded)
+        $m1 = Measurement::create([
+            'opportunity_id' => $opportunity->id,
+            'measurement_number' => 'M-TRACE-001',
+            'version' => 1,
+            'status' => 'Superseded',
+            'total_area' => 100.00,
+        ]);
+
+        // V2 (Approved)
+        $m2 = Measurement::create([
+            'opportunity_id' => $opportunity->id,
+            'measurement_number' => 'M-TRACE-001-V2',
+            'version' => 2,
+            'status' => 'Approved',
+            'total_area' => 120.00,
+        ]);
+
+        // V3 (Draft)
+        $m3 = Measurement::create([
+            'opportunity_id' => $opportunity->id,
+            'measurement_number' => 'M-TRACE-001-V3',
+            'version' => 3,
+            'status' => 'Draft',
+            'total_area' => 130.00,
+        ]);
+
+        $opp = Opportunity::with('approvedMeasurement', 'latestMeasurement')->find($opportunity->id);
+
+        $this->assertNotNull($opp->approvedMeasurement);
+        $this->assertEquals($m2->id, $opp->approvedMeasurement->id);
+        $this->assertEquals('Approved', $opp->approvedMeasurement->status);
+        $this->assertEquals(120.00, (float) $opp->approvedMeasurement->total_area);
+
+        $this->assertNotNull($opp->latestMeasurement);
+        $this->assertEquals($m3->id, $opp->latestMeasurement->id);
+        $this->assertEquals(3, $opp->latestMeasurement->version);
+    }
 }

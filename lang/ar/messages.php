@@ -76,8 +76,9 @@ return [
     'measurement_items_missing_required_info' => 'جميع بنود المقايسة يجب أن تحتوي على اسم الفراغ واسم البند.',
     'dxf_imported_success' => 'تم استيراد أبعاد ومساحات الغرف من ملف DXF بنجاح وإنشاء مسودة المقايسة.',
     'dxf_invalid_format' => 'ملف DXF غير صالح أو تالف. الصيغة المدعومة حاليًا هي DXF فقط.',
-    'dxf_unsupported_format' => 'الصيغة المدعومة حاليًا هي DXF فقط. لو عندك ملف DWG، افتحه بالأوتوكاد واعمل Save As → DXF ثم ارفعه هنا.',
     'dxf_no_rooms_found' => 'لم يتم العثور على أي غرف أو مضلعات مغلقة على الـ Layer المختار.',
+    'site_visit_belongs_to_another_opportunity' => 'المعاينة الميدانية مرتبطة بالفعل بفرصة تجارية أخرى.',
+    'measurement_unit_type_mismatch' => 'وحدة القياس المحددة غير متوافقة مع نوع الحصر.',
 
     // Settings
     'settings_saved_success' => 'تم حفظ الإعدادات بنجاح',

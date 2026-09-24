@@ -5,7 +5,36 @@ namespace App\Services;
 class MeasurementCalculationService
 {
     /**
-     * Supported units and their corresponding measurement types.
+     * Supported units and their strictly corresponding canonical measurement types.
+     */
+    public const UNIT_TO_TYPE = [
+        'm2' => 'area',
+        'm²' => 'area',
+        'sqm' => 'area',
+        'm3' => 'volume',
+        'm³' => 'volume',
+        'cum' => 'volume',
+        'lm' => 'linear',
+        'rm' => 'linear',
+        'pcs' => 'count',
+        'item' => 'count',
+        'unit' => 'count',
+        // Also allow canonical type names as unit aliases if needed
+        'area' => 'area',
+        'volume' => 'volume',
+        'linear' => 'linear',
+        'count' => 'count',
+    ];
+
+    public const TYPE_TO_CANONICAL_UNIT = [
+        'area' => 'm2',
+        'volume' => 'm3',
+        'linear' => 'lm',
+        'count' => 'pcs',
+    ];
+
+    /**
+     * Legacy UNITS array alias for backward compatibility.
      */
     public const UNITS = [
         'm2' => 'area',
@@ -15,12 +44,55 @@ class MeasurementCalculationService
     ];
 
     /**
-     * Determine measurement type from unit string.
+     * Determine canonical measurement type from unit string.
+     *
+     * @throws \InvalidArgumentException If unit is unrecognized.
      */
     public static function resolveType(string $unit): string
     {
         $normalized = strtolower(trim($unit));
-        return self::UNITS[$normalized] ?? 'area';
+        if (!isset(self::UNIT_TO_TYPE[$normalized])) {
+            throw new \InvalidArgumentException("Invalid or unsupported measurement unit '{$unit}'. Supported units: m2, m3, lm, pcs.");
+        }
+        return self::UNIT_TO_TYPE[$normalized];
+    }
+
+    /**
+     * Strictly validate that unit and measurement_type are compatible.
+     *
+     * Expected mapping:
+     * m² / m2  -> AREA
+     * m³ / m3  -> VOLUME
+     * lm       -> LINEAR
+     * pcs      -> COUNT
+     *
+     * Contradictory combinations (e.g. m2 + volume, m3 + area, lm + count, pcs + area) are strictly rejected.
+     *
+     * @throws \InvalidArgumentException
+     */
+    public static function validateUnitAndType(string $unit, ?string $type = null): array
+    {
+        $normalizedUnit = strtolower(trim($unit));
+        if (!isset(self::UNIT_TO_TYPE[$normalizedUnit])) {
+            throw new \InvalidArgumentException("Invalid or unsupported measurement unit '{$unit}'. Supported units: m2, m3, lm, pcs.");
+        }
+
+        $expectedType = self::UNIT_TO_TYPE[$normalizedUnit];
+        $canonicalUnit = self::TYPE_TO_CANONICAL_UNIT[$expectedType] ?? $normalizedUnit;
+
+        if ($type !== null && trim($type) !== '') {
+            $normalizedType = strtolower(trim($type));
+            $resolvedType = self::UNIT_TO_TYPE[$normalizedType] ?? (isset(self::TYPE_TO_CANONICAL_UNIT[$normalizedType]) ? $normalizedType : null);
+
+            if ($resolvedType === null || $resolvedType !== $expectedType) {
+                throw new \InvalidArgumentException("Unit '{$unit}' is incompatible with measurement type '{$type}'. Expected type: '{$expectedType}'.");
+            }
+        }
+
+        return [
+            'unit' => $canonicalUnit,
+            'measurement_type' => $expectedType,
+        ];
     }
 
     /**
@@ -28,11 +100,17 @@ class MeasurementCalculationService
      *
      * @param array $item
      * @return array Calculated item values
+     * @throws \InvalidArgumentException
      */
     public function calculateItem(array $item): array
     {
-        $unit = strtolower(trim($item['unit'] ?? 'm2'));
-        $type = $item['measurement_type'] ?? self::resolveType($unit);
+        $validated = self::validateUnitAndType(
+            $item['unit'] ?? 'm2',
+            $item['measurement_type'] ?? null
+        );
+
+        $unit = $validated['unit'];
+        $type = $validated['measurement_type'];
 
         $count = isset($item['count']) && $item['count'] !== null ? (float) $item['count'] : 1.0;
         $length = isset($item['length']) && $item['length'] !== null ? (float) $item['length'] : 0.0;

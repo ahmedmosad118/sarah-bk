@@ -74,8 +74,9 @@ return [
     'measurement_items_missing_required_info' => 'All measurement items must have room name and item name specified.',
     'dxf_imported_success' => 'Room geometry and areas imported from DXF file successfully as draft measurement.',
     'dxf_invalid_format' => 'Invalid or corrupt DXF file. Only valid DXF ASCII files are supported.',
-    'dxf_unsupported_format' => 'Only DXF format is currently supported. If you have a DWG file, please open it in AutoCAD, choose Save As -> DXF, and upload it.',
     'dxf_no_rooms_found' => 'No closed room polylines were found on the selected layer.',
+    'site_visit_belongs_to_another_opportunity' => 'The site visit is already linked to another opportunity.',
+    'measurement_unit_type_mismatch' => 'The specified unit is incompatible with the measurement type.',
 
     // Settings
     'settings_saved_success' => 'Settings saved successfully',

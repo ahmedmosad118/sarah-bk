@@ -89,6 +89,22 @@ class Opportunity extends Model implements HasMedia
     }
 
     /**
+     * Authoritative approved measurement for this commercial opportunity.
+     */
+    public function approvedMeasurement(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Measurement::class)->where('status', 'Approved');
+    }
+
+    /**
+     * Latest measurement revision for this commercial opportunity.
+     */
+    public function latestMeasurement(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Measurement::class)->latestOfMany('version');
+    }
+
+    /**
      * Scope query by stage.
      */
     public function scopeStage(Builder $query, string $stage): Builder

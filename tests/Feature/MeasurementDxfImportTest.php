@@ -145,7 +145,7 @@ class MeasurementDxfImportTest extends TestCase
             'opportunity_id' => $opportunity->id,
         ]);
 
-        $response->assertStatus(201)
+        $response->assertStatus(200)
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.status', 'Draft')
             ->assertJsonPath('data.opportunity_id', $opportunity->id);
@@ -327,7 +327,7 @@ class MeasurementDxfImportTest extends TestCase
             'opportunity_id' => $opportunity->id,
         ]);
 
-        $response->assertStatus(201);
+        $response->assertStatus(200);
         $measurementId = $response->json('data.id');
 
         $measurement = Measurement::findOrFail($measurementId);
