@@ -113,6 +113,7 @@ class DashboardTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
+            'X-Tenant-Slug' => $this->slug,
             'Authorization' => "Bearer {$this->token}",
             'Accept' => 'application/json',
         ])->getJson('/api/dashboard/summary');

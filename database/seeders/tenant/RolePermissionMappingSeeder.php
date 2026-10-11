@@ -67,6 +67,7 @@ class RolePermissionMappingSeeder extends Seeder
             'quotations.view', 'quotations.approve',
             'contracts.view', 'contracts.approve',
             'boq.view', 'boq.approve',
+            'boqs.view', 'boqs.approve',
             'estimations.view', 'estimations.approve',
             'procurement.view', 'procurement.approve',
             'finance.view', 'invoices.view', 'invoices.approve', 'project_cost.view', 'project_cost.export',
@@ -86,6 +87,7 @@ class RolePermissionMappingSeeder extends Seeder
             'measurements.view', 'measurements.create', 'measurements.update', 'measurements.delete', 'measurements.approve',
             'scope.view', 'scope.create', 'scope.update',
             'boq.view',
+            'boqs.view',
             'change_requests.view', 'change_requests.create', 'change_requests.update',
             'reports.view', 'reports.export',
             'media.view', 'media.upload', 'media.download'
@@ -159,6 +161,7 @@ class RolePermissionMappingSeeder extends Seeder
             'measurements.view',
             'scope.view', 'scope.create', 'scope.update',
             'boq.view', 'boq.create', 'boq.update', 'boq.import', 'boq.export',
+            'boqs.view', 'boqs.create', 'boqs.update',
             'estimations.view', 'estimations.create', 'estimations.update', 'estimations.export',
             'materials.view'
         ]);

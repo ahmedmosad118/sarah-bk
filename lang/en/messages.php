@@ -94,6 +94,25 @@ return [
     'scope_measurement_item_mismatch' => 'A selected measurement item does not belong to the approved measurement linked with this scope.',
     'measurement_opportunity_mismatch' => 'The selected measurement does not belong to the same commercial opportunity.',
 
+    // BOQ (Phase 9)
+    'boq_created_success' => 'Bill of quantities created and lines generated successfully',
+    'boq_updated_success' => 'Bill of quantities updated successfully',
+    'boq_deleted_success' => 'Bill of quantities deleted successfully',
+    'boq_submitted_review_success' => 'Bill of quantities submitted for engineering review successfully',
+    'boq_approved_success' => 'Bill of quantities approved successfully as a pricable quantity document',
+    'boq_revision_created_success' => 'Bill of quantities revision created successfully',
+    'boq_requires_approved_scope' => 'Bill of quantities requires an Approved Scope link.',
+    'approved_boq_cannot_be_edited' => 'Approved bills of quantities cannot be edited. Please create a revision instead.',
+    'approved_boq_cannot_be_deleted' => 'Approved bills of quantities cannot be deleted to preserve quantity history.',
+    'only_draft_boq_can_be_submitted_for_review' => 'Only draft bills of quantities can be submitted for review.',
+    'boq_cannot_be_approved_in_current_state' => 'Bill of quantities cannot be approved in its current state.',
+    'cannot_approve_empty_boq' => 'Cannot approve an empty bill of quantities with no quantity lines.',
+    'boq_scope_item_mismatch' => 'A selected scope item does not belong to the approved scope linked with this bill of quantities.',
+    'scope_opportunity_mismatch' => 'The selected scope does not belong to the same commercial opportunity.',
+    'boq_scope_item_has_no_quantities' => 'Scope work item ":item" has no linked approved measurement items — no quantity can be derived automatically.',
+    'boq_scope_item_mixed_units' => 'Scope work item ":item" is linked to mixed measurement units — split it into multiple Scope items before BOQ generation.',
+    'only_approved_boq_can_be_revised' => 'A revision can only be created from an Approved bill of quantities. Draft / Under Review BOQs are edited directly.',
+
     // Settings
     'settings_saved_success' => 'Settings saved successfully',
 ];

@@ -165,20 +165,20 @@
               </span>
             </div>
           </div>
-          <div class="h-0.5 w-6 shrink-0" :class="chainData.current_status?.is_complete ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'"></div>
+          <div class="h-0.5 w-6 shrink-0" :class="chainData.approved_boq ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'"></div>
 
           <!-- Step 6: BOQ -->
           <div class="flex items-center gap-2 min-w-[110px]">
             <div
               class="h-7 w-7 rounded-xl flex items-center justify-center font-bold text-xs"
-              :class="chainData.current_status?.is_complete ? 'bg-emerald-50 text-emerald-700 border-2 border-emerald-500 dark:bg-emerald-950/40' : 'bg-gray-50 text-gray-400 border border-dashed border-gray-300 dark:bg-gray-800'"
+              :class="chainData.approved_boq ? 'bg-emerald-500 text-white shadow-2xs' : (chainData.boqs?.length > 0 ? 'bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-gray-50 text-gray-400 border border-dashed border-gray-300 dark:bg-gray-800')"
             >
-              BOQ
+              {{ chainData.approved_boq ? '✓' : (chainData.boqs?.length > 0 ? '!' : 'BOQ') }}
             </div>
             <div>
               <span class="font-bold text-gray-900 dark:text-white block text-xs">جدول الكميات</span>
-              <span class="text-[10px] block" :class="chainData.current_status?.is_complete ? 'text-emerald-700 font-bold' : 'text-gray-400'">
-                {{ chainData.current_status?.is_complete ? 'جاهز للانتقال' : 'المرحلة التالية' }}
+              <span class="text-[10px] block" :class="chainData.approved_boq ? 'text-emerald-700 font-bold' : (chainData.boqs?.length > 0 ? 'text-amber-600 font-bold' : 'text-gray-400')">
+                {{ chainData.approved_boq ? `V${chainData.approved_boq.version} معتمد` : (chainData.boqs?.length > 0 ? 'قيد الاعتماد' : 'المرحلة التالية') }}
               </span>
             </div>
           </div>

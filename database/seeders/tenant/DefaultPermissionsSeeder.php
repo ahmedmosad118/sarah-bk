@@ -94,6 +94,11 @@ class DefaultPermissionsSeeder extends Seeder
                 'boq.import' => 'استيراد المقايسة من Excel',
                 'boq.export' => 'تصدير المقايسة إلى Excel / PDF',
                 'boq.approve' => 'اعتماد جدول الكميات النهائي',
+                'boqs.view' => 'عرض جداول الكميات (BOQ)',
+                'boqs.create' => 'إنشاء جدول كميات من نطاق معتمد',
+                'boqs.update' => 'تعديل بنود جدول الكميات',
+                'boqs.delete' => 'حذف جدول كميات',
+                'boqs.approve' => 'اعتماد جدول الكميات النهائي',
             ],
             'Estimation' => [
                 'estimations.view' => 'عرض دراسات التسعير والتكلفة',

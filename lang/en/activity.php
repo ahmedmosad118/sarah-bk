@@ -76,6 +76,14 @@ return [
     'scope_submitted_for_review' => 'Scope of work (#:number) submitted for review',
     'scope_approved' => 'Scope of work (#:number) approved',
 
+    // BOQ (Phase 9)
+    'boq_created' => 'Bill of quantities (#:number) created',
+    'boq_updated' => 'Bill of quantities (#:number) updated',
+    'boq_deleted' => 'Bill of quantities (#:number) deleted',
+    'boq_event' => 'Action :event on bill of quantities (#:number)',
+    'boq_submitted_for_review' => 'Bill of quantities (#:number) submitted for review',
+    'boq_approved' => 'Bill of quantities (#:number) approved',
+
     'setting_created' => 'Setting :key created',
     'setting_updated' => 'Setting :key updated',
     'setting_event' => 'Action :event on setting :key',

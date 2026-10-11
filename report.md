@@ -234,5 +234,57 @@ POST   /api/scopes/from-measurement/{measurementId} # إنشاء نطاق أعم
 
 **نتيجة الفحص النهائي:** `OK (7 tests, 75 assertions) — 100% Success`.
 
+---
+
+### 📑 11. Phase 9 - Bill of Quantities (جدول الكميات — BOQ)
+
+#### 1. الملخص التنفيذي
+تم تنفيذ وحدة BOQ كوثيقة كميات رسمية قابلة للتسعير **بدون أي تسعير (Zero Pricing)**، مبنية على **مرجعية مزدوجة (Dual Authority)**: الوصف والمواصفة من `ScopeItem`، والوحدة والكمية الصافية من `MeasurementItem` المرتبطة عبر الجدول الموجود مسبقاً `scope_item_measurement_item`. الـ BOQ مربوطة إجبارياً بـ Opportunity + Scope **معتمدة تحديداً**، وتظل مثبتة على نفس إصدار الـ Scope تاريخياً.
+
+#### 2. القواعد التجارية المُطبّقة
+- رفض إنشاء BOQ على Scope غير معتمدة (`422`)، ورفض Scope تتبع Opportunity مختلفة (`422`).
+- `status` / `version` / `approved_*` **غير مقبولة كمدخل** في `store()` — الحالة دائماً `Draft` والإصدار `1` بالكود، ولا تظهر في الـ form schema.
+- الكمية = `SUM(net_quantity)` للـ `measurement_items` المرتبطة بالـ `scope_item`، والوحدة والكمية تُعاد اشتقاقها سيرفر-سايد دائماً (حتى في `update()`) ولا يُوثق بقيم العميل.
+- **تجانس الوحدة:** بند Scope مرتبط بوحدات مختلفة (أو بلا بنود قياس) لا يُولّد له سطر — رفض جزئي للبند فقط، وباقي البنود تتولد. التحذير يُعاد في `skipped_items` عند الإنشاء وفي `unresolved_items` عند `GET /boqs/{id}` (مُشتق من نفس القواعد، فيظل ظاهراً بعد الإنشاء).
+- **Cross-scope integrity:** أي `scope_item_id` لا ينتمي لنفس `scope_id` الخاص بالـ BOQ يُرفض (`422`).
+- `scope_id` غير قابل للتغيير بعد الإنشاء.
+- BOQ المعتمدة غير قابلة للتعديل أو الحذف (`422`)؛ التعديل عبر `create-revision` فقط، والـ Revision **لا تُنشأ إلا من BOQ معتمدة**.
+- اعتماد إصدار جديد يحول الإصدار المعتمد السابق لنفس الفرصة إلى `Superseded`.
+- استخدام `HasApprovalWorkflow` و `nextRevisionNumber()` بدون تكرار منطق.
+- صلاحيات `boqs.view/create/update/delete/approve` عبر Role → Permission، وعزل Tenant كامل.
+
+#### 3. تغييرات قاعدة البيانات
+```text
+boqs        : opportunity_id (FK cascade), scope_id (FK restrict), boq_number, version, status,
+              title, prepared_by/at, reviewed_by/at, approved_by/at, notes, created_by
+boq_items   : boq_id (FK cascade), scope_item_id (FK restrict), item_code, description,
+              unit, quantity (decimal 15,2), notes, sort_order
+              UNIQUE (boq_id, scope_item_id)
+```
+لا توجد أي أعمدة `price / unit_rate / amount / total / cost / margin` (مُتحقق منها باختبار آلي).
+Migration: `database/migrations/tenant/0001_01_01_000015_create_tenant_boqs_table.php`.
+
+#### 4. الاختبارات ونتائجها
+`tests/Feature/BoqManagementTest.php` — يغطي السيناريوهات الثمانية المطلوبة بالكامل، بالإضافة إلى: تجميع الكميات بعد الخصومات، عرض البنود غير المحلولة بعد الإنشاء، منع الـ Revision من غير المعتمد، عدم ظهور `status/version` في الـ schema، و`403` بدون صلاحية.
+
+**النتيجة:** `OK (17 tests, 161 assertions) — 100% Success` + `npm run build` بدون أخطاء.
+
+#### 5. ما تم تنفيذه / ما لم يُنفَّذ
+- ✅ الـ API الكامل: `GET/POST /boqs`، `GET/PUT/DELETE /boqs/{id}`، `submit-review`، `approve`، `create-revision`، `from-scope/{scopeId}`.
+- ✅ `BoqsView.vue`: سلسلة المرجعية (Scope ← Measurement) وتحذير دائم للبنود التي تتطلب تدخلاً يدوياً.
+- ❌ لم يُنفَّذ (خارج النطاق): Estimation، Quotation، أي حقول تسعير.
+
+> ⚠️ **بنود تتجاوز حدود البرومت وتنتظر قرار الفريق (لم تُزل):** علاقتا `approvedBoq()` و`latestBoq()` في `Opportunity`، ودمج BOQ في `OpportunityController` (الـ chain / next_action / activity timeline)؛ حقل `title` في `boqs` و`notes` في `boq_items`؛ دعم المرفقات (Media Library)؛ ازدواجية صلاحيات `boq.*` و`boqs.*`؛ معاينة التجانس في الواجهة (نسخة عميل من منطق السيرفر).
+
+#### 6. اقتراحات للمراجعة (لم تُنفَّذ)
+- توحيد شرط `create-revision` في `ScopeController` و`MeasurementController` ليقبل المعتمد فقط (كما في BOQ) — المرحلتان مقفلتان فلم تُلمسا.
+- توحيد بادئة الصلاحيات (`boqs.*` فقط) وإزالة `boq.*` بعد التأكد من عدم استخدامها.
+- إرجاع `201` بدلاً من `200` عند الإنشاء إن تم اعتماده كمعيار للمنظومة.
+
+#### 7. نقاط التكامل المستقبلية مع Estimation
+- Estimation تُبنى على `boq_id` لـ BOQ بحالة `Approved` فقط (نفس نمط Scope ← Measurement).
+- كل سطر تقدير يرتبط بـ `boq_item_id` ويستهلك `unit` و`quantity` كما هي (Read-Only)، والتسعير (`unit_rate`, `amount`) يعيش في جداول Estimation فقط.
+- `scope_item_id` على `boq_items` + `scope_id` المجمد على `boqs` يتيحان تتبعاً كاملاً: Estimation ← BOQ ← Scope ← Measurement.
+
 
 

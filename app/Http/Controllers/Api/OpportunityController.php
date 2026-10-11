@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Core\CRUD\CRUDController;
 use App\Core\CRUD\Field;
 use App\Core\CRUD\InputMaker;
+use App\Models\Boq;
 use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\Measurement;
@@ -433,6 +434,14 @@ class OpportunityController extends CRUDController
                 ])->orderBy('version', 'desc')->orderBy('id', 'desc');
             },
             'approvedScope.items.measurementItems',
+            'boqs' => function ($q) {
+                $q->with([
+                    'preparedUser',
+                    'approvedUser',
+                    'scope.measurement',
+                    'items.scopeItem',
+                ])->orderBy('version', 'desc')->orderBy('id', 'desc');
+            },
         ])->findOrFail($id);
 
         // 1. Gather all entity IDs for the unified activity history
@@ -442,9 +451,10 @@ class OpportunityController extends CRUDController
         $visitIds = $opportunity->siteVisits->pluck('id')->all();
         $measurementIds = $opportunity->measurements->pluck('id')->all();
         $scopeIds = $opportunity->scopes->pluck('id')->all();
+        $boqIds = $opportunity->boqs->pluck('id')->all();
 
         $timeline = Activity::with('causer')
-            ->where(function ($q) use ($oppIds, $customerIds, $leadIds, $visitIds, $measurementIds, $scopeIds) {
+            ->where(function ($q) use ($oppIds, $customerIds, $leadIds, $visitIds, $measurementIds, $scopeIds, $boqIds) {
                 $q->where(function ($sub) use ($oppIds) {
                     $sub->where('subject_type', Opportunity::class)->whereIn('subject_id', $oppIds);
                 });
@@ -473,6 +483,11 @@ class OpportunityController extends CRUDController
                         $sub->where('subject_type', Scope::class)->whereIn('subject_id', $scopeIds);
                     });
                 }
+                if (!empty($boqIds)) {
+                    $q->orWhere(function ($sub) use ($boqIds) {
+                        $sub->where('subject_type', Boq::class)->whereIn('subject_id', $boqIds);
+                    });
+                }
             })
             ->latest('id')
             ->limit(30)
@@ -492,6 +507,9 @@ class OpportunityController extends CRUDController
         // 2. Compute Next Logical Action & Chain Status
         $approvedMeasurement = $opportunity->approvedMeasurement;
         $approvedScope = $opportunity->approvedScope;
+        // Resolved from the already eager-loaded collection (no extra queries).
+        $approvedBoq = $opportunity->boqs->firstWhere('status', 'Approved');
+        $latestBoq = $opportunity->boqs->sortByDesc('id')->sortByDesc('version')->first();
         $hasVisits = $opportunity->siteVisits->isNotEmpty();
         $hasMeasurements = $opportunity->measurements->isNotEmpty();
         $hasScopes = $opportunity->scopes->isNotEmpty();
@@ -580,12 +598,45 @@ class OpportunityController extends CRUDController
                     'permission' => 'scopes.edit',
                 ];
             }
-        } else {
+        } elseif (!$latestBoq) {
             $nextAction = [
                 'stage' => 'boq',
-                'key' => 'ready_for_boq',
-                'title' => 'جاهز للانتقال لمرحلة جدول الكميات (Ready for BOQ)',
-                'description' => 'اكتملت السلسلة التجارية والهندسية بنجاح! المقايسة معتمدة ونطاق الأعمال معتمد، والعملية جاهزة تماماً للبدء في جدول الكميات (BOQ) والتسعير وحساب التكاليف.',
+                'key' => 'create_boq',
+                'title' => 'إعداد جدول الكميات (BOQ)',
+                'description' => 'تم اعتماد نطاق الأعمال بنجاح! الخطوة التالية هي توليد جدول الكميات الرسمي القابل للتسعير من بنود النطاق المعتمد وكمياته.',
+                'action_label' => '+ إنشاء جدول الكميات',
+                'action_type' => 'route',
+                'action_target' => '/boqs',
+                'permission' => 'boqs.create',
+            ];
+        } elseif ($latestBoq->status === 'Draft') {
+            $nextAction = [
+                'stage' => 'boq',
+                'key' => 'submit_boq_for_review',
+                'title' => 'استكمال وتقديم جدول الكميات للمراجعة',
+                'description' => 'جدول الكميات الحالي مسودة (Draft). الخطوة التالية هي مراجعة البنود والكميات المولدة وتقديمه للمراجعة الفنية.',
+                'action_label' => 'استعراض وتقديم جدول الكميات',
+                'action_type' => 'route',
+                'action_target' => '/boqs',
+                'permission' => 'boqs.update',
+            ];
+        } elseif ($latestBoq->status === 'Under Review') {
+            $nextAction = [
+                'stage' => 'boq',
+                'key' => 'approve_boq',
+                'title' => 'مراجعة واعتماد جدول الكميات',
+                'description' => 'جدول الكميات قيد التدقيق الهندسي. يجب اعتماده رسمياً ليصبح وثيقة الكميات القابلة للتسعير في مرحلة Estimation.',
+                'action_label' => 'مراجعة واعتماد جدول الكميات',
+                'action_type' => 'route',
+                'action_target' => '/boqs',
+                'permission' => 'boqs.approve',
+            ];
+        } else {
+            $nextAction = [
+                'stage' => 'estimation',
+                'key' => 'ready_for_estimation',
+                'title' => 'جاهز للانتقال لمرحلة التسعير (Ready for Estimation)',
+                'description' => 'اكتملت السلسلة التجارية والهندسية ووثيقة الكميات بنجاح! جدول الكميات معتمد وكمياته مجمدة، والعملية جاهزة تماماً لدراسة التسعير والتكلفة (Estimation).',
                 'action_label' => null,
                 'action_type' => 'info',
                 'action_target' => null,
@@ -643,6 +694,8 @@ class OpportunityController extends CRUDController
                 'approved_measurement' => $approvedMeasurement,
                 'scopes' => $opportunity->scopes,
                 'approved_scope' => $approvedScope,
+                'boqs' => $opportunity->boqs,
+                'approved_boq' => $approvedBoq,
                 'traceability_matrix' => $traceabilityMatrix,
                 'current_status' => [
                     'commercial' => [
@@ -665,6 +718,19 @@ class OpportunityController extends CRUDController
                         'items_count' => $approvedScope ? $approvedScope->items->count() : 0,
                         'referenced_measurement_version' => $approvedScope && $approvedScope->measurement 
                             ? "V{$approvedScope->measurement->version}" 
+                            : null,
+                    ],
+                    'boq' => [
+                        'has_approved' => (bool)$approvedBoq,
+                        'status' => $approvedBoq ? 'Approved' : ($latestBoq?->status ?? 'None'),
+                        'version' => $approvedBoq ? "V{$approvedBoq->version}" : null,
+                        'code' => $approvedBoq?->boq_number,
+                        'items_count' => $approvedBoq ? $approvedBoq->items->count() : 0,
+                        'referenced_scope_version' => $approvedBoq && $approvedBoq->scope
+                            ? "V{$approvedBoq->scope->version}"
+                            : null,
+                        'referenced_measurement_version' => $approvedBoq && $approvedBoq->scope?->measurement
+                            ? "V{$approvedBoq->scope->measurement->version}"
                             : null,
                     ],
                     'is_complete' => (bool)($approvedMeasurement && $approvedScope),

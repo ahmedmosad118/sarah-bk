@@ -14,6 +14,7 @@ import OpportunityChainView from '../views/opportunities/OpportunityChainView.vu
 import SiteVisitsView from '../views/site-visits/SiteVisitsView.vue';
 import MeasurementsView from '../views/measurements/MeasurementsView.vue';
 import ScopesView from '../views/scopes/ScopesView.vue';
+import BoqsView from '../views/boqs/BoqsView.vue';
 import JobTitlesView from '../views/team/JobTitlesView.vue';
 import RolesView from '../views/team/RolesView.vue';
 import ActivityLogView from '../views/activities/ActivityLogView.vue';
@@ -89,6 +90,11 @@ const routes = [
         path: 'scopes',
         name: 'scopes',
         component: ScopesView,
+      },
+      {
+        path: 'boqs',
+        name: 'boqs',
+        component: BoqsView,
       },
       {
         path: 'team/users',

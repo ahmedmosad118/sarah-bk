@@ -96,6 +96,25 @@ return [
     'scope_measurement_item_mismatch' => 'أحد بنود القياس المختارة لا ينتمي لنفس المقايسة الهندسية المعتمدة المرتبطة بنطاق الأعمال.',
     'measurement_opportunity_mismatch' => 'المقايسة الهندسية المختارة لا تنتمي لنفس الفرصة التجارية.',
 
+    // BOQ (Phase 9)
+    'boq_created_success' => 'تم إنشاء جدول الكميات وتوليد البنود بنجاح',
+    'boq_updated_success' => 'تم تحديث جدول الكميات بنجاح',
+    'boq_deleted_success' => 'تم حذف جدول الكميات بنجاح',
+    'boq_submitted_review_success' => 'تم إرسال جدول الكميات للمراجعة الفنية بنجاح',
+    'boq_approved_success' => 'تم اعتماد جدول الكميات بنجاح كوثيقة كميات قابلة للتسعير',
+    'boq_revision_created_success' => 'تم إنشاء مراجعة وإصدار جديد من جدول الكميات بنجاح',
+    'boq_requires_approved_scope' => 'جدول الكميات يتطلب ربطاً بنطاق أعمال معتمد (Approved Scope).',
+    'approved_boq_cannot_be_edited' => 'جدول الكميات المعتمد غير قابل للتعديل المباشر. يرجى إنشاء مراجعة جديدة (Revision).',
+    'approved_boq_cannot_be_deleted' => 'لا يمكن حذف جدول كميات معتمد للحفاظ على تاريخ وثائق الكميات.',
+    'only_draft_boq_can_be_submitted_for_review' => 'يمكن فقط تقديم جدول الكميات في حالة المسودة للمراجعة.',
+    'boq_cannot_be_approved_in_current_state' => 'لا يمكن اعتماد جدول الكميات في حالته الحالية.',
+    'cannot_approve_empty_boq' => 'لا يمكن اعتماد جدول كميات فارغ بدون بنود كميات.',
+    'boq_scope_item_mismatch' => 'أحد بنود نطاق الأعمال المختارة لا ينتمي لنفس نطاق الأعمال المعتمد المرتبط بجدول الكميات.',
+    'scope_opportunity_mismatch' => 'نطاق الأعمال المختار لا ينتمي لنفس الفرصة التجارية.',
+    'boq_scope_item_has_no_quantities' => 'بند الشغل ":item" غير مرتبط بأي بنود قياس معتمدة — لا يمكن توليد كمية له تلقائياً.',
+    'boq_scope_item_mixed_units' => 'بند الشغل ":item" مرتبط بوحدات قياس مختلفة — افصله لأكتر من بند Scope قبل توليد BOQ.',
+    'only_approved_boq_can_be_revised' => 'يمكن إنشاء مراجعة جديدة من جدول كميات معتمد فقط. المسودة أو قيد المراجعة تُعدّل مباشرة.',
+
     // Settings
     'settings_saved_success' => 'تم حفظ الإعدادات بنجاح',
 ];

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BoqController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\JobTitleController;
@@ -150,6 +151,20 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/{id}/submit-review', [ScopeController::class, 'submitReview']);
         Route::post('/{id}/approve', [ScopeController::class, 'approve']);
         Route::post('/{id}/create-revision', [ScopeController::class, 'createRevision']);
+    });
+
+    // Bill of Quantities Management (Phase 9 - Pricable Quantity Document)
+    Route::prefix('boqs')->group(function () {
+        Route::get('/schema', [BoqController::class, 'schema']);
+        Route::get('/', [BoqController::class, 'index']);
+        Route::post('/', [BoqController::class, 'store']);
+        Route::post('/from-scope/{scopeId}', [BoqController::class, 'createFromScope']);
+        Route::get('/{id}', [BoqController::class, 'show']);
+        Route::put('/{id}', [BoqController::class, 'update']);
+        Route::delete('/{ids}', [BoqController::class, 'destroy']);
+        Route::post('/{id}/submit-review', [BoqController::class, 'submitReview']);
+        Route::post('/{id}/approve', [BoqController::class, 'approve']);
+        Route::post('/{id}/create-revision', [BoqController::class, 'createRevision']);
     });
 
     // Roles & Permissions Management

@@ -129,6 +129,30 @@ class Opportunity extends Model implements HasMedia
     }
 
     /**
+     * Bills of quantities prepared for this commercial opportunity.
+     */
+    public function boqs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Boq::class);
+    }
+
+    /**
+     * Authoritative approved bill of quantities for this commercial opportunity.
+     */
+    public function approvedBoq(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Boq::class)->where('status', 'Approved');
+    }
+
+    /**
+     * Latest bill of quantities revision for this commercial opportunity.
+     */
+    public function latestBoq(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Boq::class)->latestOfMany('version');
+    }
+
+    /**
      * Scope query by stage.
      */
     public function scopeStage(Builder $query, string $stage): Builder

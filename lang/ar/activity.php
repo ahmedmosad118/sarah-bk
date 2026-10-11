@@ -76,6 +76,14 @@ return [
     'scope_submitted_for_review' => 'تم إرسال نطاق الأعمال (#:number) للمراجعة الفنية',
     'scope_approved' => 'تم اعتماد نطاق الأعمال (#:number) والمواصفات الفنية رسمياً',
 
+    // BOQ (Phase 9)
+    'boq_created' => 'تم إنشاء جدول الكميات (#:number)',
+    'boq_updated' => 'تم تحديث بنود جدول الكميات (#:number)',
+    'boq_deleted' => 'تم حذف جدول الكميات (#:number)',
+    'boq_event' => 'إجراء :event على جدول الكميات (#:number)',
+    'boq_submitted_for_review' => 'تم إرسال جدول الكميات (#:number) للمراجعة الفنية',
+    'boq_approved' => 'تم اعتماد جدول الكميات (#:number) رسمياً كوثيقة كميات قابلة للتسعير',
+
     'setting_created' => 'تم إنشاء الإعداد :key',
     'setting_updated' => 'تم تحديث الإعداد :key',
     'setting_event' => 'إجراء :event على الإعداد :key',

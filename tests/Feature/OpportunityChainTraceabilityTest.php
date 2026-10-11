@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Core\Tenancy\TenantDatabaseManager;
+use App\Models\Boq;
 use App\Models\Central\Tenant;
 use App\Models\Customer;
 use App\Models\Lead;
@@ -321,8 +322,14 @@ class OpportunityChainTraceabilityTest extends TestCase
         $res->assertJsonPath('data.current_status.scope.version', 'V1');
         $res->assertJsonPath('data.current_status.is_complete', true);
 
-        // Next Action: Ready for BOQ
-        $res->assertJsonPath('data.next_action.key', 'ready_for_boq');
+        // Next Action: Approved scope with no BOQ -> Create BOQ
+        $res->assertJsonPath('data.next_action.key', 'create_boq');
+        $res->assertJsonPath('data.next_action.stage', 'boq');
+
+        // No BOQs yet
+        $this->assertEmpty($res->json('data.boqs'));
+        $this->assertNull($res->json('data.approved_boq'));
+        $res->assertJsonPath('data.current_status.boq.has_approved', false);
     }
 
     /**
@@ -522,11 +529,41 @@ class OpportunityChainTraceabilityTest extends TestCase
         $res7->assertOk();
         $this->assertEquals('approve_scope', $res7->json('data.next_action.key'));
 
-        // State 8: Scope Approved -> Ready for BOQ
+        // State 8: Scope Approved, no BOQ -> Create BOQ
         $s->update(['status' => 'Approved', 'approved_by' => $this->ownerA->id, 'approved_at' => Carbon::now()]);
         $res8 = $this->withTenantA()->getJson("/api/opportunities/{$opp->id}/chain");
         $res8->assertOk();
-        $this->assertEquals('ready_for_boq', $res8->json('data.next_action.key'));
+        $this->assertEquals('create_boq', $res8->json('data.next_action.key'));
+
+        // State 9: BOQ Draft
+        $boq = Boq::create([
+            'opportunity_id' => $opp->id,
+            'scope_id' => $s->id,
+            'boq_number' => 'BOQ-CHAIN-01',
+            'version' => 1,
+            'status' => 'Draft',
+            'created_by' => $this->ownerA->id,
+        ]);
+        $res9 = $this->withTenantA()->getJson("/api/opportunities/{$opp->id}/chain");
+        $res9->assertOk();
+        $this->assertEquals('submit_boq_for_review', $res9->json('data.next_action.key'));
+        $this->assertCount(1, $res9->json('data.boqs'));
+        $this->assertNull($res9->json('data.approved_boq'));
+
+        // State 10: BOQ Under Review
+        $boq->update(['status' => 'Under Review']);
+        $res10 = $this->withTenantA()->getJson("/api/opportunities/{$opp->id}/chain");
+        $res10->assertOk();
+        $this->assertEquals('approve_boq', $res10->json('data.next_action.key'));
+
+        // State 11: BOQ Approved -> Ready for Estimation
+        $boq->update(['status' => 'Approved', 'approved_by' => $this->ownerA->id, 'approved_at' => Carbon::now()]);
+        $res11 = $this->withTenantA()->getJson("/api/opportunities/{$opp->id}/chain");
+        $res11->assertOk();
+        $this->assertEquals('ready_for_estimation', $res11->json('data.next_action.key'));
+        $res11->assertJsonPath('data.approved_boq.id', $boq->id);
+        $res11->assertJsonPath('data.current_status.boq.has_approved', true);
+        $res11->assertJsonPath('data.current_status.boq.status', 'Approved');
     }
 
     /**
