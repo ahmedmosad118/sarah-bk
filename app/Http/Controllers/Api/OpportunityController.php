@@ -509,10 +509,21 @@ class OpportunityController extends CRUDController
         $approvedScope = $opportunity->approvedScope;
         // Resolved from the already eager-loaded collection (no extra queries).
         $approvedBoq = $opportunity->boqs->firstWhere('status', 'Approved');
-        $latestBoq = $opportunity->boqs->sortByDesc('id')->sortByDesc('version')->first();
+        $latestBoq = $opportunity->boqs->sortBy([['version', 'desc'], ['id', 'desc']])->first();
         $hasVisits = $opportunity->siteVisits->isNotEmpty();
         $hasMeasurements = $opportunity->measurements->isNotEmpty();
         $hasScopes = $opportunity->scopes->isNotEmpty();
+
+        // Stale BOQ detection: an approved BOQ exists, but it references an older/superseded scope revision
+        $isBoqStale = (bool) ($approvedBoq && $approvedScope && (int) $approvedBoq->scope_id !== (int) $approvedScope->id);
+        $isBoqCurrent = (bool) ($approvedBoq && $approvedScope && (int) $approvedBoq->scope_id === (int) $approvedScope->id);
+
+        // BOQs associated with the currently approved scope
+        $boqsForCurrentScope = $approvedScope
+            ? $opportunity->boqs->where('scope_id', $approvedScope->id)
+            : collect();
+        $latestBoqForCurrentScope = $boqsForCurrentScope->sortBy([['version', 'desc'], ['id', 'desc']])->first();
+        $approvedBoqForCurrentScope = $boqsForCurrentScope->firstWhere('status', 'Approved');
 
         $nextAction = null;
         if (!$hasVisits) {
@@ -598,18 +609,22 @@ class OpportunityController extends CRUDController
                     'permission' => 'scopes.edit',
                 ];
             }
-        } elseif (!$latestBoq) {
+        } elseif (!$latestBoqForCurrentScope) {
             $nextAction = [
                 'stage' => 'boq',
                 'key' => 'create_boq',
-                'title' => 'إعداد جدول الكميات (BOQ)',
-                'description' => 'تم اعتماد نطاق الأعمال بنجاح! الخطوة التالية هي توليد جدول الكميات الرسمي القابل للتسعير من بنود النطاق المعتمد وكمياته.',
+                'title' => $isBoqStale
+                    ? 'إعداد جدول الكميات لنطاق الأعمال الجديد المعتمد'
+                    : 'إعداد جدول الكميات (BOQ)',
+                'description' => $isBoqStale
+                    ? "تم اعتماد إصدار جديد من نطاق الأعمال (V{$approvedScope->version}). جدول الكميات المعتمد الحالي (#{$approvedBoq->boq_number}) مرتبط بإصدار سابق، ويجب توليد جدول كميات جديد ليعكس التوصيف والكميات المحدثة."
+                    : 'تم اعتماد نطاق الأعمال بنجاح! الخطوة التالية هي توليد جدول الكميات الرسمي القابل للتسعير من بنود النطاق المعتمد وكمياته.',
                 'action_label' => '+ إنشاء جدول الكميات',
                 'action_type' => 'route',
                 'action_target' => '/boqs',
                 'permission' => 'boqs.create',
             ];
-        } elseif ($latestBoq->status === 'Draft') {
+        } elseif ($latestBoqForCurrentScope->status === 'Draft') {
             $nextAction = [
                 'stage' => 'boq',
                 'key' => 'submit_boq_for_review',
@@ -620,7 +635,7 @@ class OpportunityController extends CRUDController
                 'action_target' => '/boqs',
                 'permission' => 'boqs.update',
             ];
-        } elseif ($latestBoq->status === 'Under Review') {
+        } elseif ($latestBoqForCurrentScope->status === 'Under Review') {
             $nextAction = [
                 'stage' => 'boq',
                 'key' => 'approve_boq',
@@ -632,6 +647,7 @@ class OpportunityController extends CRUDController
                 'permission' => 'boqs.approve',
             ];
         } else {
+            // $latestBoqForCurrentScope->status === 'Approved'
             $nextAction = [
                 'stage' => 'estimation',
                 'key' => 'ready_for_estimation',
@@ -732,6 +748,8 @@ class OpportunityController extends CRUDController
                         'referenced_measurement_version' => $approvedBoq && $approvedBoq->scope?->measurement
                             ? "V{$approvedBoq->scope->measurement->version}"
                             : null,
+                        'is_stale' => $isBoqStale,
+                        'is_current' => $isBoqCurrent,
                     ],
                     'is_complete' => (bool)($approvedMeasurement && $approvedScope),
                 ],

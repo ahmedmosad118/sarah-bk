@@ -689,4 +689,180 @@ class OpportunityChainTraceabilityTest extends TestCase
         // Ensure query count is bounded and well below explosive thresholds
         $this->assertLessThanOrEqual(15, $queryCount, "Expected at most 15 queries for full chain load, but executed {$queryCount}");
     }
+
+    /**
+     * 8. Critical Chain Readiness Test:
+     * When Scope V1 has an Approved BOQ V1, the chain is ready for estimation.
+     * When Scope V2 is approved, BOQ V1 is STALE:
+     * - data.current_status.boq.is_stale = true
+     * - data.current_status.boq.is_current = false
+     * - data.next_action.key = 'create_boq' (does NOT falsely claim ready_for_estimation)
+     * When BOQ V2 is created as Draft -> next_action.key = 'submit_boq_for_review'
+     * When BOQ V2 is Under Review -> next_action.key = 'approve_boq'
+     * When BOQ V2 is Approved -> data.next_action.key = 'ready_for_estimation'
+     * When BOQ V3 is created as Draft while V2 Approved -> next_action.key = 'submit_boq_for_review'
+     */
+    public function test_approved_boq_on_older_scope_revision_marks_boq_stale_and_requires_new_boq(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $customer = Customer::create(['name' => 'عميل السلسلة والجاهزية', 'created_by' => $this->ownerA->id]);
+        $opp = Opportunity::create(['customer_id' => $customer->id, 'title' => 'فرصة تدقيق جاهزية السلسلة', 'created_by' => $this->ownerA->id]);
+
+        SiteVisit::create([
+            'customer_id' => $customer->id,
+            'opportunity_id' => $opp->id,
+            'status' => 'Completed',
+            'scheduled_date' => '2026-09-20',
+            'created_by' => $this->ownerA->id,
+        ]);
+
+        $m1 = Measurement::create([
+            'opportunity_id' => $opp->id,
+            'measurement_number' => 'M-RDY-001',
+            'version' => 1,
+            'status' => 'Approved',
+            'created_by' => $this->ownerA->id,
+        ]);
+
+        $mItem = MeasurementItem::create([
+            'measurement_id' => $m1->id,
+            'room_name' => 'صالون رئيسي',
+            'item_name' => 'سيراميك أرضيات',
+            'unit' => 'm2',
+            'measurement_type' => 'area',
+            'count' => 1,
+            'net_quantity' => 50.0,
+            'gross_quantity' => 50.0,
+        ]);
+
+        // 1. Create and Approve Scope V1
+        $scope1 = Scope::create([
+            'opportunity_id' => $opp->id,
+            'measurement_id' => $m1->id,
+            'scope_number' => 'SC-RDY-001',
+            'version' => 1,
+            'status' => 'Approved',
+            'created_by' => $this->ownerA->id,
+        ]);
+
+        $sItem1 = $scope1->items()->create([
+            'trade_category' => 'تشطيبات',
+            'item_name' => 'توريد وتركيب سيراميك',
+            'specification' => 'مواصفة سيراميك فرز أول',
+            'sort_order' => 1,
+        ]);
+        $sItem1->measurementItems()->sync([$mItem->id]);
+
+        // 2. Create and Approve BOQ V1 on Scope V1
+        $boq1 = Boq::create([
+            'opportunity_id' => $opp->id,
+            'scope_id' => $scope1->id,
+            'boq_number' => 'BOQ-RDY-001',
+            'version' => 1,
+            'status' => 'Approved',
+            'created_by' => $this->ownerA->id,
+        ]);
+        $boq1->items()->create([
+            'scope_item_id' => $sItem1->id,
+            'item_code' => '1.1',
+            'description' => 'توريد وتركيب سيراميك',
+            'unit' => 'm2',
+            'quantity' => 50.0,
+        ]);
+
+        // Assert Chain is Ready for Estimation on Scope V1 + BOQ V1
+        $res1 = $this->withTenantA()->getJson("/api/opportunities/{$opp->id}/chain");
+        $res1->assertOk()
+            ->assertJsonPath('data.approved_boq.id', $boq1->id)
+            ->assertJsonPath('data.current_status.boq.is_stale', false)
+            ->assertJsonPath('data.current_status.boq.is_current', true)
+            ->assertJsonPath('data.next_action.key', 'ready_for_estimation');
+
+        // 3. Create and Approve Scope V2 on same Opportunity (Superseding Scope V1)
+        $scope1->update(['status' => 'Superseded']);
+        $scope2 = Scope::create([
+            'opportunity_id' => $opp->id,
+            'measurement_id' => $m1->id,
+            'scope_number' => 'SC-RDY-001-V2',
+            'version' => 2,
+            'status' => 'Approved',
+            'created_by' => $this->ownerA->id,
+        ]);
+
+        $sItem2 = $scope2->items()->create([
+            'trade_category' => 'تشطيبات',
+            'item_name' => 'توريد وتركيب بورسلين فاخر',
+            'specification' => 'مواصفة محدثة بورسلين إسباني',
+            'sort_order' => 1,
+        ]);
+        $sItem2->measurementItems()->sync([$mItem->id]);
+
+        // Assert Chain with new Scope V2 and old BOQ V1:
+        // Must be marked STALE and require creating new BOQ, NOT ready_for_estimation!
+        $res2 = $this->withTenantA()->getJson("/api/opportunities/{$opp->id}/chain");
+        $res2->assertOk()
+            ->assertJsonPath('data.approved_scope.id', $scope2->id)
+            ->assertJsonPath('data.approved_boq.id', $boq1->id)
+            ->assertJsonPath('data.current_status.boq.is_stale', true)
+            ->assertJsonPath('data.current_status.boq.is_current', false)
+            ->assertJsonPath('data.next_action.stage', 'boq')
+            ->assertJsonPath('data.next_action.key', 'create_boq');
+
+        // 4. Create BOQ V2 for Scope V2 in Draft
+        $boq2 = Boq::create([
+            'opportunity_id' => $opp->id,
+            'scope_id' => $scope2->id,
+            'boq_number' => 'BOQ-RDY-002',
+            'version' => 1,
+            'status' => 'Draft',
+            'created_by' => $this->ownerA->id,
+        ]);
+        $boq2->items()->create([
+            'scope_item_id' => $sItem2->id,
+            'item_code' => '1.1',
+            'description' => 'توريد وتركيب بورسلين فاخر',
+            'unit' => 'm2',
+            'quantity' => 50.0,
+        ]);
+
+        $res3 = $this->withTenantA()->getJson("/api/opportunities/{$opp->id}/chain");
+        $res3->assertOk()->assertJsonPath('data.next_action.key', 'submit_boq_for_review');
+
+        // 5. Submit BOQ V2 for review -> approve_boq
+        $boq2->update(['status' => 'Under Review']);
+        $res4 = $this->withTenantA()->getJson("/api/opportunities/{$opp->id}/chain");
+        $res4->assertOk()->assertJsonPath('data.next_action.key', 'approve_boq');
+
+        // 6. Approve BOQ V2 -> BOQ V1 superseded, BOQ V2 is current approved
+        $boq1->update(['status' => 'Superseded']);
+        $boq2->update(['status' => 'Approved']);
+
+        $res5 = $this->withTenantA()->getJson("/api/opportunities/{$opp->id}/chain");
+        $res5->assertOk()
+            ->assertJsonPath('data.approved_boq.id', $boq2->id)
+            ->assertJsonPath('data.current_status.boq.is_stale', false)
+            ->assertJsonPath('data.current_status.boq.is_current', true)
+            ->assertJsonPath('data.next_action.key', 'ready_for_estimation');
+
+        // 7. Test BOQ revision Draft while previous version remains Approved
+        $boq3 = Boq::create([
+            'opportunity_id' => $opp->id,
+            'scope_id' => $scope2->id,
+            'boq_number' => 'BOQ-RDY-002-V2',
+            'version' => 2,
+            'status' => 'Draft',
+            'created_by' => $this->ownerA->id,
+        ]);
+        $boq3->items()->create([
+            'scope_item_id' => $sItem2->id,
+            'item_code' => '1.1',
+            'description' => 'مراجعة ثانية للبورسلين',
+            'unit' => 'm2',
+            'quantity' => 50.0,
+        ]);
+
+        $res6 = $this->withTenantA()->getJson("/api/opportunities/{$opp->id}/chain");
+        $res6->assertOk()->assertJsonPath('data.next_action.key', 'submit_boq_for_review');
+    }
 }

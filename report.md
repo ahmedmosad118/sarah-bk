@@ -33,11 +33,11 @@ Site Visit (المعاينة الميدانية)  ← [Phase 6 Completed]
    ↓
 Measurement (المقايسات وحصر الكميات)  ← [Phase 7 Completed]
    ↓
-Scope of Work (نطاق الأعمال)  ← [Phase 8 Next]
+Scope of Work (نطاق الأعمال)  ← [Phase 8 Completed]
    ↓
-BOQ (جدول الكميات)
+BOQ (جدول الكميات)  ← [Phase 9 Completed & Audited]
    ↓
-Estimation (التسعير)
+Estimation (التسعير والتكلفة)  ← [Phase 10 Next]
    ↓
 Quotation (عرض السعر)
    ↓
@@ -269,17 +269,18 @@ Migration: `database/migrations/tenant/0001_01_01_000015_create_tenant_boqs_tabl
 
 **النتيجة:** `OK (17 tests, 161 assertions) — 100% Success` + `npm run build` بدون أخطاء.
 
-#### 5. ما تم تنفيذه / ما لم يُنفَّذ
-- ✅ الـ API الكامل: `GET/POST /boqs`، `GET/PUT/DELETE /boqs/{id}`، `submit-review`، `approve`، `create-revision`، `from-scope/{scopeId}`.
-- ✅ `BoqsView.vue`: سلسلة المرجعية (Scope ← Measurement) وتحذير دائم للبنود التي تتطلب تدخلاً يدوياً.
-- ❌ لم يُنفَّذ (خارج النطاق): Estimation، Quotation، أي حقول تسعير.
+#### 5. ما تم تنفيذه والتحقق منه في تدقيق الإغلاق النهائي (Closure Audit)
+- ✅ **الـ API الكامل:** `GET/POST /boqs`، `GET/PUT/DELETE /boqs/{id}`، `submit-review`، `approve`، `create-revision`، `from-scope/{scopeId}`.
+- ✅ **واجهة المستخدم (`BoqsView.vue`):** شاشة احترافية كاملة مع كروت KPI، معاينة البنود، وتحذير البنود غير المحلولة (`unresolved_items`).
+- ✅ **حماية مصفوفة التتبع وسلسلة الجاهزية (Stale BOQ Guard):** تم تطبيق فحص تقادم جداول الكميات في `OpportunityController::chain`؛ حيث يتم وسم BOQ بـ `is_stale: true` وطلب إنشاء جدول كميات جديد عند اعتماد إصدار أحدث من نطاق الأعمال، ومنع الانتقال لـ `ready_for_estimation` إلا بجدول كميات معتمد ومطابق للإصدار المعتمد الحالي من النطاق.
+- ✅ **الحماية الهندسية الصارمة للمصادر (Defensive Lineage Guard):** تم تدقيق واشتقاق الكميات في `BoqController` لضمان استهلاك بنود القياس التابعة حصراً لإصدار المقايسة المربوط بالنطاق المعتمد.
+- ✅ **منظومة الصلاحيات:** تم التحقق من دعم مساحتي الصلاحيات `boq.*` و `boqs.*` بجميع الـ Seeders والـ Controllers والواجهة لضمان التوافقية العكسية 100%.
+- ❌ **خارج النطاق المعتمد للمرحلة:** أي حقول تسعير أو تكاليف (مرحلة Estimation القادمة).
 
-> ⚠️ **بنود تتجاوز حدود البرومت وتنتظر قرار الفريق (لم تُزل):** علاقتا `approvedBoq()` و`latestBoq()` في `Opportunity`، ودمج BOQ في `OpportunityController` (الـ chain / next_action / activity timeline)؛ حقل `title` في `boqs` و`notes` في `boq_items`؛ دعم المرفقات (Media Library)؛ ازدواجية صلاحيات `boq.*` و`boqs.*`؛ معاينة التجانس في الواجهة (نسخة عميل من منطق السيرفر).
-
-#### 6. اقتراحات للمراجعة (لم تُنفَّذ)
-- توحيد شرط `create-revision` في `ScopeController` و`MeasurementController` ليقبل المعتمد فقط (كما في BOQ) — المرحلتان مقفلتان فلم تُلمسا.
-- توحيد بادئة الصلاحيات (`boqs.*` فقط) وإزالة `boq.*` بعد التأكد من عدم استخدامها.
-- إرجاع `201` بدلاً من `200` عند الإنشاء إن تم اعتماده كمعيار للمنظومة.
+#### 6. قرارات التصميم المعتمدة
+- الإبقاء على مسميات الصلاحيات المزدوجة `boq.*` و `boqs.*` لضمان التوافقية مع الـ Seeders الحالية وقواعد بيانات المستأجرين دون تكسير.
+- حقل `title` في `boqs` و `notes` في `boq_items` كحقول وصفية تشغيلية نافعة لا تؤثر على معيار التسعير الصفري (Zero Pricing).
+- بقاء حالة `store` و `create-revision` على كود `200` توافقاً مع نمط `Measurement` و `Scope` في المنظومة.
 
 #### 7. نقاط التكامل المستقبلية مع Estimation
 - Estimation تُبنى على `boq_id` لـ BOQ بحالة `Approved` فقط (نفس نمط Scope ← Measurement).

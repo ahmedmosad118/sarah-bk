@@ -589,7 +589,8 @@ class BoqController extends CRUDController
         $sortOrder = 0;
 
         foreach ($scope->items as $scopeItem) {
-            $linked = $scopeItem->measurementItems;
+            // Defensive Lineage Guard: Only consume measurement items belonging to the scope's exact measurement revision
+            $linked = $scopeItem->measurementItems->where('measurement_id', $scope->measurement_id);
 
             if ($linked->isEmpty()) {
                 $skipped[] = [
@@ -653,7 +654,9 @@ class BoqController extends CRUDController
             ]);
         }
 
-        $linked = $scopeItem->measurementItems;
+        $scope = Scope::findOrFail($scopeId);
+        // Defensive Lineage Guard: Only consume measurement items belonging to the scope's exact measurement revision
+        $linked = $scopeItem->measurementItems->where('measurement_id', $scope->measurement_id);
 
         if ($linked->isEmpty()) {
             throw ValidationException::withMessages([
