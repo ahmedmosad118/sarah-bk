@@ -104,6 +104,14 @@ class Boq extends Model implements HasMedia
         return $this->hasMany(BoqItem::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    /**
+     * Cost estimations based on this BOQ.
+     */
+    public function estimations(): HasMany
+    {
+        return $this->hasMany(Estimation::class);
+    }
+
     // Query Scopes
 
     public function scopeForOpportunity(Builder $query, int $opportunityId): Builder

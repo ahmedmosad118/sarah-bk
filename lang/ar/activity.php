@@ -84,6 +84,14 @@ return [
     'boq_submitted_for_review' => 'تم إرسال جدول الكميات (#:number) للمراجعة الفنية',
     'boq_approved' => 'تم اعتماد جدول الكميات (#:number) رسمياً كوثيقة كميات قابلة للتسعير',
 
+    // Estimations (Phase 10)
+    'estimation_created' => 'تم إنشاء دراسة التسعير والتكلفة (#:number)',
+    'estimation_updated' => 'تم تحديث دراسة التسعير وحسابات التكلفة (#:number)',
+    'estimation_deleted' => 'تم حذف دراسة التسعير (#:number)',
+    'estimation_event' => 'إجراء :event على دراسة التسعير (#:number)',
+    'estimation_submitted_for_review' => 'تم إرسال دراسة التسعير (#:number) للمراجعة الفنية والإدارية',
+    'estimation_approved' => 'تم اعتماد دراسة التسعير والتكلفة (#:number) رسمياً',
+
     'setting_created' => 'تم إنشاء الإعداد :key',
     'setting_updated' => 'تم تحديث الإعداد :key',
     'setting_event' => 'إجراء :event على الإعداد :key',

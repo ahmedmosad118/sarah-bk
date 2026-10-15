@@ -349,48 +349,171 @@
     </div>
 
     <!-- Edit Modal (Draft only: descriptive fields + line removal) -->
-    <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 shadow-2xl p-6 space-y-4">
-        <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
-          <h3 class="text-sm font-black text-gray-900 dark:text-white">{{ $t('boq.editTitle') }} — {{ editForm.boq_number }}</h3>
-          <button @click="showEditModal = false" class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
-            <X class="h-4 w-4" />
-          </button>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-[11px] font-black text-gray-600 dark:text-gray-300 mb-1">{{ $t('boq.boqTitle') }}</label>
-            <input v-model="editForm.title" type="text" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-[#00C896] focus:outline-hidden" />
-          </div>
-          <div>
-            <label class="block text-[11px] font-black text-gray-600 dark:text-gray-300 mb-1">{{ $t('boq.notes') }}</label>
-            <input v-model="editForm.notes" type="text" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-[#00C896] focus:outline-hidden" />
-          </div>
-        </div>
-
-        <div class="space-y-2">
-          <p class="text-[11px] font-black text-gray-600 dark:text-gray-300">{{ $t('boq.items') }} ({{ editForm.items.length }}) — الكمية والوحدة تُشتق من المصدر تلقائياً</p>
-          <div v-for="(line, idx) in editForm.items" :key="line.scope_item_id || idx" class="p-3 rounded-2xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-2">
-            <div class="flex items-center justify-between gap-2">
-              <span class="font-mono text-[11px] font-black text-teal-700 dark:text-teal-300">{{ line.item_code }} • {{ line.unit }} • {{ line.quantity }}</span>
-              <button @click="editForm.items.splice(idx, 1)" class="p-1 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer">
-                <Trash2 class="h-3.5 w-3.5" />
-              </button>
+    <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+      <div class="w-full max-w-5xl max-h-[92vh] flex flex-col rounded-3xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40">
+          <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#00C896]/10 text-[#00A87E] dark:bg-[#00C896]/20 dark:text-[#00C896]">
+              <TableProperties class="h-5 w-5" />
             </div>
-            <input v-model="line.item_code" type="text" placeholder="كود البند (1.1)" class="w-28 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
-            <textarea v-model="line.description" rows="2" class="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-white"></textarea>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-black text-gray-900 dark:text-white">{{ $t('boq.editTitle') }}</h3>
+                <span class="px-2.5 py-0.5 rounded-lg text-xs font-mono font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  #{{ editForm.boq_number }}
+                </span>
+              </div>
+              <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                تعديل المسميات والتوصيفات الفنية للبنود — الكميات والوحدات مُشتقة هندسياً ومحمية
+              </p>
+            </div>
           </div>
-          <p v-if="editForm.items.length === 0" class="text-center text-xs text-gray-400 py-4">تمت إزالة كل البنود — لا يمكن اعتماد جدول فارغ.</p>
+          <button @click="showEditModal = false" class="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+            <X class="h-5 w-5" />
+          </button>
         </div>
 
-        <div class="flex items-center justify-end gap-2 pt-2">
-          <button @click="showEditModal = false" class="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 cursor-pointer">
-            {{ $t('common.cancel') }}
-          </button>
-          <button @click="updateBoq" :disabled="submitting" class="px-5 py-2 rounded-xl bg-[#00C896] text-xs font-black text-white hover:bg-[#00A87E] disabled:opacity-50 transition-colors cursor-pointer">
-            {{ submitting ? $t('common.loading') : $t('common.save') }}
-          </button>
+        <!-- Body Scrollable -->
+        <div class="p-6 overflow-y-auto space-y-5 flex-1">
+          <!-- Metadata Fields -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                {{ $t('boq.boqTitle') }}
+              </label>
+              <input
+                v-model="editForm.title"
+                type="text"
+                placeholder="مثال: مقايسة وجدول كميات التشطيبات..."
+                class="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-[#00C896] focus:ring-2 focus:ring-[#00C896]/20 focus:outline-hidden transition-all"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                {{ $t('boq.notes') }}
+              </label>
+              <input
+                v-model="editForm.notes"
+                type="text"
+                placeholder="أي ملاحظات أو اشتراطات تشغيلية إضافية..."
+                class="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-[#00C896] focus:ring-2 focus:ring-[#00C896]/20 focus:outline-hidden transition-all"
+              />
+            </div>
+          </div>
+
+          <!-- Items Table Section -->
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                <span>بنود جدول الكميات</span>
+                <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  {{ editForm.items.length }} بند
+                </span>
+              </span>
+              <span class="text-[11px] text-gray-400">
+                الكميات والوحدات مستخرجة من حصر المقايسة المعتمد ولا يمكن تعديلها يدوياً
+              </span>
+            </div>
+
+            <div class="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xs">
+              <table class="w-full text-start text-xs border-collapse">
+                <thead>
+                  <tr class="border-b border-gray-200 bg-gray-50/75 dark:border-gray-800 dark:bg-gray-800/60 font-black text-gray-500 dark:text-gray-400 text-[11px]">
+                    <th class="py-3 px-3 w-24 text-center">كود البند</th>
+                    <th class="py-3 px-4 text-start">بيان الأعمال وتوصيف البند المعتمد</th>
+                    <th class="py-3 px-3 w-24 text-center">الوحدة</th>
+                    <th class="py-3 px-3 w-32 text-center">الكمية المشتقة</th>
+                    <th class="py-3 px-3 w-16 text-center">حذف</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                  <tr
+                    v-for="(line, idx) in editForm.items"
+                    :key="line.scope_item_id || idx"
+                    class="hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition-colors"
+                  >
+                    <!-- Code -->
+                    <td class="py-3 px-3 text-center align-top">
+                      <input
+                        v-model="line.item_code"
+                        type="text"
+                        placeholder="1.1"
+                        dir="ltr"
+                        class="w-full text-center font-mono font-black text-xs rounded-xl border border-gray-200 bg-gray-50 px-2 py-2 text-gray-900 focus:bg-white focus:border-[#00C896] focus:ring-1 focus:ring-[#00C896] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                      />
+                    </td>
+
+                    <!-- Description -->
+                    <td class="py-3 px-4 align-top">
+                      <textarea
+                        v-model="line.description"
+                        rows="2"
+                        class="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-xs font-medium text-gray-900 leading-relaxed dark:border-gray-700 dark:bg-gray-800/70 dark:text-white focus:border-[#00C896] focus:ring-2 focus:ring-[#00C896]/20 focus:outline-hidden transition-all resize-y"
+                        placeholder="اكتب التوصيف الدقيق للبند..."
+                      ></textarea>
+                    </td>
+
+                    <!-- Unit -->
+                    <td class="py-3 px-3 text-center align-top pt-4">
+                      <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700">
+                        {{ line.unit }}
+                      </span>
+                    </td>
+
+                    <!-- Quantity -->
+                    <td class="py-3 px-3 text-center align-top pt-4">
+                      <span class="inline-flex items-center px-3 py-1 rounded-xl text-xs font-mono font-black text-[#00A87E] bg-emerald-50 dark:bg-emerald-950/50 dark:text-[#00C896] border border-emerald-100 dark:border-emerald-900/50">
+                        {{ Number(line.quantity).toFixed(2) }}
+                      </span>
+                    </td>
+
+                    <!-- Delete Button -->
+                    <td class="py-3 px-3 text-center align-top pt-3.5">
+                      <button
+                        type="button"
+                        @click="editForm.items.splice(idx, 1)"
+                        title="استبعاد البند من جدول الكميات"
+                        class="p-2 rounded-xl text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                      >
+                        <Trash2 class="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div v-if="editForm.items.length === 0" class="p-8 text-center text-xs text-rose-500 font-bold bg-rose-50/40 dark:bg-rose-950/20">
+                ⚠️ تم استبعاد جميع البنود — جدول الكميات يجب أن يحتوي على بند واحد على الأقل ليتم حفظه واعتماده.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40">
+          <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">
+            إجمالي البنود الحالية: <strong class="text-gray-900 dark:text-white font-mono">{{ editForm.items.length }}</strong>
+          </span>
+
+          <div class="flex items-center gap-2.5">
+            <button
+              @click="showEditModal = false"
+              type="button"
+              class="px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+            >
+              {{ $t('common.cancel') }}
+            </button>
+            <button
+              @click="updateBoq"
+              :disabled="submitting || editForm.items.length === 0"
+              type="button"
+              class="px-5 py-2.5 rounded-xl bg-[#00C896] text-xs font-black text-white hover:bg-[#00A87E] disabled:opacity-40 transition-all shadow-xs cursor-pointer flex items-center gap-2"
+            >
+              <span v-if="submitting" class="animate-spin">⏳</span>
+              <span>{{ submitting ? $t('common.loading') : 'حفظ التعديلات' }}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

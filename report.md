@@ -37,9 +37,9 @@ Scope of Work (نطاق الأعمال)  ← [Phase 8 Completed]
    ↓
 BOQ (جدول الكميات)  ← [Phase 9 Completed & Audited]
    ↓
-Estimation (التسعير والتكلفة)  ← [Phase 10 Next]
+Estimation (التسعير والتكلفة)  ← [Phase 10 Completed & Verified]
    ↓
-Quotation (عرض السعر)
+Quotation (عرض السعر)  ← [Phase 11 Next]
    ↓
 Contract (التعاقد)
    ↓
@@ -282,10 +282,54 @@ Migration: `database/migrations/tenant/0001_01_01_000015_create_tenant_boqs_tabl
 - حقل `title` في `boqs` و `notes` في `boq_items` كحقول وصفية تشغيلية نافعة لا تؤثر على معيار التسعير الصفري (Zero Pricing).
 - بقاء حالة `store` و `create-revision` على كود `200` توافقاً مع نمط `Measurement` و `Scope` في المنظومة.
 
-#### 7. نقاط التكامل المستقبلية مع Estimation
-- Estimation تُبنى على `boq_id` لـ BOQ بحالة `Approved` فقط (نفس نمط Scope ← Measurement).
-- كل سطر تقدير يرتبط بـ `boq_item_id` ويستهلك `unit` و`quantity` كما هي (Read-Only)، والتسعير (`unit_rate`, `amount`) يعيش في جداول Estimation فقط.
-- `scope_item_id` على `boq_items` + `scope_id` المجمد على `boqs` يتيحان تتبعاً كاملاً: Estimation ← BOQ ← Scope ← Measurement.
+---
 
+### المرحلة العاشرة: دراسات التسعير والتكلفة الداخلية (Estimation) — مكتملة ومتحقق منها 100%
 
+#### 1. الغرض المعماري وحدود المرحلة
+- **المهمة:** إعداد دراسة التكلفة الداخلية (Internal Costing) مستندة إلى جدول كميات معتمد (`Approved BOQ`) حصرًا.
+- **حدود المنظومة (Guardrails):**
+  - الحفاظ الصارم على معيار التسعير الصفري (Zero Pricing) في مراحل المقايسة ونطاق الأعمال وجداول الكميات.
+  - جميع أسعار التكلفة والمصروفات تعيش داخل جداول دراسة التسعير (`estimations`, `estimation_items`, `estimation_item_costs`) فقط.
+  - الكميات والوحدات تُشتق من بنود جدول الكميات المعتمد كبيانات قراءة فقط (Read-Only) غير قابلة للتعديل.
+  - لا تشتمل المرحلة على أي هوامش ربح، أو أسعار بيع، أو ضرائب، أو خصومات، أو عروض أسعار (Quotation) أو عقود أو تنفيذ.
+
+#### 2. البنية البرمجية وقواعد البيانات
+- **Migration:** `database/migrations/tenant/0001_01_01_000016_create_tenant_estimations_table.php`
+  - جدول `estimations`: يحوي `opportunity_id` (Cascade)، `boq_id` (Restrict)، `version`، `status`، `direct_cost`، `overhead_rate`، `overhead_amount`، `total_cost`، والمسؤولين والتواريخ.
+  - جدول `estimation_items`: يحوي `estimation_id` (Cascade)، `boq_item_id` (Restrict)، `item_code`، `description`، `unit`، `quantity`، وتكاليف البند المباشرة (`material_cost`, `labor_cost`, `equipment_cost`, `subcontractor_cost`, `other_cost`, `unit_cost`, `total_cost`).
+  - جدول `estimation_item_costs`: تفصيل عناصر التكلفة الخمسة لكل بند (`cost_type`, `description`, `cost_rate`, `amount`, `notes`).
+- **Models:** `Estimation.php`، `EstimationItem.php`، `EstimationItemCost.php`.
+- **Service:** `EstimationCalculationService.php` لحساب تكاليف المكونات والمجموع المباشر والمصاريف العمومية وإجمالي التكلفة بدقة سنتات رياضية.
+- **Controller & Routes:** `EstimationController.php` مع الـ API الكامل:
+  - `GET /api/estimations` (فلاتر وبحث وإحصائيات وصفحات).
+  - `POST /api/estimations` (إنشاء دراسة من جدول كميات معتمد).
+  - `POST /api/estimations/from-boq/{boqId}` (إنشاء سريع).
+  - `GET /api/estimations/{id}` (تفاصيل الدراسة وبنودها مع فحص تقادم المصدر).
+  - `PUT /api/estimations/{id}` (تحديث أسعار التكلفة ونسب المصاريف).
+  - `DELETE /api/estimations/{id}` (حذف المسودات غير المعتمدة مع عزل IDOR 404).
+  - `POST /api/estimations/{id}/submit-review` (تقديم للمراجعة الفنية والإدارية).
+  - `POST /api/estimations/{id}/approve` (اعتماد رسمي وإلغاء الإصدارات المعتمدة السابقة).
+  - `POST /api/estimations/{id}/create-revision` (إنشاء إصدار جديد V+1 من المعتمد).
+
+#### 3. تكامل سلسلة الفرصة وحماية التقادم (Stale Estimation Guard)
+- تم ربط `OpportunityController::chain`:
+  - كشف تقادم دراسة التسعير (`is_stale: true`) عند اعتماد إصدار جديد من جدول الكميات (BOQ V2)، وطلب إنشاء دراسة جديدة للكميات المحدثة.
+  - منع الانتقال إلى `ready_for_quotation` إلا في حال وجود دراسة تسعير معتمدة ومطابقة لجدول الكميات المعتمد الحالي.
+  - تسجيل جميع الحركات على سجل الأنشطة التجاري `activity('commercial')`.
+
+#### 4. واجهة المستخدم (UI)
+- شاشة `resources/js/views/estimations/EstimationsView.vue` متكاملة تماماً:
+  - كروت KPI للإحصائيات المالية.
+  - نافذة إنشاء دراسة تسعير مرتبطة بالفرصة وجدول الكميات المعتمد مع معاينة البنود.
+  - شاشة تفاعلية لتسعير بنود الأعمال حسب عناصر التكلفة (مواد، عمالة، معدات، مقاولي باطن، أخرى) وتطبيق نسبة المصاريف العمومية (Overhead %).
+  - كشف وحساب إجمالي التكلفة تلقائياً على مستوى البند والدراسة.
+  - شيت تكلفة تفصيلي قابل للطباعة الرسمية (`#cost-sheet-printable`).
+
+#### 5. الاختبارات والتحقق الآلي
+- `tests/Feature/EstimationManagementTest.php` — **15 اختباراً ناجحاً بنسبة 100% (132 assertions)**.
+- `tests/Feature/OpportunityChainTraceabilityTest.php` — **8 اختبارات ناجحة بنسبة 100% (95 assertions)**.
+- `npm run build` — **ناجح بدون أي أخطاء (Built in 14.26s)**.
+
+---
 

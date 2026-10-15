@@ -84,6 +84,14 @@ return [
     'boq_submitted_for_review' => 'Bill of quantities (#:number) submitted for review',
     'boq_approved' => 'Bill of quantities (#:number) approved',
 
+    // Estimations (Phase 10)
+    'estimation_created' => 'Cost estimation (#:number) created',
+    'estimation_updated' => 'Cost estimation (#:number) updated',
+    'estimation_deleted' => 'Cost estimation (#:number) deleted',
+    'estimation_event' => 'Action :event on cost estimation (#:number)',
+    'estimation_submitted_for_review' => 'Cost estimation (#:number) submitted for review',
+    'estimation_approved' => 'Cost estimation (#:number) approved',
+
     'setting_created' => 'Setting :key created',
     'setting_updated' => 'Setting :key updated',
     'setting_event' => 'Action :event on setting :key',

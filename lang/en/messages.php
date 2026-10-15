@@ -113,6 +113,25 @@ return [
     'boq_scope_item_mixed_units' => 'Scope work item ":item" is linked to mixed measurement units — split it into multiple Scope items before BOQ generation.',
     'only_approved_boq_can_be_revised' => 'A revision can only be created from an Approved bill of quantities. Draft / Under Review BOQs are edited directly.',
 
+    // Estimation (Phase 10)
+    'estimation_created_success' => 'Cost estimation created successfully',
+    'estimation_updated_success' => 'Cost estimation and rates updated successfully',
+    'estimation_deleted_success' => 'Cost estimation deleted successfully',
+    'estimation_submitted_review_success' => 'Cost estimation submitted for review successfully',
+    'estimation_approved_success' => 'Cost estimation approved successfully',
+    'estimation_revision_created_success' => 'Cost estimation revision created successfully',
+    'estimation_requires_approved_boq' => 'Cost estimation requires an Approved BOQ link.',
+    'boq_opportunity_mismatch' => 'The selected BOQ does not belong to the same commercial opportunity.',
+    'approved_estimation_cannot_be_edited' => 'Approved cost estimations cannot be edited. Please create a revision instead.',
+    'approved_estimation_cannot_be_deleted' => 'Approved cost estimations cannot be deleted to preserve costing history.',
+    'only_draft_estimation_can_be_submitted_for_review' => 'Only draft estimations can be submitted for review.',
+    'estimation_cannot_be_approved_in_current_state' => 'Cost estimation cannot be approved in its current state.',
+    'cannot_approve_empty_estimation' => 'Cannot approve an empty estimation with no lines.',
+    'cannot_approve_zero_cost_estimation' => 'Cannot approve an estimation without pricing cost items.',
+    'cannot_estimate_empty_boq' => 'The selected bill of quantities is empty and has no lines to cost.',
+    'estimation_boq_item_mismatch' => 'A selected BOQ item does not belong to the BOQ linked with this estimation.',
+    'only_approved_estimation_can_be_revised' => 'A revision can only be created from an Approved cost estimation. Draft / Under Review estimations are edited directly.',
+
     // Settings
     'settings_saved_success' => 'Settings saved successfully',
 ];

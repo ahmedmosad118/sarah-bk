@@ -7,6 +7,7 @@ use App\Core\CRUD\Field;
 use App\Core\CRUD\InputMaker;
 use App\Models\Boq;
 use App\Models\Customer;
+use App\Models\Estimation;
 use App\Models\Lead;
 use App\Models\Measurement;
 use App\Models\Opportunity;
@@ -442,6 +443,14 @@ class OpportunityController extends CRUDController
                     'items.scopeItem',
                 ])->orderBy('version', 'desc')->orderBy('id', 'desc');
             },
+            'estimations' => function ($q) {
+                $q->with([
+                    'preparedUser',
+                    'approvedUser',
+                    'boq',
+                    'items.costs',
+                ])->orderBy('version', 'desc')->orderBy('id', 'desc');
+            },
         ])->findOrFail($id);
 
         // 1. Gather all entity IDs for the unified activity history
@@ -452,9 +461,10 @@ class OpportunityController extends CRUDController
         $measurementIds = $opportunity->measurements->pluck('id')->all();
         $scopeIds = $opportunity->scopes->pluck('id')->all();
         $boqIds = $opportunity->boqs->pluck('id')->all();
+        $estimationIds = $opportunity->estimations->pluck('id')->all();
 
         $timeline = Activity::with('causer')
-            ->where(function ($q) use ($oppIds, $customerIds, $leadIds, $visitIds, $measurementIds, $scopeIds, $boqIds) {
+            ->where(function ($q) use ($oppIds, $customerIds, $leadIds, $visitIds, $measurementIds, $scopeIds, $boqIds, $estimationIds) {
                 $q->where(function ($sub) use ($oppIds) {
                     $sub->where('subject_type', Opportunity::class)->whereIn('subject_id', $oppIds);
                 });
@@ -486,6 +496,11 @@ class OpportunityController extends CRUDController
                 if (!empty($boqIds)) {
                     $q->orWhere(function ($sub) use ($boqIds) {
                         $sub->where('subject_type', Boq::class)->whereIn('subject_id', $boqIds);
+                    });
+                }
+                if (!empty($estimationIds)) {
+                    $q->orWhere(function ($sub) use ($estimationIds) {
+                        $sub->where('subject_type', Estimation::class)->whereIn('subject_id', $estimationIds);
                     });
                 }
             })
@@ -524,6 +539,21 @@ class OpportunityController extends CRUDController
             : collect();
         $latestBoqForCurrentScope = $boqsForCurrentScope->sortBy([['version', 'desc'], ['id', 'desc']])->first();
         $approvedBoqForCurrentScope = $boqsForCurrentScope->firstWhere('status', 'Approved');
+
+        // Resolved estimations from eager-loaded collection
+        $approvedEstimation = $opportunity->estimations->firstWhere('status', 'Approved');
+        $latestEstimation = $opportunity->estimations->sortBy([['version', 'desc'], ['id', 'desc']])->first();
+
+        // Stale Estimation detection: an approved estimation exists, but it references an older/superseded BOQ revision
+        $isEstimationStale = (bool) ($approvedEstimation && $approvedBoqForCurrentScope && (int) $approvedEstimation->boq_id !== (int) $approvedBoqForCurrentScope->id);
+        $isEstimationCurrent = (bool) ($approvedEstimation && $approvedBoqForCurrentScope && (int) $approvedEstimation->boq_id === (int) $approvedBoqForCurrentScope->id);
+
+        // Estimations associated with the currently approved BOQ
+        $estimationsForCurrentBoq = $approvedBoqForCurrentScope
+            ? $opportunity->estimations->where('boq_id', $approvedBoqForCurrentScope->id)
+            : collect();
+        $latestEstimationForCurrentBoq = $estimationsForCurrentBoq->sortBy([['version', 'desc'], ['id', 'desc']])->first();
+        $approvedEstimationForCurrentBoq = $estimationsForCurrentBoq->firstWhere('status', 'Approved');
 
         $nextAction = null;
         if (!$hasVisits) {
@@ -646,13 +676,50 @@ class OpportunityController extends CRUDController
                 'action_target' => '/boqs',
                 'permission' => 'boqs.approve',
             ];
-        } else {
-            // $latestBoqForCurrentScope->status === 'Approved'
+        } elseif (!$latestEstimationForCurrentBoq) {
             $nextAction = [
                 'stage' => 'estimation',
-                'key' => 'ready_for_estimation',
-                'title' => 'جاهز للانتقال لمرحلة التسعير (Ready for Estimation)',
-                'description' => 'اكتملت السلسلة التجارية والهندسية ووثيقة الكميات بنجاح! جدول الكميات معتمد وكمياته مجمدة، والعملية جاهزة تماماً لدراسة التسعير والتكلفة (Estimation).',
+                'key' => $isEstimationStale ? 'create_estimation' : 'ready_for_estimation',
+                'title' => $isEstimationStale
+                    ? 'إعداد دراسة تسعير وتكلفة لجدول الكميات الجديد المعتمد'
+                    : 'إعداد دراسة التسعير والتكلفة (Estimation)',
+                'description' => $isEstimationStale
+                    ? "تم اعتماد إصدار جديد من جدول الكميات (#{$approvedBoqForCurrentScope->boq_number}). دراسة التسعير المعتمدة الحالية (#{$approvedEstimation->estimation_number}) مرتبطة بإصدار سابق، ويجب إعداد دراسة تسعير جديدة للكميات المحدثة."
+                    : 'تم اعتماد جدول الكميات بنجاح وكمياته مجمدة! الخطوة التالية هي إعداد دراسة التكاليف المباشرة والعمومية (Estimation) لتحديد التكلفة الفعلية للأعمال.',
+                'action_label' => '+ إعداد دراسة التسعير',
+                'action_type' => 'route',
+                'action_target' => '/estimations',
+                'permission' => 'estimations.create',
+            ];
+        } elseif ($latestEstimationForCurrentBoq->status === 'Draft') {
+            $nextAction = [
+                'stage' => 'estimation',
+                'key' => 'submit_estimation_for_review',
+                'title' => 'استكمال وتقديم دراسة التسعير للمراجعة',
+                'description' => 'دراسة التسعير الحالية مسودة (Draft). الخطوة التالية هي استكمال تقدير أسعار التكلفة والمصاريف العمومية وتقديمها للمراجعة والاعتماد.',
+                'action_label' => 'استعراض وتقديم دراسة التسعير',
+                'action_type' => 'route',
+                'action_target' => '/estimations',
+                'permission' => 'estimations.update',
+            ];
+        } elseif ($latestEstimationForCurrentBoq->status === 'Under Review') {
+            $nextAction = [
+                'stage' => 'estimation',
+                'key' => 'approve_estimation',
+                'title' => 'مراجعة واعتماد دراسة التسعير والتكلفة',
+                'description' => 'دراسة التسعير قيد التدقيق الإداري والمالي. يجب اعتمادها رسمياً لتكون الأساس المالي المعتمد لعرض السعر (Quotation).',
+                'action_label' => 'مراجعة واعتماد دراسة التسعير',
+                'action_type' => 'route',
+                'action_target' => '/estimations',
+                'permission' => 'estimations.approve',
+            ];
+        } else {
+            // $latestEstimationForCurrentBoq->status === 'Approved'
+            $nextAction = [
+                'stage' => 'quotation',
+                'key' => 'ready_for_quotation',
+                'title' => 'جاهز للانتقال لمرحلة عرض السعر (Ready for Quotation)',
+                'description' => 'اكتملت دراسة التكاليف والكميات بنجاح وتم اعتماد التسعير الداخلي! العملية جاهزة تماماً لإعداد العرض المالي للعميل (Quotation).',
                 'action_label' => null,
                 'action_type' => 'info',
                 'action_target' => null,
@@ -712,6 +779,8 @@ class OpportunityController extends CRUDController
                 'approved_scope' => $approvedScope,
                 'boqs' => $opportunity->boqs,
                 'approved_boq' => $approvedBoq,
+                'estimations' => $opportunity->estimations,
+                'approved_estimation' => $approvedEstimationForCurrentBoq ?? $approvedEstimation,
                 'traceability_matrix' => $traceabilityMatrix,
                 'current_status' => [
                     'commercial' => [
@@ -750,6 +819,21 @@ class OpportunityController extends CRUDController
                             : null,
                         'is_stale' => $isBoqStale,
                         'is_current' => $isBoqCurrent,
+                    ],
+                    'estimation' => [
+                        'has_approved' => (bool)$approvedEstimationForCurrentBoq,
+                        'status' => $approvedEstimationForCurrentBoq ? 'Approved' : ($latestEstimationForCurrentBoq?->status ?? ($latestEstimation?->status ?? 'None')),
+                        'version' => $approvedEstimationForCurrentBoq ? "V{$approvedEstimationForCurrentBoq->version}" : ($latestEstimation ? "V{$latestEstimation->version}" : null),
+                        'code' => $approvedEstimationForCurrentBoq?->estimation_number ?? $latestEstimation?->estimation_number,
+                        'total_cost' => $approvedEstimationForCurrentBoq ? (float)$approvedEstimationForCurrentBoq->total_cost : ($latestEstimation ? (float)$latestEstimation->total_cost : 0),
+                        'direct_cost' => $approvedEstimationForCurrentBoq ? (float)$approvedEstimationForCurrentBoq->direct_cost : ($latestEstimation ? (float)$latestEstimation->direct_cost : 0),
+                        'overhead_amount' => $approvedEstimationForCurrentBoq ? (float)$approvedEstimationForCurrentBoq->overhead_amount : ($latestEstimation ? (float)$latestEstimation->overhead_amount : 0),
+                        'items_count' => $approvedEstimationForCurrentBoq ? $approvedEstimationForCurrentBoq->items->count() : ($latestEstimation ? $latestEstimation->items->count() : 0),
+                        'referenced_boq_version' => $approvedEstimationForCurrentBoq && $approvedEstimationForCurrentBoq->boq
+                            ? "V{$approvedEstimationForCurrentBoq->boq->version}"
+                            : ($latestEstimation && $latestEstimation->boq ? "V{$latestEstimation->boq->version}" : null),
+                        'is_stale' => $isEstimationStale,
+                        'is_current' => $isEstimationCurrent,
                     ],
                     'is_complete' => (bool)($approvedMeasurement && $approvedScope),
                 ],

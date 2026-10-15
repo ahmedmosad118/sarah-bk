@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BoqController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\EstimationController;
 use App\Http\Controllers\Api\JobTitleController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\MeasurementController;
@@ -165,6 +166,20 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/{id}/submit-review', [BoqController::class, 'submitReview']);
         Route::post('/{id}/approve', [BoqController::class, 'approve']);
         Route::post('/{id}/create-revision', [BoqController::class, 'createRevision']);
+    });
+
+    // Cost Estimation Management (Phase 10 - Internal Costing from Approved BOQ)
+    Route::prefix('estimations')->group(function () {
+        Route::get('/schema', [EstimationController::class, 'schema']);
+        Route::get('/', [EstimationController::class, 'index']);
+        Route::post('/', [EstimationController::class, 'store']);
+        Route::post('/from-boq/{boqId}', [EstimationController::class, 'createFromBoq']);
+        Route::get('/{id}', [EstimationController::class, 'show']);
+        Route::put('/{id}', [EstimationController::class, 'update']);
+        Route::delete('/{ids}', [EstimationController::class, 'destroy']);
+        Route::post('/{id}/submit-review', [EstimationController::class, 'submitReview']);
+        Route::post('/{id}/approve', [EstimationController::class, 'approve']);
+        Route::post('/{id}/create-revision', [EstimationController::class, 'createRevision']);
     });
 
     // Roles & Permissions Management

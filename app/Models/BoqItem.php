@@ -43,4 +43,12 @@ class BoqItem extends Model
     {
         return $this->belongsTo(ScopeItem::class);
     }
+
+    /**
+     * Estimation items costing this BOQ item.
+     */
+    public function estimationItems(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(EstimationItem::class);
+    }
 }

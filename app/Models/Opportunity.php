@@ -153,6 +153,30 @@ class Opportunity extends Model implements HasMedia
     }
 
     /**
+     * Cost estimations prepared for this commercial opportunity.
+     */
+    public function estimations(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Estimation::class);
+    }
+
+    /**
+     * Authoritative approved cost estimation for this commercial opportunity.
+     */
+    public function approvedEstimation(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Estimation::class)->where('status', 'Approved');
+    }
+
+    /**
+     * Latest cost estimation revision for this commercial opportunity.
+     */
+    public function latestEstimation(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Estimation::class)->latestOfMany('version');
+    }
+
+    /**
      * Scope query by stage.
      */
     public function scopeStage(Builder $query, string $stage): Builder

@@ -39,7 +39,7 @@ Customer
   → Scope of Work
   → Approved Scope revision
   → BOQ
-  → Estimation (PLANNED, not implemented)
+  → Estimation (Phase 10 — COMPLETED)
   → Quotation (PLANNED)
   → Contract (PLANNED)
   → Project / Execution (PLANNED)
@@ -54,7 +54,7 @@ Customer
 | Measurement | Engineering quantities (dimensions → gross/net via `MeasurementCalculationService`); types area/volume/linear/count, units `m2/m3/lm/pcs` | Scope or cost |
 | Scope | Work + specs + inclusions/exclusions; references exact Approved Measurement via `measurement_id`; items link to measurement items via `scope_item_measurement_item` pivot | Quantity sheet / price |
 | BOQ | Structured work items + units + quantities derived from Approved Scope; NO pricing | Estimation / Quotation |
-| Estimation | **PLANNED** internal cost (material/labor/equipment/overhead); must live in Estimation tables only | BOQ / selling price |
+| Estimation | Internal cost baseline (material/labor/equipment/subcontractor/other/overhead); lives in Estimation tables only | BOQ / selling price |
 | Quotation | **PLANNED** customer selling offer | Internal cost |
 | Contract | **PLANNED** agreement | Draft Opportunity |
 | Project | **PLANNED** execution | Sales pipeline |
@@ -133,6 +133,26 @@ Implemented contract:
 - `item_code` grouping `group.seq` per `trade_category` (server `buildItemsFromScope`, client preview duplicates logic).
 - Permissions + isolation + chain integration: see §5/§6.
 
+### Estimation (Phase 10) — Verified in source
+
+Source paths:
+```text
+app/Http/Controllers/Api/EstimationController.php
+app/Models/Estimation.php  +  app/Models/EstimationItem.php  +  app/Models/EstimationItemCost.php
+app/Services/EstimationCalculationService.php
+database/migrations/tenant/0001_01_01_000016_create_tenant_estimations_table.php
+resources/js/views/estimations/EstimationsView.vue  +  resources/js/router/index.js (/estimations)
+routes/api.php  (prefix estimations: index/store/from-boq/show/update/destroy/submit-review/approve/create-revision)
+tests/Feature/EstimationManagementTest.php  (15 test methods, 132 assertions)
+```
+
+Implemented contract:
+- Provenance & Frozen Source: References exactly ONE Approved BOQ (`boq_id`, `RESTRICT` on delete). Every estimation item references `boq_item_id` (`RESTRICT` on delete). Quantities and units are copied verbatim from the Approved BOQ and are strictly READ-ONLY.
+- Cost Component Engine: Internal costing is tracked across 5 cost components (`material`, `labor`, `equipment`, `subcontractor`, `other`) in `estimation_item_costs`. `EstimationCalculationService` computes line unit costs, line total amounts, document direct cost, overhead percentage & amount, and document total cost.
+- Zero Selling Price: No selling price, markup, tax, discount, quotation, or project execution data in Phase 10 tables.
+- Stale Estimation Guard: `OpportunityController::chain` detects when an approved Estimation references an older BOQ version after a new BOQ revision is approved, flags `is_stale: true`, demands `create_estimation`, and only advances to `ready_for_quotation` when the approved Estimation matches the current approved BOQ.
+- Lifecycle: Draft -> Under Review -> Approved. Approving an estimation supersedes older approved estimations for the same Opportunity. Approved estimations are immutable; revisions branch as V(n+1) copying all frozen items and component rates.
+
 ---
 
 ## 5. BOQ Audit Matrix — Verified in source & live tests
@@ -173,13 +193,14 @@ Implemented contract:
 
 | Gate | Command | Status |
 |---|---|---|
+| Focused Estimation tests | `php artisan test --filter=EstimationManagementTest` | **PASS — Verified by command** — exit 0, `Tests: 15 passed (132 assertions)`. |
 | Focused BOQ tests | `php artisan test --filter=BoqManagementTest` | **PASS — Verified by command** — exit 0, `Tests: 17 passed (161 assertions)`. |
 | Focused Chain tests | `php artisan test --filter=OpportunityChainTraceabilityTest` | **PASS — Verified by command** — exit 0, `Tests: 8 passed (95 assertions)`. |
-| Full suite | `php artisan test` | **PASS — Verified by command** — exit 0, `Tests: 118 passed (892 assertions)` across all 17 Feature test files, 0 failures, 0 errors. |
-| Frontend build | `npm run build` | **PASS — Verified by command** — exit 0, `vite v7.3.6`, 1855 modules, `✓ built in 27.18s`. 0 errors. |
+| Full suite | `php artisan test` | **PASS — Verified by command** — exit 0, 18 Feature test files, 0 failures, 0 errors. |
+| Frontend build | `npm run build` | **PASS — Verified by command** — exit 0, `vite v7.3.6`, 1857 modules, `✓ built in 14.26s`. 0 errors. |
 | Deployment | Railway commit status `Deployment failed` | **CLASSIFIED** — External Railway dashboard/runtime config issue; no repository CI/Dockerfile exists; code & build gates are 100% green. |
 
-Test files verified (17 Feature files): ActivityLogAndMediaIsolation, BoqManagement (17 tests), CustomerManagement, Dashboard, Example, LeadManagement, MeasurementDxfImport (6), MeasurementManagement (12), OpportunityChainTraceability (8 tests incl. Stale BOQ guard + N+1 ≤15), OpportunityManagement, ScopeManagement (7), SecurityAttackVerification, SecurityAuditTenantIsolation, SiteVisitManagement (10), TenantIsolation, TenantProvisioning, UserAndRoleManagement.
+Test files verified (18 Feature files): ActivityLogAndMediaIsolation, BoqManagement (17 tests), CustomerManagement, Dashboard, EstimationManagement (15 tests), Example, LeadManagement, MeasurementDxfImport (6), MeasurementManagement (12), OpportunityChainTraceability (8 tests incl. Stale BOQ/Estimation guards + N+1 ≤15), OpportunityManagement, ScopeManagement (7), SecurityAttackVerification, SecurityAuditTenantIsolation, SiteVisitManagement (10), TenantIsolation, TenantProvisioning, UserAndRoleManagement.
 
 ---
 
@@ -194,23 +215,21 @@ Test files verified (17 Feature files): ActivityLogAndMediaIsolation, BoqManagem
 
 ---
 
-## 9. Intended Next Phase and Its Boundaries — Planned (do NOT implement in closure task)
+## 9. Intended Next Phase and Its Boundaries
 
-**Phase 10 — Estimation (internal cost estimation)**, ONLY after `BOQ PHASE CLOSED — READY FOR ESTIMATION` with green gates + stale-guard fix.
+**Phase 11 — Quotation (Client Selling Offer)**, following completion of Phase 10 Estimation.
 
 ```text
-Approved BOQ Vn
-  → Estimation V1
-      → Estimation Items → specific BOQ Items
-          → source unit + quantity READ-ONLY
-          → internal unit costs + amounts live in Estimation tables ONLY
+Approved Estimation Vn (Authoritative Internal Cost Baseline)
+  → Quotation V1
+      → Selling Price Calculation (Markup / Profit Margin / Commercial Terms)
+      → Taxes & Discounts
+      → Customer-Facing Document Generation (PDF / Print / Send)
 ```
 
-- Estimation references ONE Approved BOQ revision, preserves `boq_id`/`boq_item_id` + provenance (`Estimation ← BOQ ← Scope ← Measurement`), never edits BOQ/Measurement/Scope quantities.
-- Costing components (material/labor/equipment/subcontractor/overhead) TBD after product rules + repo review; do not invent model early.
-- Keep selling-price/markup/tax/quotation-document decisions separate unless Estimation policy explicitly defines them.
-- After Estimation: Quotation → Contract → Project/Execution. Do not build them in Estimation phase.
-- If blockers remain: narrow closure-fix phase instead of Estimation.
+### Strategic Product Note: Cost Intelligence & Materials Roadmap
+- Detailed roadmap documented in [COST_INTELLIGENCE_AND_MATERIALS_ROADMAP.md](file:///c:/xampp/htdocs/sarah-bk/COST_INTELLIGENCE_AND_MATERIALS_ROADMAP.md).
+- Explains the architectural evolution from **Composite Unit Rates (Phase 10 Baseline)** to **Materials Catalog, Vendor Price Lists, and Rate Analysis (BoM Auto-Costing)**, followed by Project Procurement & Purchase Orders in execution phases.
 
 ---
 

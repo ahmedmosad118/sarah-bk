@@ -115,6 +115,25 @@ return [
     'boq_scope_item_mixed_units' => 'بند الشغل ":item" مرتبط بوحدات قياس مختلفة — افصله لأكتر من بند Scope قبل توليد BOQ.',
     'only_approved_boq_can_be_revised' => 'يمكن إنشاء مراجعة جديدة من جدول كميات معتمد فقط. المسودة أو قيد المراجعة تُعدّل مباشرة.',
 
+    // Estimation (Phase 10)
+    'estimation_created_success' => 'تم إنشاء دراسة التسعير والتكلفة بنجاح',
+    'estimation_updated_success' => 'تم تحديث دراسة التسعير وحسابات التكلفة بنجاح',
+    'estimation_deleted_success' => 'تم حذف دراسة التسعير بنجاح',
+    'estimation_submitted_review_success' => 'تم إرسال دراسة التسعير للمراجعة والتدقيق بنجاح',
+    'estimation_approved_success' => 'تم اعتماد دراسة التسعير والتكلفة بنجاح',
+    'estimation_revision_created_success' => 'تم إنشاء مراجعة وإصدار جديد من دراسة التسعير بنجاح',
+    'estimation_requires_approved_boq' => 'دراسة التسعير تتطلب ربطاً بجدول كميات معتمد (Approved BOQ).',
+    'boq_opportunity_mismatch' => 'جدول الكميات المختار لا ينتمي لنفس الفرصة التجارية.',
+    'approved_estimation_cannot_be_edited' => 'دراسة التسعير المعتمدة غير قابلة للتعديل المباشر. يرجى إنشاء مراجعة جديدة (Revision).',
+    'approved_estimation_cannot_be_deleted' => 'لا يمكن حذف دراسة تسعير معتمدة للحفاظ على تاريخ التكاليف.',
+    'only_draft_estimation_can_be_submitted_for_review' => 'يمكن فقط تقديم دراسة التسعير في حالة المسودة للمراجعة.',
+    'estimation_cannot_be_approved_in_current_state' => 'لا يمكن اعتماد دراسة التسعير في حالتها الحالية.',
+    'cannot_approve_empty_estimation' => 'لا يمكن اعتماد دراسة تسعير فارغة بدون بنود.',
+    'cannot_approve_zero_cost_estimation' => 'لا يمكن اعتماد دراسة تسعير بدون إدخال أسعار تكلفة للبنود.',
+    'cannot_estimate_empty_boq' => 'جدول الكميات المختار فارغ ولا يحتوي على بنود للتسعير.',
+    'estimation_boq_item_mismatch' => 'أحد بنود جدول الكميات المختارة لا ينتمي لجدول الكميات المرتبط بدراسة التسعير.',
+    'only_approved_estimation_can_be_revised' => 'يمكن إنشاء مراجعة جديدة من دراسة تسعير معتمدة فقط. المسودة أو قيد المراجعة تُعدّل مباشرة.',
+
     // Settings
     'settings_saved_success' => 'تم حفظ الإعدادات بنجاح',
 ];
