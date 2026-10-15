@@ -8,7 +8,7 @@ use App\Core\CRUD\InputMaker;
 use App\Models\Boq;
 use App\Models\Opportunity;
 use App\Models\Scope;
-use App\Models\User;
+use App\Services\BoqGenerationService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -18,8 +18,17 @@ use Illuminate\Validation\ValidationException;
 
 class BoqController extends CRUDController
 {
+    protected BoqGenerationService $generationService;
+
+    public function __construct(BoqGenerationService $generationService)
+    {
+        $this->generationService = $generationService;
+    }
+
     protected string $model = Boq::class;
+
     protected array $searchable = ['boq_number', 'title', 'notes'];
+
     protected array $with = [
         'opportunity.customer',
         'scope.measurement',
@@ -28,9 +37,11 @@ class BoqController extends CRUDController
         'approvedUser',
         'creator',
         'items.scopeItem',
-        'media'
+        'media',
     ];
+
     protected string $defaultSortBy = 'id';
+
     protected string $defaultSortOrder = 'desc';
 
     protected function inputMaker(): InputMaker
@@ -174,15 +185,15 @@ class BoqController extends CRUDController
     protected function resolveUnresolvedItems(Boq $boq): array
     {
         $scope = Scope::with('items.measurementItems')->find($boq->scope_id);
-        if (!$scope) {
+        if (! $scope) {
             return [];
         }
 
         $coveredIds = $boq->items()->pluck('scope_item_id')->map(fn ($v) => (int) $v)->all();
 
         return array_values(array_filter(
-            $this->buildItemsFromScope($scope)['skipped'],
-            fn (array $sk) => !in_array((int) $sk['scope_item_id'], $coveredIds, true)
+            $this->generationService->buildItemsFromScope($scope)['skipped'],
+            fn (array $sk) => ! in_array((int) $sk['scope_item_id'], $coveredIds, true)
         ));
     }
 
@@ -205,7 +216,7 @@ class BoqController extends CRUDController
         $scope = Scope::with('items.measurementItems')->findOrFail($validated['scope_id']);
 
         // Strict Rule: Scope MUST be Approved
-        if (!$scope->isApproved()) {
+        if (! $scope->isApproved()) {
             throw ValidationException::withMessages([
                 'scope_id' => [__('messages.boq_requires_approved_scope')],
             ]);
@@ -218,7 +229,7 @@ class BoqController extends CRUDController
             ]);
         }
 
-        $generated = $this->buildItemsFromScope($scope);
+        $generated = $this->generationService->buildItemsFromScope($scope);
 
         $boq = DB::transaction(function () use ($validated, $opportunity, $scope, $generated) {
             $number = $validated['boq_number'] ?? $this->generateBoqNumber($opportunity->id);
@@ -263,7 +274,7 @@ class BoqController extends CRUDController
 
         $boq = Boq::with('items')->findOrFail($id);
 
-        if (!$boq->canBeEdited()) {
+        if (! $boq->canBeEdited()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.approved_boq_cannot_be_edited')],
             ]);
@@ -291,7 +302,7 @@ class BoqController extends CRUDController
         if (is_array($itemsData)) {
             $validScopeItemIds = $boq->scope()->first()->items()->pluck('scope_items.id')->all();
             foreach ($itemsData as $idx => $item) {
-                if (!in_array((int) $item['scope_item_id'], $validScopeItemIds, true)) {
+                if (! in_array((int) $item['scope_item_id'], $validScopeItemIds, true)) {
                     throw ValidationException::withMessages([
                         "items.{$idx}.scope_item_id" => [__('messages.boq_scope_item_mismatch')],
                     ]);
@@ -300,7 +311,7 @@ class BoqController extends CRUDController
         }
 
         $boq = DB::transaction(function () use ($boq, $validated, $itemsData) {
-            if (!empty($validated['boq_number'])) {
+            if (! empty($validated['boq_number'])) {
                 $boq->boq_number = $validated['boq_number'];
             }
             if (isset($validated['title'])) {
@@ -321,7 +332,7 @@ class BoqController extends CRUDController
                 $boq->items()->delete();
 
                 foreach ($itemsData as $idx => $item) {
-                    $derived = $this->deriveLineForScopeItem($boq->scope_id, (int) $item['scope_item_id']);
+                    $derived = $this->generationService->deriveLineForScopeItem($boq->scope_id, (int) $item['scope_item_id']);
 
                     $boq->items()->create([
                         'scope_item_id' => (int) $item['scope_item_id'],
@@ -395,7 +406,7 @@ class BoqController extends CRUDController
 
         $boq = Boq::findOrFail($id);
 
-        if (!$boq->isDraft()) {
+        if (! $boq->isDraft()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.only_draft_boq_can_be_submitted_for_review')],
             ]);
@@ -428,7 +439,7 @@ class BoqController extends CRUDController
 
         $boq = Boq::with('items')->findOrFail($id);
 
-        if (!$boq->canBeApproved()) {
+        if (! $boq->canBeApproved()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.boq_cannot_be_approved_in_current_state')],
             ]);
@@ -479,7 +490,7 @@ class BoqController extends CRUDController
 
         // Strict Rule: revisions branch only from an Approved BOQ
         // (Draft / Under Review are still directly editable).
-        if (!$parent->isApproved()) {
+        if (! $parent->isApproved()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.only_approved_boq_can_be_revised')],
             ]);
@@ -539,7 +550,7 @@ class BoqController extends CRUDController
 
         $scope = Scope::with('opportunity')->findOrFail($scopeId);
 
-        if (!$scope->isApproved()) {
+        if (! $scope->isApproved()) {
             throw ValidationException::withMessages([
                 'scope_id' => [__('messages.boq_requires_approved_scope')],
             ]);
@@ -561,136 +572,7 @@ class BoqController extends CRUDController
         $count = Boq::where('opportunity_id', $opportunityId)->count();
         $next = $count + 1;
         $padded = str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+
         return "BOQ-OPP{$opportunityId}-{$padded}";
-    }
-
-    /**
-     * Build BOQ lines from an approved scope.
-     *
-     * Dual-authority derivation:
-     * - description/specification inherited from the ScopeItem
-     * - unit + quantity derived strictly from MeasurementItems linked to that
-     *   ScopeItem via the existing scope_item_measurement_item pivot
-     *   (quantity = SUM of net_quantity, only when units are homogeneous).
-     *
-     * Scope items with mixed units or with no linked measurement items are
-     * NOT generated; they are reported in 'skipped' for explicit user action.
-     *
-     * @return array{lines: array, skipped: array}
-     */
-    protected function buildItemsFromScope(Scope $scope): array
-    {
-        $scope->loadMissing(['items.measurementItems']);
-
-        $lines = [];
-        $skipped = [];
-        $groupSeq = [];
-        $groupCounter = 0;
-        $sortOrder = 0;
-
-        foreach ($scope->items as $scopeItem) {
-            // Defensive Lineage Guard: Only consume measurement items belonging to the scope's exact measurement revision
-            $linked = $scopeItem->measurementItems->where('measurement_id', $scope->measurement_id);
-
-            if ($linked->isEmpty()) {
-                $skipped[] = [
-                    'scope_item_id' => $scopeItem->id,
-                    'item_name' => $scopeItem->item_name,
-                    'trade_category' => $scopeItem->trade_category,
-                    'reason' => 'no_linked_measurement_items',
-                    'message' => __('messages.boq_scope_item_has_no_quantities', ['item' => $scopeItem->item_name]),
-                ];
-                continue;
-            }
-
-            $units = $linked->pluck('unit')->unique()->values()->all();
-
-            if (count($units) !== 1) {
-                $skipped[] = [
-                    'scope_item_id' => $scopeItem->id,
-                    'item_name' => $scopeItem->item_name,
-                    'trade_category' => $scopeItem->trade_category,
-                    'reason' => 'mixed_units',
-                    'units' => $units,
-                    'message' => __('messages.boq_scope_item_mixed_units', ['item' => $scopeItem->item_name]),
-                ];
-                continue;
-            }
-
-            $trade = (string) ($scopeItem->trade_category ?: 'عام');
-            if (!isset($groupSeq[$trade])) {
-                $groupCounter++;
-                $groupSeq[$trade] = ['group' => $groupCounter, 'seq' => 0];
-            }
-            $groupSeq[$trade]['seq']++;
-
-            $lines[] = [
-                'scope_item_id' => $scopeItem->id,
-                'item_code' => $groupSeq[$trade]['group'] . '.' . $groupSeq[$trade]['seq'],
-                'description' => $this->composeDescription($scopeItem->item_name, $scopeItem->specification),
-                'unit' => $units[0],
-                'quantity' => round((float) $linked->sum('net_quantity'), 2),
-                'notes' => $scopeItem->notes,
-                'sort_order' => $sortOrder++,
-            ];
-        }
-
-        return ['lines' => $lines, 'skipped' => $skipped];
-    }
-
-    /**
-     * Re-derive unit + quantity for a single scope item (server-side truth).
-     * Client-supplied quantity/unit values are never trusted.
-     *
-     * @throws \Illuminate\Validation\ValidationException When the scope item is foreign, unlinked, or mixed-unit.
-     */
-    protected function deriveLineForScopeItem(int $scopeId, int $scopeItemId): array
-    {
-        $scopeItem = \App\Models\ScopeItem::with('measurementItems')->findOrFail($scopeItemId);
-
-        if ((int) $scopeItem->scope_id !== (int) $scopeId) {
-            throw ValidationException::withMessages([
-                'scope_item_id' => [__('messages.boq_scope_item_mismatch')],
-            ]);
-        }
-
-        $scope = Scope::findOrFail($scopeId);
-        // Defensive Lineage Guard: Only consume measurement items belonging to the scope's exact measurement revision
-        $linked = $scopeItem->measurementItems->where('measurement_id', $scope->measurement_id);
-
-        if ($linked->isEmpty()) {
-            throw ValidationException::withMessages([
-                'scope_item_id' => [__('messages.boq_scope_item_has_no_quantities', ['item' => $scopeItem->item_name])],
-            ]);
-        }
-
-        $units = $linked->pluck('unit')->unique()->values()->all();
-
-        if (count($units) !== 1) {
-            throw ValidationException::withMessages([
-                'scope_item_id' => [__('messages.boq_scope_item_mixed_units', ['item' => $scopeItem->item_name])],
-            ]);
-        }
-
-        return [
-            'description' => $this->composeDescription($scopeItem->item_name, $scopeItem->specification),
-            'unit' => $units[0],
-            'quantity' => round((float) $linked->sum('net_quantity'), 2),
-        ];
-    }
-
-    /**
-     * Compose the final BOQ line description from scope work title + specification.
-     */
-    protected function composeDescription(?string $itemName, ?string $specification): string
-    {
-        $name = trim((string) ($itemName ?? ''));
-        $spec = trim((string) ($specification ?? ''));
-
-        if ($name !== '' && $spec !== '') {
-            return $name . "\n" . $spec;
-        }
-
-        return $name !== '' ? $name : $spec;
     }
 }

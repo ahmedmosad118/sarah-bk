@@ -6,7 +6,7 @@ return [
     'permissions_denied_any' => 'You do not have sufficient permissions to perform this action (:permissions).',
     'validation_error' => 'The given data was invalid.',
     'server_error' => 'An internal server error occurred. Please try again later.',
-    
+
     // Tenancy & Provisioning
     'tenant_inactive' => 'Company account / domain is currently suspended. Please contact technical support.',
     'tenant_not_found' => 'Unable to identify tenant company domain or slug. Please provide valid domain or X-Tenant-Slug header.',
@@ -155,4 +155,15 @@ return [
 
     // Settings
     'settings_saved_success' => 'Settings saved successfully',
+
+    // Document Chain & Zero-Cost Stabilization
+    'cannot_estimate_stale_boq' => 'The selected BOQ has been superseded by a newer approved version and cannot be used for new estimation.',
+    'cannot_approve_stale_source_boq' => 'Cannot approve an estimation linked to a non-approved or superseded BOQ.',
+    'cannot_approve_superseded_estimation' => 'Cannot approve this estimation because a newer revision is already approved.',
+    'all_items_must_be_costed' => 'All BOQ items must be costed or have documented zero-cost notes before approval.',
+    'zero_cost_requires_justification' => 'Cannot approve an estimation with zero total cost without explicit justification in notes.',
+    'cannot_quote_stale_estimation' => 'The selected cost estimation has been superseded by a newer approved revision.',
+    'cannot_quote_stale_estimation_boq' => 'The source BOQ for this estimation has been superseded. Please update the estimation first.',
+    'cannot_approve_stale_source_estimation' => 'Cannot approve a quotation linked to a non-approved or superseded estimation.',
+    'cannot_approve_superseded_quotation' => 'Cannot approve this quotation because a newer revision is already approved.',
 ];

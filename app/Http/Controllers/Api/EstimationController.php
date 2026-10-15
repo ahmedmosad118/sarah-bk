@@ -7,9 +7,7 @@ use App\Core\CRUD\Field;
 use App\Core\CRUD\InputMaker;
 use App\Models\Boq;
 use App\Models\Estimation;
-use App\Models\EstimationItem;
 use App\Models\Opportunity;
-use App\Models\User;
 use App\Services\EstimationCalculationService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,7 +19,9 @@ use Illuminate\Validation\ValidationException;
 class EstimationController extends CRUDController
 {
     protected string $model = Estimation::class;
+
     protected array $searchable = ['estimation_number', 'title', 'notes'];
+
     protected array $with = [
         'opportunity.customer',
         'boq.scope',
@@ -33,13 +33,14 @@ class EstimationController extends CRUDController
         'items.costs',
         'media',
     ];
+
     protected string $defaultSortBy = 'id';
+
     protected string $defaultSortOrder = 'desc';
 
     public function __construct(
         protected EstimationCalculationService $calculationService
-    ) {
-    }
+    ) {}
 
     protected function inputMaker(): InputMaker
     {
@@ -217,7 +218,7 @@ class EstimationController extends CRUDController
         $boq = Boq::with('items')->findOrFail($validated['boq_id']);
 
         // Rule 1: BOQ MUST be Approved
-        if (!$boq->isApproved()) {
+        if (! $boq->isApproved()) {
             throw ValidationException::withMessages([
                 'boq_id' => [__('messages.estimation_requires_approved_boq')],
             ]);
@@ -227,6 +228,22 @@ class EstimationController extends CRUDController
         if ((int) $boq->opportunity_id !== (int) $opportunity->id) {
             throw ValidationException::withMessages([
                 'boq_id' => [__('messages.boq_opportunity_mismatch')],
+            ]);
+        }
+
+        // Rule 2.1: Check if BOQ is stale (superseded by a newer approved BOQ)
+        $hasNewerApprovedBoq = Boq::where('opportunity_id', $opportunity->id)
+            ->where('status', 'Approved')
+            ->where('id', '!=', $boq->id)
+            ->where(function ($q) use ($boq) {
+                $q->where('version', '>', $boq->version)
+                    ->orWhere('id', '>', $boq->id);
+            })
+            ->exists();
+
+        if ($hasNewerApprovedBoq) {
+            throw ValidationException::withMessages([
+                'boq_id' => [__('messages.cannot_estimate_stale_boq')],
             ]);
         }
 
@@ -272,7 +289,7 @@ class EstimationController extends CRUDController
                     'sort_order' => $boqItem->sort_order,
                 ]);
 
-                if (!empty($itemInput['costs']) && is_array($itemInput['costs'])) {
+                if (! empty($itemInput['costs']) && is_array($itemInput['costs'])) {
                     $this->calculationService->syncItemCosts($estItem, $itemInput['costs']);
                 }
             }
@@ -305,7 +322,7 @@ class EstimationController extends CRUDController
 
         $boq = Boq::with('opportunity')->findOrFail($boqId);
 
-        if (!$boq->isApproved()) {
+        if (! $boq->isApproved()) {
             throw ValidationException::withMessages([
                 'boq_id' => [__('messages.estimation_requires_approved_boq')],
             ]);
@@ -325,7 +342,7 @@ class EstimationController extends CRUDController
 
         $estimation = Estimation::with('items')->findOrFail($id);
 
-        if (!$estimation->canBeEdited()) {
+        if (! $estimation->canBeEdited()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.approved_estimation_cannot_be_edited')],
             ]);
@@ -355,7 +372,7 @@ class EstimationController extends CRUDController
         if (is_array($itemsData)) {
             $validBoqItemIds = Boq::findOrFail($estimation->boq_id)->items()->pluck('id')->all();
             foreach ($itemsData as $idx => $itemInput) {
-                if (!in_array((int) $itemInput['boq_item_id'], $validBoqItemIds, true)) {
+                if (! in_array((int) $itemInput['boq_item_id'], $validBoqItemIds, true)) {
                     throw ValidationException::withMessages([
                         "items.{$idx}.boq_item_id" => [__('messages.estimation_boq_item_mismatch')],
                     ]);
@@ -364,7 +381,7 @@ class EstimationController extends CRUDController
         }
 
         $estimation = DB::transaction(function () use ($estimation, $validated, $itemsData) {
-            if (!empty($validated['estimation_number'])) {
+            if (! empty($validated['estimation_number'])) {
                 $estimation->estimation_number = $validated['estimation_number'];
             }
             if (isset($validated['title'])) {
@@ -469,7 +486,7 @@ class EstimationController extends CRUDController
 
         $estimation = Estimation::findOrFail($id);
 
-        if (!$estimation->isDraft()) {
+        if (! $estimation->isDraft()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.only_draft_estimation_can_be_submitted_for_review')],
             ]);
@@ -508,26 +525,76 @@ class EstimationController extends CRUDController
 
         $estimation = Estimation::with(['items.costs', 'boq'])->findOrFail($id);
 
-        if (!$estimation->canBeApproved()) {
+        if (! $estimation->canBeApproved()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.estimation_cannot_be_approved_in_current_state')],
             ]);
         }
 
+        // 1. Source BOQ must still be Approved
+        if (! $estimation->boq || ! $estimation->boq->isApproved()) {
+            throw ValidationException::withMessages([
+                'boq_id' => [__('messages.cannot_approve_stale_source_boq')],
+            ]);
+        }
+
+        // 2. Source BOQ must not be superseded by a newer approved BOQ
+        $latestApprovedBoq = Boq::where('opportunity_id', $estimation->opportunity_id)
+            ->where('status', 'Approved')
+            ->orderBy('version', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($latestApprovedBoq && (int) $latestApprovedBoq->id !== (int) $estimation->boq_id) {
+            throw ValidationException::withMessages([
+                'boq_id' => [__('messages.cannot_approve_stale_source_boq')],
+            ]);
+        }
+
+        // 3. Cannot approve an older estimation revision if a newer approved estimation exists
+        $hasNewerApproved = Estimation::where('opportunity_id', $estimation->opportunity_id)
+            ->where('status', 'Approved')
+            ->where('version', '>', $estimation->version)
+            ->exists();
+
+        if ($hasNewerApproved) {
+            throw ValidationException::withMessages([
+                'version' => [__('messages.cannot_approve_superseded_estimation')],
+            ]);
+        }
+
+        // 4. Estimation must have items
         if ($estimation->items->isEmpty()) {
             throw ValidationException::withMessages([
                 'items' => [__('messages.cannot_approve_empty_estimation')],
             ]);
         }
 
-        // Rule: an all-zero uncosted estimation cannot be silently approved
-        $hasCosts = (float) $estimation->total_cost > 0 ||
-            $estimation->items->contains(fn ($it) => $it->costs->isNotEmpty());
+        // 5. Incomplete check: Every single item must have at least one cost entry or documented note
+        $unpricedItems = $estimation->items->filter(function ($item) {
+            return $item->costs->isEmpty() && empty(trim((string) $item->notes));
+        });
 
-        if (!$hasCosts) {
+        if ($unpricedItems->isNotEmpty()) {
             throw ValidationException::withMessages([
+                'items' => [__('messages.all_items_must_be_costed')],
                 'total_cost' => [__('messages.cannot_approve_zero_cost_estimation')],
             ]);
+        }
+
+        // 6. Zero-cost check: If total_cost is 0.00, require explicit justification note
+        $totalCost = (float) $estimation->total_cost;
+        if ($totalCost <= 0) {
+            $hasNotes = ! empty(trim((string) $estimation->notes)) ||
+                $estimation->items->contains(fn ($it) => ! empty(trim((string) $it->notes)) ||
+                    $it->costs->contains(fn ($c) => ! empty(trim((string) $c->notes)) || ! empty(trim((string) $c->description)))
+                );
+
+            if (! $hasNotes) {
+                throw ValidationException::withMessages([
+                    'total_cost' => [__('messages.zero_cost_requires_justification')],
+                ]);
+            }
         }
 
         $estimation = DB::transaction(function () use ($estimation) {
@@ -567,7 +634,7 @@ class EstimationController extends CRUDController
 
         $parent = Estimation::with(['items.costs'])->findOrFail($id);
 
-        if (!$parent->isApproved()) {
+        if (! $parent->isApproved()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.only_approved_estimation_can_be_revised')],
             ]);
@@ -641,9 +708,15 @@ class EstimationController extends CRUDController
 
     protected function generateEstimationNumber(int $opportunityId): string
     {
-        $count = Estimation::where('opportunity_id', $opportunityId)->count() + 1;
-        $opp = Opportunity::find($opportunityId);
-        $oppCode = $opp?->opportunity_number ?? "OPP-{$opportunityId}";
-        return "EST-{$oppCode}-V1";
+        $existingCount = Estimation::where('opportunity_id', $opportunityId)->count();
+        $seq = $existingCount + 1;
+        $candidate = "EST-OPP{$opportunityId}-".str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
+
+        while (Estimation::where('estimation_number', $candidate)->exists()) {
+            $seq++;
+            $candidate = "EST-OPP{$opportunityId}-".str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
+        }
+
+        return $candidate;
     }
 }

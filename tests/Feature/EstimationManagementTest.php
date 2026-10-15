@@ -469,6 +469,10 @@ class EstimationManagementTest extends TestCase
                     'boq_item_id' => $chain['boqItem1']->id,
                     'costs' => [['cost_type' => 'material', 'cost_rate' => 100.00]],
                 ],
+                [
+                    'boq_item_id' => $chain['boqItem2']->id,
+                    'costs' => [['cost_type' => 'labor', 'cost_rate' => 50.00]],
+                ],
             ],
         ], $this->headersA());
 
@@ -502,6 +506,10 @@ class EstimationManagementTest extends TestCase
                 [
                     'boq_item_id' => $chain['boqItem1']->id,
                     'costs' => [['cost_type' => 'material', 'cost_rate' => 100.00]],
+                ],
+                [
+                    'boq_item_id' => $chain['boqItem2']->id,
+                    'costs' => [['cost_type' => 'labor', 'cost_rate' => 50.00]],
                 ],
             ],
         ], $this->headersA());
@@ -547,6 +555,7 @@ class EstimationManagementTest extends TestCase
         $this->putJson("/api/estimations/{$estId1}", [
             'items' => [
                 ['boq_item_id' => $chain['boqItem1']->id, 'costs' => [['cost_type' => 'material', 'cost_rate' => 100.00]]],
+                ['boq_item_id' => $chain['boqItem2']->id, 'costs' => [['cost_type' => 'labor', 'cost_rate' => 50.00]]],
             ],
         ], $this->headersA());
         $this->postJson("/api/estimations/{$estId1}/approve", [], $this->headersA());
@@ -582,6 +591,7 @@ class EstimationManagementTest extends TestCase
         $this->putJson("/api/estimations/{$estId1}", [
             'items' => [
                 ['boq_item_id' => $chain['boqItem1']->id, 'costs' => [['cost_type' => 'material', 'cost_rate' => 100.00]]],
+                ['boq_item_id' => $chain['boqItem2']->id, 'costs' => [['cost_type' => 'labor', 'cost_rate' => 50.00]]],
             ],
         ], $this->headersA());
         $this->postJson("/api/estimations/{$estId1}/approve", [], $this->headersA());
@@ -620,6 +630,7 @@ class EstimationManagementTest extends TestCase
         $this->putJson("/api/estimations/{$estId2}", [
             'items' => [
                 ['boq_item_id' => $boq2Item1->id, 'costs' => [['cost_type' => 'material', 'cost_rate' => 110.00]]],
+                ['boq_item_id' => $boq2->items->last()->id, 'costs' => [['cost_type' => 'labor', 'cost_rate' => 50.00]]],
             ],
         ], $this->headersA());
         $this->postJson("/api/estimations/{$estId2}/approve", [], $this->headersA());
@@ -772,5 +783,139 @@ class EstimationManagementTest extends TestCase
             count($queries),
             'Query count exceeded N+1 threshold on estimations list endpoint.'
         );
+    }
+
+    /**
+     * Test 16: Source validity prevents approving an estimation linked to a stale BOQ or superseded revision.
+     */
+    public function test_source_validity_prevents_approving_stale_boq_or_superseded_estimation(): void
+    {
+        $chain = $this->makeApprovedBoq('T16');
+
+        // Create Estimation V1 on BOQ V1
+        $createRes1 = $this->postJson('/api/estimations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'boq_id' => $chain['boq']->id,
+        ], $this->headersA());
+        $estId1 = $createRes1->json('data.id');
+
+        // Fully cost Estimation V1
+        $this->putJson("/api/estimations/{$estId1}", [
+            'items' => [
+                ['boq_item_id' => $chain['boqItem1']->id, 'costs' => [['cost_type' => 'material', 'cost_rate' => 100.00]]],
+                ['boq_item_id' => $chain['boqItem2']->id, 'costs' => [['cost_type' => 'labor', 'cost_rate' => 50.00]]],
+            ],
+        ], $this->headersA());
+
+        // Now BOQ V2 is created and approved!
+        $revBoqRes = $this->postJson("/api/boqs/{$chain['boq']->id}/create-revision", [], $this->headersA());
+        $boqId2 = $revBoqRes->json('data.id');
+        $this->postJson("/api/boqs/{$boqId2}/approve", [], $this->headersA());
+
+        // Attempting to approve Estimation V1 (which references stale BOQ V1) must fail with 422!
+        $failApprove = $this->postJson("/api/estimations/{$estId1}/approve", [], $this->headersA());
+        $failApprove->assertStatus(422);
+        $failApprove->assertJsonValidationErrors(['boq_id']);
+
+        // Attempting to create a new estimation directly from the stale BOQ V1 must also fail with 422!
+        $failStore = $this->postJson('/api/estimations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'boq_id' => $chain['boq']->id,
+        ], $this->headersA());
+        $failStore->assertStatus(422);
+        $failStore->assertJsonValidationErrors(['boq_id']);
+    }
+
+    /**
+     * Test 17: Comprehensive zero-cost and incomplete estimation rules.
+     */
+    public function test_zero_cost_and_incomplete_estimation_rules(): void
+    {
+        $chain = $this->makeApprovedBoq('T17');
+
+        $createRes = $this->postJson('/api/estimations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'boq_id' => $chain['boq']->id,
+        ], $this->headersA());
+        $estId = $createRes->json('data.id');
+
+        // Case 1: No cost rows anywhere -> 422
+        $resNoCosts = $this->postJson("/api/estimations/{$estId}/approve", [], $this->headersA());
+        $resNoCosts->assertStatus(422);
+
+        // Case 2: Partial pricing (Item 1 costed, Item 2 has NO cost rows and NO note) -> 422
+        $this->putJson("/api/estimations/{$estId}", [
+            'items' => [
+                ['boq_item_id' => $chain['boqItem1']->id, 'costs' => [['cost_type' => 'material', 'cost_rate' => 50.00]]],
+            ],
+        ], $this->headersA());
+
+        $resPartial = $this->postJson("/api/estimations/{$estId}/approve", [], $this->headersA());
+        $resPartial->assertStatus(422);
+        $resPartial->assertJsonValidationErrors(['items']);
+
+        // Case 3: All items have cost rows, but all rates are 0.00 with NO notes/justification -> 422
+        $this->putJson("/api/estimations/{$estId}", [
+            'items' => [
+                ['boq_item_id' => $chain['boqItem1']->id, 'costs' => [['cost_type' => 'material', 'cost_rate' => 0.00]]],
+                ['boq_item_id' => $chain['boqItem2']->id, 'costs' => [['cost_type' => 'labor', 'cost_rate' => 0.00]]],
+            ],
+        ], $this->headersA());
+
+        $resZeroNoNotes = $this->postJson("/api/estimations/{$estId}/approve", [], $this->headersA());
+        $resZeroNoNotes->assertStatus(422);
+        $resZeroNoNotes->assertJsonValidationErrors(['total_cost']);
+
+        // Case 4: Legitimate zero-cost estimation with explicit justification in notes -> 200 Approved
+        $this->putJson("/api/estimations/{$estId}", [
+            'notes' => 'المواد والعمالة مقدمة بالكامل من العميل مجاناً وفق البند رقم 4 من العقد',
+            'items' => [
+                ['boq_item_id' => $chain['boqItem1']->id, 'costs' => [['cost_type' => 'material', 'cost_rate' => 0.00]]],
+                ['boq_item_id' => $chain['boqItem2']->id, 'costs' => [['cost_type' => 'labor', 'cost_rate' => 0.00]]],
+            ],
+        ], $this->headersA());
+
+        $resZeroJustified = $this->postJson("/api/estimations/{$estId}/approve", [], $this->headersA());
+        $resZeroJustified->assertStatus(200);
+        $resZeroJustified->assertJsonPath('data.status', 'Approved');
+        $this->assertEquals(0.00, (float) $resZeroJustified->json('data.total_cost'));
+    }
+
+    /**
+     * Test 18: Estimation numbering uniqueness and collision-free sequence.
+     */
+    public function test_estimation_numbering_uniqueness_and_collision_free_sequence(): void
+    {
+        $chain = $this->makeApprovedBoq('T18');
+
+        $res1 = $this->postJson('/api/estimations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'boq_id' => $chain['boq']->id,
+        ], $this->headersA());
+        $res1->assertStatus(200);
+        $number1 = $res1->json('data.estimation_number');
+
+        $res2 = $this->postJson('/api/estimations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'boq_id' => $chain['boq']->id,
+        ], $this->headersA());
+        $res2->assertStatus(200);
+        $number2 = $res2->json('data.estimation_number');
+
+        // Document numbers must be strictly unique
+        $this->assertNotEquals($number1, $number2);
+        $this->assertStringContainsString("EST-OPP{$chain['opportunity']->id}-001", $number1);
+        $this->assertStringContainsString("EST-OPP{$chain['opportunity']->id}-002", $number2);
+
+        // Database unique constraint prevents inserting a duplicate estimation_number
+        $this->expectException(\Illuminate\Database\QueryException::class);
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+        Estimation::create([
+            'opportunity_id' => $chain['opportunity']->id,
+            'boq_id' => $chain['boq']->id,
+            'estimation_number' => $number1, // duplicate!
+            'version' => 3,
+            'status' => 'Draft',
+        ]);
     }
 }

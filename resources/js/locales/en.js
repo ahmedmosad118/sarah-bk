@@ -646,6 +646,7 @@ export default {
     submitReviewAction: 'Submit for Review',
     approveAction: 'Approve Measurement',
     createRevisionAction: 'Create New Revision',
+    scopesLink: 'Scope of Work & Specs',
     printSheetAction: 'Print Takeoff Sheet',
     submitReviewConfirm: 'Are you sure you want to submit this measurement for engineering review?',
     approveConfirm: 'Confirm measurement approval? This will lock edits and establish it as the authoritative quantity source.',

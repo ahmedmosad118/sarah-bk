@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Core\CRUD\CRUDController;
-use App\Core\CRUD\InputMaker;
 use App\Core\CRUD\Field;
+use App\Core\CRUD\InputMaker;
+use App\Models\Boq;
 use App\Models\Estimation;
 use App\Models\EstimationItem;
 use App\Models\Opportunity;
 use App\Models\Quotation;
-use App\Models\QuotationItem;
+use App\Models\Setting;
 use App\Services\QuotationCalculationService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -34,12 +35,12 @@ class QuotationController extends CRUDController
     ];
 
     protected string $defaultSortBy = 'id';
+
     protected string $defaultSortOrder = 'desc';
 
     public function __construct(
         protected QuotationCalculationService $calculationService
-    ) {
-    }
+    ) {}
 
     protected function inputMaker(): InputMaker
     {
@@ -132,7 +133,7 @@ class QuotationController extends CRUDController
         $rawSortBy = (string) $request->input('sort_by', $this->defaultSortBy);
         $allowedSorts = [
             'id', 'quotation_number', 'version', 'status', 'client_status',
-            'subtotal', 'grand_total', 'valid_until', 'created_at'
+            'subtotal', 'grand_total', 'valid_until', 'created_at',
         ];
         $sortBy = in_array($rawSortBy, $allowedSorts, true) ? $rawSortBy : $this->defaultSortBy;
 
@@ -238,7 +239,7 @@ class QuotationController extends CRUDController
         $estimation = Estimation::with('items')->findOrFail($validated['estimation_id']);
 
         // Rule 1: Estimation MUST be Approved
-        if (!$estimation->isApproved()) {
+        if (! $estimation->isApproved()) {
             throw ValidationException::withMessages([
                 'estimation_id' => [__('messages.quotation_requires_approved_estimation')],
             ]);
@@ -251,6 +252,35 @@ class QuotationController extends CRUDController
             ]);
         }
 
+        // Rule 2.1: Check if Estimation is stale (superseded by a newer approved Estimation)
+        $hasNewerApprovedEst = Estimation::where('opportunity_id', $opportunity->id)
+            ->where('status', 'Approved')
+            ->where('id', '!=', $estimation->id)
+            ->where(function ($q) use ($estimation) {
+                $q->where('version', '>', $estimation->version)
+                    ->orWhere('id', '>', $estimation->id);
+            })
+            ->exists();
+
+        if ($hasNewerApprovedEst) {
+            throw ValidationException::withMessages([
+                'estimation_id' => [__('messages.cannot_quote_stale_estimation')],
+            ]);
+        }
+
+        // Rule 2.2: Check if Estimation's source BOQ has been superseded by a newer approved BOQ
+        $latestApprovedBoq = Boq::where('opportunity_id', $opportunity->id)
+            ->where('status', 'Approved')
+            ->orderBy('version', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($latestApprovedBoq && (int) $latestApprovedBoq->id !== (int) $estimation->boq_id) {
+            throw ValidationException::withMessages([
+                'estimation_id' => [__('messages.cannot_quote_stale_estimation_boq')],
+            ]);
+        }
+
         // Rule 3: Estimation must have items
         if ($estimation->items->isEmpty()) {
             throw ValidationException::withMessages([
@@ -260,9 +290,9 @@ class QuotationController extends CRUDController
 
         // Rule 4: Cross-estimation integrity check for item overrides
         $validEstimationItemIds = $estimation->items->pluck('id')->all();
-        if (!empty($validated['items'])) {
+        if (! empty($validated['items'])) {
             foreach ($validated['items'] as $index => $itemInput) {
-                if (!in_array((int) $itemInput['estimation_item_id'], $validEstimationItemIds, true)) {
+                if (! in_array((int) $itemInput['estimation_item_id'], $validEstimationItemIds, true)) {
                     throw ValidationException::withMessages([
                         "items.{$index}.estimation_item_id" => [__('messages.estimation_item_mismatch')],
                     ]);
@@ -278,14 +308,15 @@ class QuotationController extends CRUDController
             $discountAmount = isset($validated['discount_amount']) ? (float) $validated['discount_amount'] : 0.00;
 
             if (isset($validated['discount_value'])) {
-                if ($discountType === 'percentage' && !isset($validated['discount_rate'])) {
+                if ($discountType === 'percentage' && ! isset($validated['discount_rate'])) {
                     $discountRate = (float) $validated['discount_value'];
-                } elseif ($discountType === 'fixed' && !isset($validated['discount_amount'])) {
+                } elseif ($discountType === 'fixed' && ! isset($validated['discount_amount'])) {
                     $discountAmount = (float) $validated['discount_value'];
                 }
             }
 
-            $taxRate = isset($validated['tax_rate']) ? (float) $validated['tax_rate'] : 15.00;
+            $defaultTaxRate = (float) Setting::get('vat_rate', 14.00);
+            $taxRate = isset($validated['tax_rate']) ? (float) $validated['tax_rate'] : $defaultTaxRate;
 
             $quotation = Quotation::create([
                 'opportunity_id' => $opportunity->id,
@@ -368,7 +399,7 @@ class QuotationController extends CRUDController
 
         $estimation = Estimation::with('opportunity')->findOrFail($estimationId);
 
-        if (!$estimation->isApproved()) {
+        if (! $estimation->isApproved()) {
             throw ValidationException::withMessages([
                 'estimation_id' => [__('messages.quotation_requires_approved_estimation')],
             ]);
@@ -389,7 +420,7 @@ class QuotationController extends CRUDController
         $quotation = Quotation::with('items')->findOrFail($id);
 
         // Immutability Guard: Cannot update Approved or Superseded Quotations directly
-        if (!$quotation->canBeEdited()) {
+        if (! $quotation->canBeEdited()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.cannot_edit_approved_quotation')],
             ]);
@@ -415,10 +446,10 @@ class QuotationController extends CRUDController
         ]);
 
         // Cross-estimation integrity check for item updates
-        if (!empty($validated['items'])) {
+        if (! empty($validated['items'])) {
             $validEstimationItemIds = EstimationItem::where('estimation_id', $quotation->estimation_id)->pluck('id')->all();
             foreach ($validated['items'] as $index => $itemInput) {
-                if (isset($itemInput['estimation_item_id']) && !in_array((int) $itemInput['estimation_item_id'], $validEstimationItemIds, true)) {
+                if (isset($itemInput['estimation_item_id']) && ! in_array((int) $itemInput['estimation_item_id'], $validEstimationItemIds, true)) {
                     throw ValidationException::withMessages([
                         "items.{$index}.estimation_item_id" => [__('messages.estimation_item_mismatch')],
                     ]);
@@ -436,15 +467,15 @@ class QuotationController extends CRUDController
             ]);
 
             // Update item-level markup overrides if supplied
-            if (!empty($validated['items'])) {
+            if (! empty($validated['items'])) {
                 $itemsById = $quotation->items->keyBy('id');
                 $itemsByEstItemId = $quotation->items->keyBy('estimation_item_id');
 
                 foreach ($validated['items'] as $itemInput) {
                     $item = null;
-                    if (!empty($itemInput['id'])) {
+                    if (! empty($itemInput['id'])) {
                         $item = $itemsById->get($itemInput['id']);
-                    } elseif (!empty($itemInput['estimation_item_id'])) {
+                    } elseif (! empty($itemInput['estimation_item_id'])) {
                         $item = $itemsByEstItemId->get($itemInput['estimation_item_id']);
                     }
 
@@ -469,9 +500,9 @@ class QuotationController extends CRUDController
             $discountAmount = isset($validated['discount_amount']) ? (float) $validated['discount_amount'] : (float) $quotation->discount_amount;
 
             if (isset($validated['discount_value'])) {
-                if ($discountType === 'percentage' && !isset($validated['discount_rate'])) {
+                if ($discountType === 'percentage' && ! isset($validated['discount_rate'])) {
                     $discountRate = (float) $validated['discount_value'];
-                } elseif ($discountType === 'fixed' && !isset($validated['discount_amount'])) {
+                } elseif ($discountType === 'fixed' && ! isset($validated['discount_amount'])) {
                     $discountAmount = (float) $validated['discount_value'];
                 }
             }
@@ -518,7 +549,7 @@ class QuotationController extends CRUDController
         }
 
         foreach ($quotations as $quotation) {
-            if (!$quotation->canBeEdited()) {
+            if (! $quotation->canBeEdited()) {
                 throw ValidationException::withMessages([
                     'status' => [__('messages.cannot_delete_approved_quotation')],
                 ]);
@@ -548,7 +579,7 @@ class QuotationController extends CRUDController
 
         $quotation = Quotation::findOrFail($id);
 
-        if (!$quotation->isDraft()) {
+        if (! $quotation->isDraft()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.quotation_only_draft_can_submit_review')],
             ]);
@@ -576,11 +607,56 @@ class QuotationController extends CRUDController
     {
         $this->authorizePermission('quotations.approve');
 
-        $quotation = Quotation::findOrFail($id);
+        $quotation = Quotation::with(['estimation.boq'])->findOrFail($id);
 
-        if (!$quotation->canBeApproved()) {
+        if (! $quotation->canBeApproved()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.quotation_already_approved_or_invalid')],
+            ]);
+        }
+
+        // 1. Source Estimation must still be Approved
+        if (! $quotation->estimation || ! $quotation->estimation->isApproved()) {
+            throw ValidationException::withMessages([
+                'estimation_id' => [__('messages.cannot_approve_stale_source_estimation')],
+            ]);
+        }
+
+        // 2. Source Estimation must not be superseded by a newer approved Estimation
+        $latestApprovedEst = Estimation::where('opportunity_id', $quotation->opportunity_id)
+            ->where('status', 'Approved')
+            ->orderBy('version', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($latestApprovedEst && (int) $latestApprovedEst->id !== (int) $quotation->estimation_id) {
+            throw ValidationException::withMessages([
+                'estimation_id' => [__('messages.cannot_approve_stale_source_estimation')],
+            ]);
+        }
+
+        // 3. Source Estimation's BOQ must not be superseded by a newer approved BOQ
+        $latestApprovedBoq = Boq::where('opportunity_id', $quotation->opportunity_id)
+            ->where('status', 'Approved')
+            ->orderBy('version', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($latestApprovedBoq && (int) $latestApprovedBoq->id !== (int) $quotation->estimation->boq_id) {
+            throw ValidationException::withMessages([
+                'estimation_id' => [__('messages.cannot_approve_stale_source_estimation')],
+            ]);
+        }
+
+        // 4. Cannot approve an older quotation revision if a newer approved quotation exists
+        $hasNewerApprovedQuot = Quotation::where('opportunity_id', $quotation->opportunity_id)
+            ->where('status', 'Approved')
+            ->where('version', '>', $quotation->version)
+            ->exists();
+
+        if ($hasNewerApprovedQuot) {
+            throw ValidationException::withMessages([
+                'version' => [__('messages.cannot_approve_superseded_quotation')],
             ]);
         }
 
@@ -616,7 +692,7 @@ class QuotationController extends CRUDController
 
         $quotation = Quotation::with('items')->findOrFail($id);
 
-        if (!$quotation->isApproved()) {
+        if (! $quotation->isApproved()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.quotation_revision_only_from_approved')],
             ]);
@@ -701,7 +777,7 @@ class QuotationController extends CRUDController
 
         $quotation = Quotation::findOrFail($id);
 
-        if (!$quotation->isApproved()) {
+        if (! $quotation->isApproved()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.cannot_send_unapproved_quotation')],
             ]);
@@ -736,7 +812,7 @@ class QuotationController extends CRUDController
         $decision = $request->input('response') ?? $request->input('client_status');
         $notes = $request->input('notes') ?? $request->input('client_response_notes');
 
-        if (!in_array($decision, ['Accepted', 'Rejected'], true)) {
+        if (! in_array($decision, ['Accepted', 'Rejected'], true)) {
             throw ValidationException::withMessages([
                 'response' => ['The response field must be Accepted or Rejected.'],
             ]);
@@ -744,7 +820,7 @@ class QuotationController extends CRUDController
 
         $quotation = Quotation::findOrFail($id);
 
-        if (!$quotation->isSent()) {
+        if (! $quotation->isSent()) {
             throw ValidationException::withMessages([
                 'client_status' => [__('messages.cannot_record_response_for_unsent_quotation')],
             ]);
@@ -773,8 +849,15 @@ class QuotationController extends CRUDController
 
     protected function generateQuotationNumber(int $opportunityId): string
     {
-        $count = Quotation::where('opportunity_id', $opportunityId)->count() + 1;
-        $pad = str_pad((string) $count, 3, '0', STR_PAD_LEFT);
-        return "QT-OPP{$opportunityId}-{$pad}";
+        $existingCount = Quotation::where('opportunity_id', $opportunityId)->count();
+        $seq = $existingCount + 1;
+        $candidate = "QT-OPP{$opportunityId}-".str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
+
+        while (Quotation::where('quotation_number', $candidate)->exists()) {
+            $seq++;
+            $candidate = "QT-OPP{$opportunityId}-".str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
+        }
+
+        return $candidate;
     }
 }

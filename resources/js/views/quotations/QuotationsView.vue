@@ -244,13 +244,13 @@
 
               <!-- Actions -->
               <td class="py-3.5 px-4 text-center">
-                <div class="flex items-center justify-center gap-1">
+                <div class="flex items-center justify-center gap-1.5">
                   <!-- View Details Modal -->
                   <button
                     type="button"
                     @click="openDetailsModal(item.id)"
                     class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white transition-colors cursor-pointer"
-                    title="عرض تفاصيل العرض"
+                    :title="$t('common.view')"
                   >
                     <Eye class="h-4 w-4" />
                   </button>
@@ -259,89 +259,96 @@
                   <button
                     type="button"
                     @click="printQuotation(item.id)"
-                    class="p-1.5 rounded-lg hover:bg-gray-100 text-teal-600 hover:text-teal-800 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                    title="طباعة عرض السعر للعميل"
+                    class="p-1.5 rounded-lg hover:bg-teal-50 text-teal-600 hover:text-teal-800 dark:hover:bg-teal-950/40 transition-colors cursor-pointer"
+                    :title="$t('quotation.print') || 'طباعة'"
                   >
                     <Printer class="h-4 w-4" />
                   </button>
 
-                  <!-- Edit -->
+                  <!-- Direct Action: Edit if Draft/Under Review -->
                   <button
                     v-if="canBeEdited(item)"
                     type="button"
                     @click="openEditModal(item.id)"
-                    class="p-1.5 rounded-lg hover:bg-gray-100 text-blue-600 hover:text-blue-800 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                    title="تعديل الهامش والشروط"
+                    class="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 hover:text-blue-800 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
+                    :title="$t('common.edit')"
                   >
                     <Pencil class="h-4 w-4" />
                   </button>
 
-                  <!-- Workflow Actions -->
-                  <!-- Submit Review -->
-                  <button
-                    v-if="item.status === 'Draft'"
-                    type="button"
-                    @click="submitReview(item)"
-                    class="p-1.5 rounded-lg hover:bg-amber-50 text-amber-600 hover:text-amber-800 dark:hover:bg-amber-950/30 transition-colors cursor-pointer"
-                    title="تقديم للمراجعة الداخلية"
+                  <!-- Secondary Workflow Actions Dropdown -->
+                  <RowActionDropdown
+                    v-if="item.status === 'Draft' || (canApprove && (item.status === 'Draft' || item.status === 'Under Review')) || (canSend && item.status === 'Approved' && item.client_status === 'Not Sent') || (item.client_status === 'Sent') || (canCreate && item.status === 'Approved') || (canDelete && canBeEdited(item))"
+                    v-slot="{ close }"
                   >
-                    <Send class="h-4 w-4" />
-                  </button>
+                    <div class="py-1">
+                      <!-- Submit Review -->
+                      <button
+                        v-if="item.status === 'Draft'"
+                        type="button"
+                        @click="close(); submitReview(item)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40 transition-colors"
+                      >
+                        <Send class="h-3.5 w-3.5 text-amber-500" />
+                        <span>{{ $t('quotation.submitReview') || 'تقديم للمراجعة الداخلية' }}</span>
+                      </button>
 
-                  <!-- Approve Internally -->
-                  <button
-                    v-if="canApprove && (item.status === 'Draft' || item.status === 'Under Review')"
-                    type="button"
-                    @click="approveQuotation(item)"
-                    class="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-600 hover:text-emerald-800 dark:hover:bg-emerald-950/30 transition-colors cursor-pointer"
-                    title="اعتماد العرض داخلياً"
-                  >
-                    <ShieldCheck class="h-4 w-4" />
-                  </button>
+                      <!-- Approve Internally -->
+                      <button
+                        v-if="canApprove && (item.status === 'Draft' || item.status === 'Under Review')"
+                        type="button"
+                        @click="close(); approveQuotation(item)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40 transition-colors"
+                      >
+                        <ShieldCheck class="h-3.5 w-3.5 text-emerald-500" />
+                        <span>{{ $t('quotation.approve') || 'اعتماد العرض داخلياً' }}</span>
+                      </button>
 
-                  <!-- Mark Sent to Client -->
-                  <button
-                    v-if="canSend && item.status === 'Approved' && item.client_status === 'Not Sent'"
-                    type="button"
-                    @click="markSent(item)"
-                    class="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 hover:text-blue-800 dark:hover:bg-blue-950/30 transition-colors cursor-pointer"
-                    title="تسجيل إرسال العرض للعميل"
-                  >
-                    <SendHorizonal class="h-4 w-4" />
-                  </button>
+                      <!-- Mark Sent to Client -->
+                      <button
+                        v-if="canSend && item.status === 'Approved' && item.client_status === 'Not Sent'"
+                        type="button"
+                        @click="close(); markSent(item)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40 transition-colors"
+                      >
+                        <SendHorizonal class="h-3.5 w-3.5 text-blue-500" />
+                        <span>{{ $t('quotation.markSent') || 'تسجيل إرسال العرض للعميل' }}</span>
+                      </button>
 
-                  <!-- Record Client Response -->
-                  <button
-                    v-if="item.client_status === 'Sent'"
-                    type="button"
-                    @click="openResponseModal(item)"
-                    class="p-1.5 rounded-lg hover:bg-purple-50 text-purple-600 hover:text-purple-800 dark:hover:bg-purple-950/30 transition-colors cursor-pointer"
-                    title="تسجيل رد العميل (قبول / رفض)"
-                  >
-                    <CheckCircle2 class="h-4 w-4" />
-                  </button>
+                      <!-- Record Client Response -->
+                      <button
+                        v-if="item.client_status === 'Sent'"
+                        type="button"
+                        @click="close(); openResponseModal(item)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/40 transition-colors"
+                      >
+                        <CheckCircle2 class="h-3.5 w-3.5 text-purple-500" />
+                        <span>{{ $t('quotation.recordResponse') || 'تسجيل رد العميل (قبول / رفض)' }}</span>
+                      </button>
 
-                  <!-- Create Revision -->
-                  <button
-                    v-if="canCreate && item.status === 'Approved'"
-                    type="button"
-                    @click="createRevision(item)"
-                    class="p-1.5 rounded-lg hover:bg-purple-50 text-purple-600 hover:text-purple-800 dark:hover:bg-purple-950/30 transition-colors cursor-pointer"
-                    title="إنشاء مراجعة جديدة"
-                  >
-                    <History class="h-4 w-4" />
-                  </button>
+                      <!-- Create Revision -->
+                      <button
+                        v-if="canCreate && item.status === 'Approved'"
+                        type="button"
+                        @click="close(); createRevision(item)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/40 transition-colors"
+                      >
+                        <History class="h-3.5 w-3.5 text-purple-500" />
+                        <span>{{ $t('quotation.createRevision') || 'إنشاء مراجعة جديدة' }}</span>
+                      </button>
 
-                  <!-- Delete -->
-                  <button
-                    v-if="canDelete && canBeEdited(item)"
-                    type="button"
-                    @click="confirmDelete(item)"
-                    class="p-1.5 rounded-lg hover:bg-rose-50 text-rose-500 hover:text-rose-700 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-                    title="حذف المسودة"
-                  >
-                    <Trash2 class="h-4 w-4" />
-                  </button>
+                      <!-- Delete -->
+                      <button
+                        v-if="canDelete && canBeEdited(item)"
+                        type="button"
+                        @click="close(); confirmDelete(item)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors"
+                      >
+                        <Trash2 class="h-3.5 w-3.5 text-rose-500" />
+                        <span>{{ $t('common.delete') }}</span>
+                      </button>
+                    </div>
+                  </RowActionDropdown>
                 </div>
               </td>
             </tr>
@@ -919,6 +926,7 @@ import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
 import alertService from '../../services/alert';
 import { useAuthStore } from '../../stores/auth';
+import RowActionDropdown from '../../components/common/RowActionDropdown.vue';
 import {
   Receipt,
   Plus,

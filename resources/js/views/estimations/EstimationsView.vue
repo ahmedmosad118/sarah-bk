@@ -31,21 +31,19 @@
     </div>
 
     <!-- Costing Governance Notice -->
-    <div class="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 dark:border-blue-900/30 dark:bg-blue-950/20 flex items-start gap-3.5">
-      <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 mt-0.5">
-        <ShieldCheck class="h-4 w-4" />
+    <div v-if="showGovernanceNotice" class="rounded-xl border border-blue-100 bg-blue-50/50 p-3.5 dark:border-blue-900/30 dark:bg-blue-950/20 flex items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2.5 text-blue-950 dark:text-blue-200">
+        <ShieldCheck class="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+        <span class="font-bold">دراسة التكاليف مبنية حصرًا على جدول كميات معتمد (Approved BOQ)، والكميات والوحدات محمية هندسياً.</span>
       </div>
-      <div class="flex-1 text-xs">
-        <div class="flex items-center gap-2">
-          <span class="font-black text-blue-950 dark:text-blue-200">محددات دراسة التكلفة (Estimation Governance):</span>
-          <span class="rounded-md bg-blue-200/60 px-2 py-0.5 text-[10px] font-black text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-            Internal Direct & Overhead Costing
-          </span>
-        </div>
-        <p class="text-blue-800/80 dark:text-blue-300/80 mt-1 leading-relaxed">
-          دراسة التكاليف المباشرة والعمومية مبنية حصرًا على <strong>جدول كميات معتمد (Approved BOQ)</strong>، والكميات والوحدات للقراءة فقط. لا تشتمل هذه المرحلة على هوامش ربح أو أسعار بيع للعميل (مسؤولية مرحلة Quotation اللاحقة).
-        </p>
-      </div>
+      <button
+        type="button"
+        @click="showGovernanceNotice = false"
+        class="text-blue-400 hover:text-blue-700 p-1 rounded-md transition-colors cursor-pointer"
+        :title="$t('common.close')"
+      >
+        <X class="h-3.5 w-3.5" />
+      </button>
     </div>
 
     <!-- Active Opportunity Filter Banner -->
@@ -272,8 +270,8 @@
               </td>
 
               <td class="px-4 py-3 text-end">
-                <div class="flex items-center justify-end gap-1">
-                  <!-- View Details -->
+                <div class="flex items-center justify-end gap-1.5">
+                  <!-- Primary Action: View Details -->
                   <button
                     @click="openDetailsModal(row.id)"
                     class="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-300 cursor-pointer"
@@ -282,7 +280,7 @@
                     <Eye class="h-4 w-4" />
                   </button>
 
-                  <!-- Cost / Edit Lines (Draft / Under Review) -->
+                  <!-- Direct Action: Cost / Edit Lines if Draft / Under Review -->
                   <button
                     v-if="canEdit && canBeEdited(row)"
                     @click="openEditModal(row.id)"
@@ -292,45 +290,53 @@
                     <Calculator class="h-4 w-4" />
                   </button>
 
-                  <!-- Submit for Review (Draft) -->
-                  <button
-                    v-if="canEdit && row.status === 'Draft'"
-                    @click="submitReview(row)"
-                    class="rounded-lg p-1.5 text-amber-500 hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/40 cursor-pointer"
-                    :title="$t('estimation.submitReview')"
+                  <!-- Secondary Actions Dropdown -->
+                  <RowActionDropdown
+                    v-if="(canEdit && row.status === 'Draft') || (canApprove && canBeApproved(row)) || (canCreate && row.status === 'Approved') || (canDelete && canBeEdited(row))"
+                    v-slot="{ close }"
                   >
-                    <Send class="h-4 w-4" />
-                  </button>
+                    <div class="py-1">
+                      <!-- Submit for Review (Draft) -->
+                      <button
+                        v-if="canEdit && row.status === 'Draft'"
+                        @click="close(); submitReview(row)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40 transition-colors"
+                      >
+                        <Send class="h-3.5 w-3.5 text-amber-500" />
+                        <span>{{ $t('estimation.submitReview') }}</span>
+                      </button>
 
-                  <!-- Approve (Draft / Under Review) -->
-                  <button
-                    v-if="canApprove && canBeApproved(row)"
-                    @click="approveEstimation(row)"
-                    class="rounded-lg p-1.5 text-emerald-500 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/40 cursor-pointer"
-                    :title="$t('estimation.approve')"
-                  >
-                    <CheckCircle2 class="h-4 w-4" />
-                  </button>
+                      <!-- Approve (Draft / Under Review) -->
+                      <button
+                        v-if="canApprove && canBeApproved(row)"
+                        @click="close(); approveEstimation(row)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40 transition-colors"
+                      >
+                        <CheckCircle2 class="h-3.5 w-3.5 text-emerald-500" />
+                        <span>{{ $t('estimation.approve') }}</span>
+                      </button>
 
-                  <!-- Create Revision (Approved only) -->
-                  <button
-                    v-if="canCreate && row.status === 'Approved'"
-                    @click="createRevision(row)"
-                    class="rounded-lg p-1.5 text-purple-500 hover:bg-purple-50 hover:text-purple-700 dark:hover:bg-purple-950/40 cursor-pointer"
-                    :title="$t('estimation.createRevision')"
-                  >
-                    <History class="h-4 w-4" />
-                  </button>
+                      <!-- Create Revision (Approved only) -->
+                      <button
+                        v-if="canCreate && row.status === 'Approved'"
+                        @click="close(); createRevision(row)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/40 transition-colors"
+                      >
+                        <History class="h-3.5 w-3.5 text-purple-500" />
+                        <span>{{ $t('estimation.createRevision') }}</span>
+                      </button>
 
-                  <!-- Delete (Draft / Under Review) -->
-                  <button
-                    v-if="canDelete && canBeEdited(row)"
-                    @click="confirmDelete(row)"
-                    class="rounded-lg p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40 cursor-pointer"
-                    :title="$t('common.delete')"
-                  >
-                    <Trash2 class="h-4 w-4" />
-                  </button>
+                      <!-- Delete (Draft / Under Review) -->
+                      <button
+                        v-if="canDelete && canBeEdited(row)"
+                        @click="close(); confirmDelete(row)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors"
+                      >
+                        <Trash2 class="h-3.5 w-3.5 text-rose-500" />
+                        <span>{{ $t('common.delete') }}</span>
+                      </button>
+                    </div>
+                  </RowActionDropdown>
                 </div>
               </td>
             </tr>
@@ -962,6 +968,7 @@ import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
 import alertService from '../../services/alert';
 import { useAuthStore } from '../../stores/auth';
+import RowActionDropdown from '../../components/common/RowActionDropdown.vue';
 import {
   Calculator,
   ShieldCheck,
@@ -987,6 +994,7 @@ const { t } = useI18n();
 const authStore = useAuthStore();
 
 // State
+const showGovernanceNotice = ref(true);
 const loading = ref(false);
 const saving = ref(false);
 const loadingBoqs = ref(false);

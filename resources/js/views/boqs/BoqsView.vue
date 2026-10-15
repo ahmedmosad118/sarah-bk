@@ -195,49 +195,61 @@
               <td class="py-3 px-4 text-center font-mono font-bold">{{ boq.items?.length || 0 }}</td>
               <td class="py-3 px-4">
                 <div class="flex items-center justify-center gap-1.5">
-                  <button @click="openDetailsModal(boq)" title="عرض" class="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer">
+                  <button
+                    @click="openDetailsModal(boq)"
+                    :title="$t('common.view')"
+                    class="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer"
+                  >
                     <Eye class="h-4 w-4" />
                   </button>
                   <button
                     v-if="canEdit(boq)"
                     @click="openEditModal(boq)"
-                    title="تعديل"
+                    :title="$t('common.edit')"
                     class="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer"
                   >
                     <Pencil class="h-4 w-4" />
                   </button>
-                  <button
-                    v-if="canEdit(boq)"
-                    @click="submitForReview(boq)"
-                    title="تقديم للمراجعة"
-                    class="p-1.5 rounded-lg text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 cursor-pointer"
-                  >
-                    <SendHorizonal class="h-4 w-4" />
-                  </button>
-                  <button
-                    v-if="canApprove && (boq.status === 'Draft' || boq.status === 'Under Review')"
-                    @click="approveBoq(boq)"
-                    title="اعتماد"
-                    class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
-                  >
-                    <CheckCircle2 class="h-4 w-4" />
-                  </button>
-                  <button
-                    v-if="canCreate && boq.status === 'Approved'"
-                    @click="createRevision(boq)"
-                    title="إصدار جديد"
-                    class="p-1.5 rounded-lg text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 cursor-pointer"
-                  >
-                    <GitBranchPlus class="h-4 w-4" />
-                  </button>
-                  <button
-                    v-if="canDelete(boq)"
-                    @click="deleteBoq(boq)"
-                    title="حذف"
-                    class="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                  >
-                    <Trash2 class="h-4 w-4" />
-                  </button>
+
+                  <RowActionDropdown v-if="canEdit(boq) || (canApprove && (boq.status === 'Draft' || boq.status === 'Under Review')) || (canCreate && boq.status === 'Approved') || canDelete(boq)" v-slot="{ close }">
+                    <div class="py-1">
+                      <button
+                        v-if="canEdit(boq)"
+                        @click="close(); submitForReview(boq)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/40 transition-colors"
+                      >
+                        <SendHorizonal class="h-3.5 w-3.5" />
+                        <span>{{ $t('boq.submitReviewAction') || 'تقديم للمراجعة' }}</span>
+                      </button>
+
+                      <button
+                        v-if="canApprove && (boq.status === 'Draft' || boq.status === 'Under Review')"
+                        @click="close(); approveBoq(boq)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40 transition-colors"
+                      >
+                        <CheckCircle2 class="h-3.5 w-3.5" />
+                        <span>{{ $t('boq.approveAction') || 'اعتماد' }}</span>
+                      </button>
+
+                      <button
+                        v-if="canCreate && boq.status === 'Approved'"
+                        @click="close(); createRevision(boq)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-teal-700 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-950/40 transition-colors"
+                      >
+                        <GitBranchPlus class="h-3.5 w-3.5" />
+                        <span>{{ $t('boq.createRevisionAction') || 'إصدار جديد' }}</span>
+                      </button>
+
+                      <button
+                        v-if="canDelete(boq)"
+                        @click="close(); deleteBoq(boq)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors"
+                      >
+                        <Trash2 class="h-3.5 w-3.5" />
+                        <span>{{ $t('common.delete') }}</span>
+                      </button>
+                    </div>
+                  </RowActionDropdown>
                 </div>
               </td>
             </tr>
@@ -609,6 +621,7 @@ import alertService from '../../services/alert';
 import { useNotificationStore } from '../../stores/notification';
 import { useAuthStore } from '../../stores/auth';
 import SearchableSelect from '../../components/common/SearchableSelect.vue';
+import RowActionDropdown from '../../components/common/RowActionDropdown.vue';
 import {
   TableProperties,
   Plus,

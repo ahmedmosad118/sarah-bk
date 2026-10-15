@@ -867,4 +867,93 @@ class QuotationManagementTest extends TestCase
         $this->assertEquals('contract', $chainRes5->json('data.next_action.stage'));
         $this->assertEquals('ready_for_contract', $chainRes5->json('data.next_action.key'));
     }
+
+    /**
+     * Scenario 13: Quotation re-verifies source estimation at approval time.
+     * Approving quotation linked to a superseded estimation must fail with 422.
+     */
+    public function test_scenario_13_quotation_reverifies_source_estimation_at_approval_time(): void
+    {
+        $chain = $this->makeApprovedEstimation('S13');
+
+        // Create Quotation Q1 linked to Estimation V1
+        $qtRes = $this->postJson('/api/quotations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'estimation_id' => $chain['estimation']->id,
+        ], $this->headersA());
+        $quotationId = $qtRes->json('data.id');
+
+        // Now Estimation V2 is created and approved!
+        $revEstRes = $this->postJson("/api/estimations/{$chain['estimation']->id}/create-revision", [], $this->headersA());
+        $estId2 = $revEstRes->json('data.id');
+        $this->postJson("/api/estimations/{$estId2}/approve", [], $this->headersA());
+
+        // Attempting to approve Quotation Q1 (linked to stale Estimation V1) must fail with 422!
+        $failApprove = $this->postJson("/api/quotations/{$quotationId}/approve", [], $this->headersA());
+        $failApprove->assertStatus(422);
+        $failApprove->assertJsonValidationErrors(['estimation_id']);
+
+        // Attempting to create a new quotation directly from stale Estimation V1 must also fail with 422!
+        $failCreate = $this->postJson('/api/quotations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'estimation_id' => $chain['estimation']->id,
+        ], $this->headersA());
+        $failCreate->assertStatus(422);
+        $failCreate->assertJsonValidationErrors(['estimation_id']);
+    }
+
+    /**
+     * Scenario 14: Default tax_rate inherits from Tenant Setting (vat_rate).
+     */
+    public function test_scenario_14_default_tax_rate_inherits_from_tenant_setting(): void
+    {
+        $chain = $this->makeApprovedEstimation('S14');
+
+        // Create quotation without specifying tax_rate
+        $res = $this->postJson('/api/quotations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'estimation_id' => $chain['estimation']->id,
+        ], $this->headersA());
+        $res->assertStatus(200);
+
+        // In DefaultSettingsSeeder, vat_rate defaults to 14.00 (Egypt rate)
+        $this->assertEquals(14.00, (float) $res->json('data.tax_rate'));
+    }
+
+    /**
+     * Scenario 15: Quotation numbering sequence and uniqueness constraint.
+     */
+    public function test_scenario_15_quotation_numbering_uniqueness(): void
+    {
+        $chain = $this->makeApprovedEstimation('S15');
+
+        $res1 = $this->postJson('/api/quotations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'estimation_id' => $chain['estimation']->id,
+        ], $this->headersA());
+        $res1->assertStatus(200);
+        $number1 = $res1->json('data.quotation_number');
+
+        $res2 = $this->postJson('/api/quotations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'estimation_id' => $chain['estimation']->id,
+        ], $this->headersA());
+        $res2->assertStatus(200);
+        $number2 = $res2->json('data.quotation_number');
+
+        $this->assertNotEquals($number1, $number2);
+        $this->assertStringContainsString("QT-OPP{$chain['opportunity']->id}-001", $number1);
+        $this->assertStringContainsString("QT-OPP{$chain['opportunity']->id}-002", $number2);
+
+        // Database unique constraint prevents duplicate quotation_number
+        $this->expectException(\Illuminate\Database\QueryException::class);
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+        Quotation::create([
+            'opportunity_id' => $chain['opportunity']->id,
+            'estimation_id' => $chain['estimation']->id,
+            'quotation_number' => $number1, // duplicate!
+            'version' => 3,
+            'status' => 'Draft',
+        ]);
+    }
 }

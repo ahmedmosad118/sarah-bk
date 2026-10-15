@@ -277,7 +277,7 @@
     <!-- Sidebar Footer -->
     <div class="mt-auto p-4 border-t border-gray-100 dark:border-gray-800 text-center">
       <p class="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-        صَرْح ERP • v1.0
+        {{ isRtl ? 'صَرْح ERP' : 'SARH ERP' }} • v1.0
       </p>
     </div>
   </aside>

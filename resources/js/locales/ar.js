@@ -646,6 +646,7 @@ export default {
     submitReviewAction: 'تقديم للمراجعة الفنية',
     approveAction: 'اعتماد المقايسة رسمياً',
     createRevisionAction: 'إنشاء إصدار جديد (Revision)',
+    scopesLink: 'نطاق الأعمال والمواصفات (Scope of Work)',
     printSheetAction: 'طباعة وتصدير شيت الحصر',
     submitReviewConfirm: 'هل أنت متأكد من تقديم هذه المقايسة للمراجعة الفنية؟',
     approveConfirm: 'تأكيد اعتماد المقايسة الهندسية؟ سيتم قفل التعديل عليها واعتبارها المصدر الرسمي لحصر الكميات.',

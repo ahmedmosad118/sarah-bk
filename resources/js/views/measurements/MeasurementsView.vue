@@ -308,8 +308,8 @@
                 <div class="flex items-center justify-end gap-1.5">
                   <button
                     @click="openDetailsModal(item)"
-                    title="عرض ومراجعة التفاصيل"
-                    class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                    :title="$t('common.view')"
+                    class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200 transition-colors cursor-pointer"
                   >
                     <Eye class="h-4 w-4" />
                   </button>
@@ -317,38 +317,70 @@
                   <button
                     v-if="item.status === 'Draft' || item.status === 'Under Review'"
                     @click="openEditModal(item)"
-                    title="تعديل المقايسة"
-                    class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                    :title="$t('common.edit')"
+                    class="rounded-lg p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
                   >
                     <Edit3 class="h-4 w-4" />
                   </button>
 
-                  <router-link
-                    v-if="item.status === 'Approved'"
-                    :to="`/scopes?opportunity_id=${item.opportunity_id}`"
-                    title="نطاق الأعمال والمواصفات (Scope of Work)"
-                    class="rounded-lg p-1.5 text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors"
+                  <!-- Secondary Actions Dropdown -->
+                  <RowActionDropdown
+                    v-if="item.status === 'Draft' || ((item.status === 'Draft' || item.status === 'Under Review') && canApprove) || (item.status === 'Approved') || item.status !== 'Approved'"
+                    v-slot="{ close }"
                   >
-                    <ClipboardList class="h-4 w-4" />
-                  </router-link>
+                    <div class="py-1">
+                      <!-- Submit for Review (Draft only) -->
+                      <button
+                        v-if="item.status === 'Draft'"
+                        @click="close(); submitForReview(item)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
+                      >
+                        <Send class="h-3.5 w-3.5" />
+                        <span>{{ $t('measurements.submitReviewAction') || 'تقديم للمراجعة الفنية' }}</span>
+                      </button>
 
-                  <button
-                    v-if="item.status === 'Approved'"
-                    @click="createRevision(item)"
-                    title="إنشاء إصدار جديد (Revision)"
-                    class="rounded-lg p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
-                  >
-                    <GitBranch class="h-4 w-4" />
-                  </button>
+                      <!-- Approve (Draft or Under Review) -->
+                      <button
+                        v-if="(item.status === 'Draft' || item.status === 'Under Review') && canApprove"
+                        @click="close(); approveMeasurement(item)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
+                      >
+                        <Check class="h-3.5 w-3.5" />
+                        <span>{{ $t('measurements.approveAction') || 'اعتماد المقايسة الهندسية' }}</span>
+                      </button>
 
-                  <button
-                    v-if="item.status !== 'Approved'"
-                    @click="deleteMeasurement(item)"
-                    title="حذف"
-                    class="rounded-lg p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
-                  >
-                    <Trash2 class="h-4 w-4" />
-                  </button>
+                      <!-- Link to Scope of Work (Approved only) -->
+                      <router-link
+                        v-if="item.status === 'Approved'"
+                        :to="`/scopes?opportunity_id=${item.opportunity_id}`"
+                        @click="close()"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-teal-700 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-950/40 transition-colors"
+                      >
+                        <ClipboardList class="h-3.5 w-3.5" />
+                        <span>{{ $t('measurements.scopesLink') || 'نطاق الأعمال والمواصفات' }}</span>
+                      </router-link>
+
+                      <!-- Create Revision (Approved only) -->
+                      <button
+                        v-if="item.status === 'Approved' && canCreate"
+                        @click="close(); createRevision(item)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer"
+                      >
+                        <GitBranch class="h-3.5 w-3.5" />
+                        <span>{{ $t('measurements.createRevisionAction') || 'إنشاء إصدار جديد' }}</span>
+                      </button>
+
+                      <!-- Delete (Draft, Under Review, Superseded) -->
+                      <button
+                        v-if="item.status !== 'Approved'"
+                        @click="close(); deleteMeasurement(item)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                      >
+                        <Trash2 class="h-3.5 w-3.5 text-rose-500" />
+                        <span>{{ $t('common.delete') }}</span>
+                      </button>
+                    </div>
+                  </RowActionDropdown>
                 </div>
               </td>
             </tr>
@@ -1185,6 +1217,7 @@ import {
   ClipboardList,
 } from 'lucide-vue-next';
 import SearchableSelect from '../../components/common/SearchableSelect.vue';
+import RowActionDropdown from '../../components/common/RowActionDropdown.vue';
 
 const { t } = useI18n();
 const route = useRoute();

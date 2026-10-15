@@ -291,11 +291,11 @@
               </td>
 
               <td class="py-3.5 px-4 text-left">
-                <div class="flex items-center justify-end gap-1">
+                <div class="flex items-center justify-end gap-1.5">
                   <!-- View Details Button -->
                   <button
                     @click="openDetailsModal(item)"
-                    title="عرض وتدقيق نطاق العمل"
+                    :title="$t('common.view')"
                     class="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white transition-colors cursor-pointer"
                   >
                     <Eye class="h-4 w-4" />
@@ -304,61 +304,69 @@
                   <!-- Quick Print Button -->
                   <button
                     @click="quickPrintScope(item)"
-                    title="طباعة وثيقة نطاق الأعمال الرسمية"
+                    :title="$t('scopes.printScope') || 'طباعة وثيقة نطاق الأعمال'"
                     class="rounded-lg p-1.5 text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors cursor-pointer"
                   >
                     <Printer class="h-4 w-4" />
                   </button>
 
-                  <!-- Edit (Draft or Under Review only) -->
+                  <!-- Direct Action: Edit (Draft or Under Review only) -->
                   <button
                     v-if="item.status === 'Draft' || item.status === 'Under Review'"
                     @click="openEditModal(item)"
-                    title="تعديل النطاق والمواصفات"
+                    :title="$t('common.edit')"
                     class="rounded-lg p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
                   >
                     <Edit3 class="h-4 w-4" />
                   </button>
 
-                  <!-- Submit for Review (Draft only) -->
-                  <button
-                    v-if="item.status === 'Draft'"
-                    @click="submitForReview(item)"
-                    title="تقديم للمراجعة الفنية"
-                    class="rounded-lg p-1.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
+                  <!-- Secondary Actions Dropdown -->
+                  <RowActionDropdown
+                    v-if="item.status === 'Draft' || ((item.status === 'Draft' || item.status === 'Under Review') && canApprove) || (item.status === 'Approved' && canCreate) || (item.status === 'Draft' || item.status === 'Under Review')"
+                    v-slot="{ close }"
                   >
-                    <Send class="h-4 w-4" />
-                  </button>
+                    <div class="py-1">
+                      <!-- Submit for Review (Draft only) -->
+                      <button
+                        v-if="item.status === 'Draft'"
+                        @click="close(); submitForReview(item)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40 transition-colors"
+                      >
+                        <Send class="h-3.5 w-3.5" />
+                        <span>{{ $t('scopes.submitReviewAction') || 'تقديم للمراجعة الفنية' }}</span>
+                      </button>
 
-                  <!-- Approve (Draft or Under Review) -->
-                  <button
-                    v-if="(item.status === 'Draft' || item.status === 'Under Review') && canApprove"
-                    @click="approveScope(item)"
-                    title="اعتماد نطاق العمل رسمياً"
-                    class="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
-                  >
-                    <Check class="h-4 w-4" />
-                  </button>
+                      <!-- Approve (Draft or Under Review) -->
+                      <button
+                        v-if="(item.status === 'Draft' || item.status === 'Under Review') && canApprove"
+                        @click="close(); approveScope(item)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40 transition-colors"
+                      >
+                        <Check class="h-3.5 w-3.5" />
+                        <span>{{ $t('scopes.approveAction') || 'اعتماد نطاق العمل' }}</span>
+                      </button>
 
-                  <!-- Create Revision (Approved only) -->
-                  <button
-                    v-if="item.status === 'Approved' && canCreate"
-                    @click="createRevision(item)"
-                    title="إنشاء إصدار جديد (Revision)"
-                    class="rounded-lg p-1.5 text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors cursor-pointer"
-                  >
-                    <GitBranch class="h-4 w-4" />
-                  </button>
+                      <!-- Create Revision (Approved only) -->
+                      <button
+                        v-if="item.status === 'Approved' && canCreate"
+                        @click="close(); createRevision(item)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-teal-700 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-950/40 transition-colors"
+                      >
+                        <GitBranch class="h-3.5 w-3.5" />
+                        <span>{{ $t('scopes.createRevisionAction') || 'إنشاء إصدار جديد' }}</span>
+                      </button>
 
-                  <!-- Delete (Draft or Under Review only) -->
-                  <button
-                    v-if="item.status === 'Draft' || item.status === 'Under Review'"
-                    @click="deleteScope(item)"
-                    title="حذف النطاق"
-                    class="rounded-lg p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                  >
-                    <Trash2 class="h-4 w-4" />
-                  </button>
+                      <!-- Delete (Draft or Under Review only) -->
+                      <button
+                        v-if="item.status === 'Draft' || item.status === 'Under Review'"
+                        @click="close(); deleteScope(item)"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors"
+                      >
+                        <Trash2 class="h-3.5 w-3.5 text-rose-500" />
+                        <span>{{ $t('common.delete') }}</span>
+                      </button>
+                    </div>
+                  </RowActionDropdown>
                 </div>
               </td>
             </tr>
@@ -1201,6 +1209,7 @@ import {
   ShieldCheck,
 } from 'lucide-vue-next';
 import SearchableSelect from '../../components/common/SearchableSelect.vue';
+import RowActionDropdown from '../../components/common/RowActionDropdown.vue';
 
 const { t } = useI18n();
 const route = useRoute();
