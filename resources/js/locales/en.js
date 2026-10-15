@@ -40,6 +40,7 @@ export default {
     main: 'Main',
     dashboard: 'Dashboard',
     commercial: 'Clients & Sales',
+    technicalOperations: 'Technical & Costing',
     customers: 'Customer Management',
     leads: 'Lead Management',
     opportunities: 'Opportunity Management',

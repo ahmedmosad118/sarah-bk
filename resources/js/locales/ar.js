@@ -40,6 +40,7 @@ export default {
     main: 'الرئيسية',
     dashboard: 'لوحة التحكم',
     commercial: 'العملاء والمبيعات',
+    technicalOperations: 'العمليات الفنية والتسعير',
     customers: 'إدارة العملاء',
     leads: 'العملاء المحتملين (Leads)',
     opportunities: 'الفرص التجارية (Opportunities)',

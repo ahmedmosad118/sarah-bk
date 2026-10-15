@@ -79,45 +79,45 @@
     </div>
 
     <!-- KPI Stats Cards -->
-    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-      <div class="rounded-2xl border border-gray-100 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
+      <div class="rounded-2xl border border-gray-100 bg-white p-3.5 sm:p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400">{{ $t('estimation.totalEstimations') }}</span>
-          <Layers class="h-4 w-4 text-gray-400" />
+          <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate">{{ $t('estimation.totalEstimations') }}</span>
+          <Layers class="h-4 w-4 text-gray-400 shrink-0" />
         </div>
-        <p class="mt-2 text-xl font-black text-gray-900 dark:text-white">{{ stats.total }}</p>
+        <p class="mt-2 text-lg sm:text-xl font-black text-gray-900 dark:text-white">{{ stats.total }}</p>
       </div>
 
-      <div class="rounded-2xl border border-gray-100 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+      <div class="rounded-2xl border border-gray-100 bg-white p-3.5 sm:p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400">{{ $t('estimation.draftEstimations') }}</span>
-          <FileText class="h-4 w-4 text-slate-400" />
+          <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400 truncate">{{ $t('estimation.draftEstimations') }}</span>
+          <FileText class="h-4 w-4 text-slate-400 shrink-0" />
         </div>
-        <p class="mt-2 text-xl font-black text-slate-700 dark:text-slate-300">{{ stats.draft }}</p>
+        <p class="mt-2 text-lg sm:text-xl font-black text-slate-700 dark:text-slate-300">{{ stats.draft }}</p>
       </div>
 
-      <div class="rounded-2xl border border-amber-100 bg-amber-50/40 p-4 shadow-xs dark:border-amber-900/30 dark:bg-amber-950/20">
+      <div class="rounded-2xl border border-amber-100 bg-amber-50/40 p-3.5 sm:p-4 shadow-xs dark:border-amber-900/30 dark:bg-amber-950/20">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-amber-700 dark:text-amber-300">{{ $t('estimation.underReviewEstimations') }}</span>
-          <Clock class="h-4 w-4 text-amber-500" />
+          <span class="text-[11px] font-bold text-amber-700 dark:text-amber-300 truncate">{{ $t('estimation.underReviewEstimations') }}</span>
+          <Clock class="h-4 w-4 text-amber-500 shrink-0" />
         </div>
-        <p class="mt-2 text-xl font-black text-amber-800 dark:text-amber-200">{{ stats.under_review }}</p>
+        <p class="mt-2 text-lg sm:text-xl font-black text-amber-800 dark:text-amber-200">{{ stats.under_review }}</p>
       </div>
 
-      <div class="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 shadow-xs dark:border-emerald-900/30 dark:bg-emerald-950/20">
+      <div class="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3.5 sm:p-4 shadow-xs dark:border-emerald-900/30 dark:bg-emerald-950/20">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">{{ $t('estimation.approvedEstimations') }}</span>
-          <CheckCircle2 class="h-4 w-4 text-emerald-500" />
+          <span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 truncate">{{ $t('estimation.approvedEstimations') }}</span>
+          <CheckCircle2 class="h-4 w-4 text-emerald-500 shrink-0" />
         </div>
-        <p class="mt-2 text-xl font-black text-emerald-800 dark:text-emerald-200">{{ stats.approved }}</p>
+        <p class="mt-2 text-lg sm:text-xl font-black text-emerald-800 dark:text-emerald-200">{{ stats.approved }}</p>
       </div>
 
-      <div class="rounded-2xl border border-blue-100 bg-blue-50/40 p-4 shadow-xs dark:border-blue-900/30 dark:bg-blue-950/20 col-span-2 sm:col-span-1">
+      <div class="rounded-2xl border border-blue-100 bg-blue-50/40 p-3.5 sm:p-4 shadow-xs dark:border-blue-900/30 dark:bg-blue-950/20 col-span-2 sm:col-span-1">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-blue-700 dark:text-blue-300">{{ $t('estimation.totalEstimatedCost') }}</span>
-          <Coins class="h-4 w-4 text-blue-500" />
+          <span class="text-[11px] font-bold text-blue-700 dark:text-blue-300 truncate">{{ $t('estimation.totalEstimatedCost') }}</span>
+          <Coins class="h-4 w-4 text-blue-500 shrink-0" />
         </div>
-        <p class="mt-2 text-lg font-black text-blue-900 dark:text-blue-100 truncate">
+        <p class="mt-2 text-base sm:text-lg font-black text-blue-900 dark:text-blue-100 truncate">
           {{ formatCurrency(stats.total_estimated_cost) }}
         </p>
       </div>
@@ -960,8 +960,8 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+import alertService from '../../services/alert';
 import { useAuthStore } from '../../stores/auth';
-import Swal from 'sweetalert2';
 import {
   Calculator,
   ShieldCheck,
@@ -1182,11 +1182,9 @@ const submitCreate = async () => {
     if (res.data?.success) {
       showCreateModal.value = false;
       await fetchData();
-      Swal.fire({
-        icon: 'success',
+      alertService.showSuccess({
         title: 'تم إنشاء دراسة التسعير بنجاح',
         text: 'يمكنك الآن إدخال أسعار التكلفة للبنود المباشرة والمصاريف العمومية.',
-        confirmButtonColor: '#00C896',
       });
       // Immediately open costing editor for the new estimation
       if (res.data.data?.id) {
@@ -1195,7 +1193,7 @@ const submitCreate = async () => {
     }
   } catch (err) {
     const msg = err.response?.data?.message || 'حدث خطأ أثناء إنشاء دراسة التسعير';
-    Swal.fire({ icon: 'error', title: 'خطأ', text: msg });
+    alertService.showError({ title: 'خطأ', text: msg });
   } finally {
     saving.value = false;
   }
@@ -1301,15 +1299,13 @@ const submitUpdate = async () => {
     if (res.data?.success) {
       showEditModal.value = false;
       await fetchData();
-      Swal.fire({
-        icon: 'success',
+      alertService.showSuccess({
         title: 'تم حفظ دراسة التكلفة بنجاح',
-        confirmButtonColor: '#00C896',
       });
     }
   } catch (err) {
     const msg = err.response?.data?.message || 'حدث خطأ أثناء حفظ التعديلات';
-    Swal.fire({ icon: 'error', title: 'خطأ', text: msg });
+    alertService.showError({ title: 'خطأ', text: msg });
   } finally {
     saving.value = false;
   }
@@ -1331,104 +1327,95 @@ const openDetailsModal = async (id) => {
 
 // Approval Workflow
 const submitReview = async (row) => {
-  const result = await Swal.fire({
+  const confirmed = await alertService.confirmAction({
     title: 'تقديم دراسة التسعير للمراجعة؟',
     text: `سيتم تحويل دراسة التسعير رقم #${row.estimation_number} إلى حالة "قيد المراجعة" للتدقيق الفني والإداري.`,
     icon: 'question',
-    showCancelButton: true,
-    confirmButtonColor: '#F59E0B',
     confirmButtonText: 'نعم، تقديم للمراجعة',
     cancelButtonText: 'إلغاء',
   });
 
-  if (result.isConfirmed) {
+  if (confirmed) {
     try {
       const res = await api.post(`/estimations/${row.id}/submit-review`);
       if (res.data?.success) {
         await fetchData();
-        Swal.fire({ icon: 'success', title: 'تم تقديم الدراسة للمراجعة بنجاح', confirmButtonColor: '#00C896' });
+        alertService.showSuccess({ title: 'تم تقديم الدراسة للمراجعة بنجاح' });
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'تعذر تقديم الدراسة للمراجعة';
-      Swal.fire({ icon: 'error', title: 'خطأ', text: msg });
+      alertService.showError({ title: 'خطأ', text: msg });
     }
   }
 };
 
 const approveEstimation = async (row) => {
-  const result = await Swal.fire({
+  const confirmed = await alertService.confirmAction({
     title: 'اعتماد دراسة التسعير والتكلفة؟',
     text: `سيتم قفل تعديل دراسة التسعير #${row.estimation_number} واعتمادها رسمياً كالأساس المالي لعرض السعر (Quotation).`,
     icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#00C896',
     confirmButtonText: 'نعم، اعتماد رسمي',
     cancelButtonText: 'إلغاء',
   });
 
-  if (result.isConfirmed) {
+  if (confirmed) {
     try {
       const res = await api.post(`/estimations/${row.id}/approve`);
       if (res.data?.success) {
         await fetchData();
-        Swal.fire({ icon: 'success', title: 'تم اعتماد دراسة التسعير بنجاح', confirmButtonColor: '#00C896' });
+        alertService.showSuccess({ title: 'تم اعتماد دراسة التسعير بنجاح' });
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'تعذر اعتماد دراسة التسعير';
-      Swal.fire({ icon: 'error', title: 'خطأ', text: msg });
+      alertService.showError({ title: 'خطأ', text: msg });
     }
   }
 };
 
 const createRevision = async (row) => {
-  const result = await Swal.fire({
+  const confirmed = await alertService.confirmAction({
     title: 'إنشاء مراجعة تسعير جديدة؟',
     text: `سيتم إنشاء مسودة جديدة V${row.version + 1} مستنسخة من النسخة المعتمدة الحالية للتعديل عليها دون المساس بالتاريخ السابق.`,
     icon: 'info',
-    showCancelButton: true,
-    confirmButtonColor: '#8B5CF6',
     confirmButtonText: 'إنشاء مراجعة',
     cancelButtonText: 'إلغاء',
   });
 
-  if (result.isConfirmed) {
+  if (confirmed) {
     try {
       const res = await api.post(`/estimations/${row.id}/create-revision`);
       if (res.data?.success) {
         await fetchData();
-        Swal.fire({ icon: 'success', title: 'تم إنشاء المراجعة بنجاح', confirmButtonColor: '#00C896' });
+        alertService.showSuccess({ title: 'تم إنشاء المراجعة بنجاح' });
         if (res.data.data?.id) {
           openEditModal(res.data.data.id);
         }
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'تعذر إنشاء المراجعة';
-      Swal.fire({ icon: 'error', title: 'خطأ', text: msg });
+      alertService.showError({ title: 'خطأ', text: msg });
     }
   }
 };
 
 const confirmDelete = async (row) => {
-  const result = await Swal.fire({
+  const confirmed = await alertService.confirmDelete({
     title: 'حذف دراسة التسعير؟',
-    text: `هل أنت متأكد من حذف مسودة دراسة التسعير رقم #${row.estimation_number}؟`,
-    icon: 'error',
-    showCancelButton: true,
-    confirmButtonColor: '#EF4444',
+    text: `هل أنت متأكد من حذف مسودة دراسة التسعير رقم #${row.estimation_number}؟ لا يمكن التراجع عن هذا الإجراء.`,
     confirmButtonText: 'نعم، حذف',
     cancelButtonText: 'إلغاء',
   });
 
-  if (result.isConfirmed) {
+  if (confirmed) {
     try {
       const res = await api.delete(`/estimations/${row.id}`);
       if (res.data?.success) {
         await fetchData();
-        Swal.fire({ icon: 'success', title: 'تم الحذف بنجاح', confirmButtonColor: '#00C896' });
+        alertService.showSuccess({ title: 'تم الحذف بنجاح' });
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'تعذر حذف الدراسة';
-      Swal.fire({ icon: 'error', title: 'خطأ', text: msg });
+      alertService.showError({ title: 'خطأ', text: msg });
     }
   }
 };

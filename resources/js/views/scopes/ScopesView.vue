@@ -79,45 +79,45 @@
     </div>
 
     <!-- KPI Stats Cards -->
-    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-      <div class="rounded-2xl border border-gray-100 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
+      <div class="rounded-2xl border border-gray-100 bg-white p-3.5 sm:p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400">{{ $t('scopes.totalScopes') }}</span>
-          <Layers class="h-4 w-4 text-gray-400" />
+          <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate">{{ $t('scopes.totalScopes') }}</span>
+          <Layers class="h-4 w-4 text-gray-400 shrink-0" />
         </div>
-        <p class="mt-2 text-xl font-black text-gray-900 dark:text-white">{{ stats.total }}</p>
+        <p class="mt-2 text-lg sm:text-xl font-black text-gray-900 dark:text-white">{{ stats.total }}</p>
       </div>
 
-      <div class="rounded-2xl border border-gray-100 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+      <div class="rounded-2xl border border-gray-100 bg-white p-3.5 sm:p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400">{{ $t('scopes.draftScopes') }}</span>
-          <FileText class="h-4 w-4 text-slate-400" />
+          <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400 truncate">{{ $t('scopes.draftScopes') }}</span>
+          <FileText class="h-4 w-4 text-slate-400 shrink-0" />
         </div>
-        <p class="mt-2 text-xl font-black text-slate-700 dark:text-slate-300">{{ stats.draft }}</p>
+        <p class="mt-2 text-lg sm:text-xl font-black text-slate-700 dark:text-slate-300">{{ stats.draft }}</p>
       </div>
 
-      <div class="rounded-2xl border border-amber-100 bg-amber-50/40 p-4 shadow-xs dark:border-amber-900/30 dark:bg-amber-950/20">
+      <div class="rounded-2xl border border-amber-100 bg-amber-50/40 p-3.5 sm:p-4 shadow-xs dark:border-amber-900/30 dark:bg-amber-950/20">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-amber-700 dark:text-amber-400">{{ $t('scopes.underReviewScopes') }}</span>
-          <Clock class="h-4 w-4 text-amber-500" />
+          <span class="text-[11px] font-bold text-amber-700 dark:text-amber-400 truncate">{{ $t('scopes.underReviewScopes') }}</span>
+          <Clock class="h-4 w-4 text-amber-500 shrink-0" />
         </div>
-        <p class="mt-2 text-xl font-black text-amber-900 dark:text-amber-300">{{ stats.under_review }}</p>
+        <p class="mt-2 text-lg sm:text-xl font-black text-amber-900 dark:text-amber-300">{{ stats.under_review }}</p>
       </div>
 
-      <div class="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 shadow-xs dark:border-emerald-900/30 dark:bg-emerald-950/20">
+      <div class="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3.5 sm:p-4 shadow-xs dark:border-emerald-900/30 dark:bg-emerald-950/20">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">{{ $t('scopes.approvedScopes') }}</span>
-          <CheckCircle2 class="h-4 w-4 text-emerald-500" />
+          <span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 truncate">{{ $t('scopes.approvedScopes') }}</span>
+          <CheckCircle2 class="h-4 w-4 text-emerald-500 shrink-0" />
         </div>
-        <p class="mt-2 text-xl font-black text-emerald-900 dark:text-emerald-300">{{ stats.approved }}</p>
+        <p class="mt-2 text-lg sm:text-xl font-black text-emerald-900 dark:text-emerald-300">{{ stats.approved }}</p>
       </div>
 
-      <div class="col-span-2 sm:col-span-1 rounded-2xl border border-teal-100 bg-teal-50/40 p-4 shadow-xs dark:border-teal-900/30 dark:bg-teal-950/20">
+      <div class="col-span-2 sm:col-span-1 rounded-2xl border border-teal-100 bg-teal-50/40 p-3.5 sm:p-4 shadow-xs dark:border-teal-900/30 dark:bg-teal-950/20">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-teal-700 dark:text-teal-400">{{ $t('scopes.totalItemsCount') }}</span>
-          <CheckSquare class="h-4 w-4 text-teal-500" />
+          <span class="text-[11px] font-bold text-teal-700 dark:text-teal-400 truncate">{{ $t('scopes.totalItemsCount') }}</span>
+          <CheckSquare class="h-4 w-4 text-teal-500 shrink-0" />
         </div>
-        <p class="mt-2 text-xl font-black text-teal-900 dark:text-teal-300">{{ stats.total_items_count }}</p>
+        <p class="mt-2 text-lg sm:text-xl font-black text-teal-900 dark:text-teal-300">{{ stats.total_items_count }}</p>
       </div>
     </div>
 
@@ -1565,7 +1565,14 @@ const saveScope = async () => {
 };
 
 const submitForReview = async (scope) => {
-  if (!confirm(t('scopes.submitReviewConfirm'))) return;
+  const confirmed = await alertService.confirmAction({
+    title: t('scopes.submitReviewAction') || 'تقديم نطاق الأعمال للمراجعة',
+    text: t('scopes.submitReviewConfirm'),
+    icon: 'question',
+    confirmButtonText: t('common.confirm') || 'تأكيد',
+    cancelButtonText: t('common.cancel') || 'إلغاء',
+  });
+  if (!confirmed) return;
 
   try {
     const res = await api.post(`/scopes/${scope.id}/submit-review`);
@@ -1587,7 +1594,14 @@ const submitForReview = async (scope) => {
 };
 
 const approveScope = async (scope) => {
-  if (!confirm(t('scopes.approveConfirm'))) return;
+  const confirmed = await alertService.confirmAction({
+    title: t('scopes.approveAction') || 'اعتماد نطاق الأعمال',
+    text: t('scopes.approveConfirm'),
+    icon: 'warning',
+    confirmButtonText: t('common.confirm') || 'نعم، اعتماد',
+    cancelButtonText: t('common.cancel') || 'إلغاء',
+  });
+  if (!confirmed) return;
 
   try {
     const res = await api.post(`/scopes/${scope.id}/approve`);
@@ -1609,7 +1623,14 @@ const approveScope = async (scope) => {
 };
 
 const createRevision = async (scope) => {
-  if (!confirm(t('scopes.createRevisionConfirm'))) return;
+  const confirmed = await alertService.confirmAction({
+    title: t('scopes.createRevisionAction') || 'إنشاء إصدار جديد',
+    text: t('scopes.createRevisionConfirm'),
+    icon: 'info',
+    confirmButtonText: t('scopes.createRevisionAction') || 'إنشاء إصدار جديد',
+    cancelButtonText: t('common.cancel') || 'إلغاء',
+  });
+  if (!confirmed) return;
 
   try {
     const res = await api.post(`/scopes/${scope.id}/create-revision`);
@@ -1631,7 +1652,13 @@ const createRevision = async (scope) => {
 };
 
 const deleteScope = async (scope) => {
-  if (!confirm(t('common.confirmDelete'))) return;
+  const confirmed = await alertService.confirmDelete({
+    title: t('common.confirmDelete'),
+    text: t('common.confirmDeleteMessage') || 'هل أنت متأكد من رغبتك في حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء.',
+    confirmButtonText: t('common.delete') || 'نعم، احذف',
+    cancelButtonText: t('common.cancel') || 'إلغاء',
+  });
+  if (!confirmed) return;
 
   try {
     const res = await api.delete(`/scopes/${scope.id}`);

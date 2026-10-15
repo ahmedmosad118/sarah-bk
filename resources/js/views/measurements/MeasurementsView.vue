@@ -79,45 +79,45 @@
     </div>
 
     <!-- KPI Stats Cards -->
-    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-      <div class="rounded-2xl border border-gray-100 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
+      <div class="rounded-2xl border border-gray-100 bg-white p-3.5 sm:p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400">{{ $t('measurements.totalMeasurements') }}</span>
-          <Layers class="h-4 w-4 text-gray-400" />
+          <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate">{{ $t('measurements.totalMeasurements') }}</span>
+          <Layers class="h-4 w-4 text-gray-400 shrink-0" />
         </div>
-        <p class="mt-2 text-xl font-black text-gray-900 dark:text-white">{{ stats.total }}</p>
+        <p class="mt-2 text-lg sm:text-xl font-black text-gray-900 dark:text-white">{{ stats.total }}</p>
       </div>
 
-      <div class="rounded-2xl border border-gray-100 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+      <div class="rounded-2xl border border-gray-100 bg-white p-3.5 sm:p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400">{{ $t('measurements.draftMeasurements') }}</span>
-          <FileText class="h-4 w-4 text-slate-400" />
+          <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400 truncate">{{ $t('measurements.draftMeasurements') }}</span>
+          <FileText class="h-4 w-4 text-slate-400 shrink-0" />
         </div>
-        <p class="mt-2 text-xl font-black text-slate-700 dark:text-slate-300">{{ stats.draft }}</p>
+        <p class="mt-2 text-lg sm:text-xl font-black text-slate-700 dark:text-slate-300">{{ stats.draft }}</p>
       </div>
 
-      <div class="rounded-2xl border border-amber-100 bg-amber-50/40 p-4 shadow-xs dark:border-amber-900/30 dark:bg-amber-950/20">
+      <div class="rounded-2xl border border-amber-100 bg-amber-50/40 p-3.5 sm:p-4 shadow-xs dark:border-amber-900/30 dark:bg-amber-950/20">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-amber-700 dark:text-amber-400">{{ $t('measurements.underReviewMeasurements') }}</span>
-          <Clock class="h-4 w-4 text-amber-500" />
+          <span class="text-[11px] font-bold text-amber-700 dark:text-amber-400 truncate">{{ $t('measurements.underReviewMeasurements') }}</span>
+          <Clock class="h-4 w-4 text-amber-500 shrink-0" />
         </div>
-        <p class="mt-2 text-xl font-black text-amber-900 dark:text-amber-300">{{ stats.under_review }}</p>
+        <p class="mt-2 text-lg sm:text-xl font-black text-amber-900 dark:text-amber-300">{{ stats.under_review }}</p>
       </div>
 
-      <div class="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 shadow-xs dark:border-emerald-900/30 dark:bg-emerald-950/20">
+      <div class="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3.5 sm:p-4 shadow-xs dark:border-emerald-900/30 dark:bg-emerald-950/20">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">{{ $t('measurements.approvedMeasurements') }}</span>
-          <CheckCircle2 class="h-4 w-4 text-emerald-500" />
+          <span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 truncate">{{ $t('measurements.approvedMeasurements') }}</span>
+          <CheckCircle2 class="h-4 w-4 text-emerald-500 shrink-0" />
         </div>
-        <p class="mt-2 text-xl font-black text-emerald-900 dark:text-emerald-300">{{ stats.approved }}</p>
+        <p class="mt-2 text-lg sm:text-xl font-black text-emerald-900 dark:text-emerald-300">{{ stats.approved }}</p>
       </div>
 
-      <div class="col-span-2 sm:col-span-1 rounded-2xl border border-teal-100 bg-teal-50/40 p-4 shadow-xs dark:border-teal-900/30 dark:bg-teal-950/20">
+      <div class="col-span-2 sm:col-span-1 rounded-2xl border border-teal-100 bg-teal-50/40 p-3.5 sm:p-4 shadow-xs dark:border-teal-900/30 dark:bg-teal-950/20">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold text-teal-700 dark:text-teal-400">{{ $t('measurements.totalApprovedArea') }}</span>
-          <Ruler class="h-4 w-4 text-teal-500" />
+          <span class="text-[11px] font-bold text-teal-700 dark:text-teal-400 truncate">{{ $t('measurements.totalApprovedArea') }}</span>
+          <Ruler class="h-4 w-4 text-teal-500 shrink-0" />
         </div>
-        <p class="mt-2 text-xl font-black text-teal-900 dark:text-teal-300">
+        <p class="mt-2 text-lg sm:text-xl font-black text-teal-900 dark:text-teal-300 truncate">
           {{ Number(stats.total_measured_area || 0).toLocaleString() }} <span class="text-xs font-normal">م²</span>
         </p>
       </div>
