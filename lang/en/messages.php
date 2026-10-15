@@ -132,6 +132,27 @@ return [
     'estimation_boq_item_mismatch' => 'A selected BOQ item does not belong to the BOQ linked with this estimation.',
     'only_approved_estimation_can_be_revised' => 'A revision can only be created from an Approved cost estimation. Draft / Under Review estimations are edited directly.',
 
+    // Quotation (Phase 11)
+    'quotation_created_success' => 'Quotation created successfully',
+    'quotation_updated_success' => 'Quotation and selling rates updated successfully',
+    'quotation_deleted_success' => 'Quotation deleted successfully',
+    'quotation_submitted_for_review_success' => 'Quotation submitted for internal review successfully',
+    'quotation_approved_success' => 'Quotation approved internally successfully',
+    'quotation_revision_created_success' => 'Quotation revision created successfully',
+    'quotation_marked_sent_success' => 'Quotation marked as sent to client successfully',
+    'quotation_response_recorded_success' => 'Client response recorded successfully',
+    'quotation_requires_approved_estimation' => 'Quotation requires a link to an Approved Cost Estimation.',
+    'estimation_opportunity_mismatch' => 'The selected cost estimation does not belong to the same commercial opportunity.',
+    'cannot_quote_empty_estimation' => 'The selected cost estimation is empty and contains no lines.',
+    'estimation_item_mismatch' => 'A selected estimation item does not belong to the estimation linked with this quotation.',
+    'cannot_edit_approved_quotation' => 'Approved quotations cannot be edited directly. Please create a revision instead.',
+    'cannot_delete_approved_quotation' => 'Approved quotations cannot be deleted to preserve commercial offer history.',
+    'quotation_only_draft_can_submit_review' => 'Only draft quotations can be submitted for review.',
+    'quotation_already_approved_or_invalid' => 'Quotation cannot be approved in its current state or is already approved.',
+    'quotation_revision_only_from_approved' => 'A revision can only be created from an internally Approved quotation.',
+    'cannot_send_unapproved_quotation' => 'Cannot dispatch quotation to client before internal approval.',
+    'cannot_record_response_for_unsent_quotation' => 'Cannot record client response before the quotation has been officially sent.',
+
     // Settings
     'settings_saved_success' => 'Settings saved successfully',
 ];

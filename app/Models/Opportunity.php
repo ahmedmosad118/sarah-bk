@@ -177,6 +177,30 @@ class Opportunity extends Model implements HasMedia
     }
 
     /**
+     * Quotations prepared for this commercial opportunity.
+     */
+    public function quotations(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Quotation::class);
+    }
+
+    /**
+     * Authoritative approved quotation for this commercial opportunity.
+     */
+    public function approvedQuotation(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Quotation::class)->where('status', 'Approved');
+    }
+
+    /**
+     * Latest quotation revision for this commercial opportunity.
+     */
+    public function latestQuotation(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Quotation::class)->latestOfMany('version');
+    }
+
+    /**
      * Scope query by stage.
      */
     public function scopeStage(Builder $query, string $stage): Builder

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\JobTitleController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\MeasurementController;
 use App\Http\Controllers\Api\OpportunityController;
+use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\ScopeController;
 use App\Http\Controllers\Api\SettingController;
@@ -180,6 +181,22 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/{id}/submit-review', [EstimationController::class, 'submitReview']);
         Route::post('/{id}/approve', [EstimationController::class, 'approve']);
         Route::post('/{id}/create-revision', [EstimationController::class, 'createRevision']);
+    });
+
+    // Quotation Management (Phase 11 - Customer Selling Price Offer)
+    Route::prefix('quotations')->group(function () {
+        Route::get('/schema', [QuotationController::class, 'schema']);
+        Route::get('/', [QuotationController::class, 'index']);
+        Route::post('/', [QuotationController::class, 'store']);
+        Route::post('/from-estimation/{estimationId}', [QuotationController::class, 'createFromEstimation']);
+        Route::get('/{id}', [QuotationController::class, 'show']);
+        Route::put('/{id}', [QuotationController::class, 'update']);
+        Route::delete('/{ids}', [QuotationController::class, 'destroy']);
+        Route::post('/{id}/submit-review', [QuotationController::class, 'submitReview']);
+        Route::post('/{id}/approve', [QuotationController::class, 'approve']);
+        Route::post('/{id}/create-revision', [QuotationController::class, 'createRevision']);
+        Route::post('/{id}/mark-sent', [QuotationController::class, 'markSent']);
+        Route::post('/{id}/record-response', [QuotationController::class, 'recordResponse']);
     });
 
     // Roles & Permissions Management

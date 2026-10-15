@@ -11,6 +11,7 @@ use App\Models\Estimation;
 use App\Models\Lead;
 use App\Models\Measurement;
 use App\Models\Opportunity;
+use App\Models\Quotation;
 use App\Models\Scope;
 use App\Models\SiteVisit;
 use App\Models\User;
@@ -451,6 +452,14 @@ class OpportunityController extends CRUDController
                     'items.costs',
                 ])->orderBy('version', 'desc')->orderBy('id', 'desc');
             },
+            'quotations' => function ($q) {
+                $q->with([
+                    'preparedUser',
+                    'approvedUser',
+                    'sentUser',
+                    'items',
+                ])->orderBy('version', 'desc')->orderBy('id', 'desc');
+            },
         ])->findOrFail($id);
 
         // 1. Gather all entity IDs for the unified activity history
@@ -462,9 +471,10 @@ class OpportunityController extends CRUDController
         $scopeIds = $opportunity->scopes->pluck('id')->all();
         $boqIds = $opportunity->boqs->pluck('id')->all();
         $estimationIds = $opportunity->estimations->pluck('id')->all();
+        $quotationIds = $opportunity->quotations->pluck('id')->all();
 
         $timeline = Activity::with('causer')
-            ->where(function ($q) use ($oppIds, $customerIds, $leadIds, $visitIds, $measurementIds, $scopeIds, $boqIds, $estimationIds) {
+            ->where(function ($q) use ($oppIds, $customerIds, $leadIds, $visitIds, $measurementIds, $scopeIds, $boqIds, $estimationIds, $quotationIds) {
                 $q->where(function ($sub) use ($oppIds) {
                     $sub->where('subject_type', Opportunity::class)->whereIn('subject_id', $oppIds);
                 });
@@ -501,6 +511,11 @@ class OpportunityController extends CRUDController
                 if (!empty($estimationIds)) {
                     $q->orWhere(function ($sub) use ($estimationIds) {
                         $sub->where('subject_type', Estimation::class)->whereIn('subject_id', $estimationIds);
+                    });
+                }
+                if (!empty($quotationIds)) {
+                    $q->orWhere(function ($sub) use ($quotationIds) {
+                        $sub->where('subject_type', Quotation::class)->whereIn('subject_id', $quotationIds);
                     });
                 }
             })
@@ -554,6 +569,21 @@ class OpportunityController extends CRUDController
             : collect();
         $latestEstimationForCurrentBoq = $estimationsForCurrentBoq->sortBy([['version', 'desc'], ['id', 'desc']])->first();
         $approvedEstimationForCurrentBoq = $estimationsForCurrentBoq->firstWhere('status', 'Approved');
+
+        // Resolved quotations from eager-loaded collection
+        $approvedQuotation = $opportunity->quotations->firstWhere('status', 'Approved');
+        $latestQuotation = $opportunity->quotations->sortBy([['version', 'desc'], ['id', 'desc']])->first();
+
+        // Quotations associated with the currently approved Estimation
+        $quotationsForCurrentEst = $approvedEstimationForCurrentBoq
+            ? $opportunity->quotations->where('estimation_id', $approvedEstimationForCurrentBoq->id)
+            : collect();
+        $latestQuotationForCurrentEst = $quotationsForCurrentEst->sortBy([['version', 'desc'], ['id', 'desc']])->first();
+        $approvedQuotationForCurrentEst = $quotationsForCurrentEst->firstWhere('status', 'Approved');
+
+        // Stale Quotation detection: an approved quotation exists, but it references an older/superseded estimation revision
+        $isQuotationStale = (bool) ($approvedQuotation && $approvedEstimationForCurrentBoq && (int) $approvedQuotation->estimation_id !== (int) $approvedEstimationForCurrentBoq->id);
+        $isQuotationCurrent = (bool) ($approvedQuotation && $approvedEstimationForCurrentBoq && (int) $approvedQuotation->estimation_id === (int) $approvedEstimationForCurrentBoq->id);
 
         $nextAction = null;
         if (!$hasVisits) {
@@ -713,17 +743,87 @@ class OpportunityController extends CRUDController
                 'action_target' => '/estimations',
                 'permission' => 'estimations.approve',
             ];
-        } else {
-            // $latestEstimationForCurrentBoq->status === 'Approved'
+        } elseif (!$latestQuotationForCurrentEst) {
             $nextAction = [
                 'stage' => 'quotation',
-                'key' => 'ready_for_quotation',
-                'title' => 'جاهز للانتقال لمرحلة عرض السعر (Ready for Quotation)',
-                'description' => 'اكتملت دراسة التكاليف والكميات بنجاح وتم اعتماد التسعير الداخلي! العملية جاهزة تماماً لإعداد العرض المالي للعميل (Quotation).',
+                'key' => $isQuotationStale ? 'create_quotation' : 'ready_for_quotation',
+                'title' => $isQuotationStale
+                    ? 'إعداد عرض سعر جديد لدراسة التكلفة المحدثة المعتمدة'
+                    : 'إعداد عرض السعر للعميل (Quotation)',
+                'description' => $isQuotationStale
+                    ? "تم اعتماد إصدار جديد من دراسة التكلفة (#{$approvedEstimationForCurrentBoq->estimation_number}). عرض السعر المعتمد الحالي (#{$approvedQuotation->quotation_number}) مبني على دراسة سابقة، ويجب إعداد عرض سعر محدث."
+                    : 'اكتملت دراسة التكاليف والكميات بنجاح وتم اعتماد التسعير الداخلي! الخطوة التالية هي تحديد هامش الربح والخصومات وإعداد عرض السعر الرسمي للعميل.',
+                'action_label' => '+ إنشاء عرض سعر',
+                'action_type' => 'route',
+                'action_target' => '/quotations',
+                'permission' => 'quotations.create',
+            ];
+        } elseif ($latestQuotationForCurrentEst->status === 'Draft') {
+            $nextAction = [
+                'stage' => 'quotation',
+                'key' => 'submit_quotation_for_review',
+                'title' => 'استكمال وتقديم عرض السعر للمراجعة الداخلية',
+                'description' => 'عرض السعر الحالي مسودة (Draft). الخطوة التالية هي مراجعة نسب الهامش والخصومات والشروط التجارية وتقديمه للمراجعة الداخلية.',
+                'action_label' => 'استعراض وتقديم عرض السعر',
+                'action_type' => 'route',
+                'action_target' => '/quotations',
+                'permission' => 'quotations.update',
+            ];
+        } elseif ($latestQuotationForCurrentEst->status === 'Under Review') {
+            $nextAction = [
+                'stage' => 'quotation',
+                'key' => 'approve_quotation',
+                'title' => 'مراجعة واعتماد عرض السعر داخلياً',
+                'description' => 'عرض السعر قيد التدقيق الإداري والتجاري. يجب اعتماده داخلياً قبل الإرسال الرسمي للعميل.',
+                'action_label' => 'مراجعة واعتماد عرض السعر',
+                'action_type' => 'route',
+                'action_target' => '/quotations',
+                'permission' => 'quotations.approve',
+            ];
+        } elseif ($latestQuotationForCurrentEst->client_status === 'Not Sent') {
+            $nextAction = [
+                'stage' => 'quotation',
+                'key' => 'send_quotation',
+                'title' => 'إرسال عرض السعر المعتمد للعميل',
+                'description' => 'تم اعتماد عرض السعر داخلياً بنجاح! الخطوة التالية هي تصدير العرض وإرساله رسمياً للعميل ومتابعة استلامه.',
+                'action_label' => 'إرسال العرض للعميل',
+                'action_type' => 'route',
+                'action_target' => '/quotations',
+                'permission' => 'quotations.send',
+            ];
+        } elseif ($latestQuotationForCurrentEst->client_status === 'Sent') {
+            $nextAction = [
+                'stage' => 'quotation',
+                'key' => 'record_client_response',
+                'title' => 'متابعة وتسجيل رد العميل على عرض السعر',
+                'description' => 'تم إرسال العرض للعميل وهو قيد الدراسة من طرفه. الخطوة التالية هي تسجيل رد العميل الرسمي (قبول أو رفض) مع ملاحظاته.',
+                'action_label' => 'تسجيل رد العميل',
+                'action_type' => 'route',
+                'action_target' => '/quotations',
+                'permission' => 'quotations.update',
+            ];
+        } elseif ($latestQuotationForCurrentEst->client_status === 'Accepted') {
+            $nextAction = [
+                'stage' => 'contract',
+                'key' => 'ready_for_contract',
+                'title' => 'تمت موافقة العميل! جاهز لإعداد العقد (Ready for Contract)',
+                'description' => 'وافق العميل رسمياً على عرض السعر! العملية التجارية اكتملت بنجاح والخطوة التالية هي صياغة وتوقيع العقد الرسمي (Contract).',
                 'action_label' => null,
                 'action_type' => 'info',
                 'action_target' => null,
                 'permission' => null,
+            ];
+        } else {
+            // Rejected or Expired
+            $nextAction = [
+                'stage' => 'quotation',
+                'key' => 'quotation_rejected_or_expired',
+                'title' => 'عرض السعر بحاجة لمراجعة أو تجديد',
+                'description' => 'حالة عرض السعر لدى العميل هي ' . $latestQuotationForCurrentEst->client_status . '. يمكنك إصدار نسخة مراجعة جديدة أو التفاوض على شروط جديدة.',
+                'action_label' => 'استعراض عروض الأسعار',
+                'action_type' => 'route',
+                'action_target' => '/quotations',
+                'permission' => 'quotations.view',
             ];
         }
 
@@ -781,6 +881,8 @@ class OpportunityController extends CRUDController
                 'approved_boq' => $approvedBoq,
                 'estimations' => $opportunity->estimations,
                 'approved_estimation' => $approvedEstimationForCurrentBoq ?? $approvedEstimation,
+                'quotations' => $opportunity->quotations,
+                'approved_quotation' => $approvedQuotationForCurrentEst ?? $approvedQuotation,
                 'traceability_matrix' => $traceabilityMatrix,
                 'current_status' => [
                     'commercial' => [
@@ -834,6 +936,18 @@ class OpportunityController extends CRUDController
                             : ($latestEstimation && $latestEstimation->boq ? "V{$latestEstimation->boq->version}" : null),
                         'is_stale' => $isEstimationStale,
                         'is_current' => $isEstimationCurrent,
+                    ],
+                    'quotation' => [
+                        'has_approved' => (bool)$approvedQuotationForCurrentEst,
+                        'status' => $approvedQuotationForCurrentEst ? 'Approved' : ($latestQuotationForCurrentEst?->status ?? ($latestQuotation?->status ?? 'None')),
+                        'client_status' => $approvedQuotationForCurrentEst ? $approvedQuotationForCurrentEst->client_status : ($latestQuotation?->client_status ?? 'Not Sent'),
+                        'version' => $approvedQuotationForCurrentEst ? "V{$approvedQuotationForCurrentEst->version}" : ($latestQuotation ? "V{$latestQuotation->version}" : null),
+                        'code' => $approvedQuotationForCurrentEst?->quotation_number ?? $latestQuotation?->quotation_number,
+                        'grand_total' => $approvedQuotationForCurrentEst ? (float)$approvedQuotationForCurrentEst->grand_total : ($latestQuotation ? (float)$latestQuotation->grand_total : 0),
+                        'subtotal' => $approvedQuotationForCurrentEst ? (float)$approvedQuotationForCurrentEst->subtotal : ($latestQuotation ? (float)$latestQuotation->subtotal : 0),
+                        'items_count' => $approvedQuotationForCurrentEst ? $approvedQuotationForCurrentEst->items->count() : ($latestQuotation ? $latestQuotation->items->count() : 0),
+                        'is_stale' => $isQuotationStale,
+                        'is_current' => $isQuotationCurrent,
                     ],
                     'is_complete' => (bool)($approvedMeasurement && $approvedScope),
                 ],

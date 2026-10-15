@@ -92,6 +92,16 @@ return [
     'estimation_submitted_for_review' => 'Cost estimation (#:number) submitted for review',
     'estimation_approved' => 'Cost estimation (#:number) approved',
 
+    // Quotations (Phase 11)
+    'quotation_created' => 'Quotation (#:number) created',
+    'quotation_updated' => 'Quotation and selling rates (#:number) updated',
+    'quotation_deleted' => 'Quotation (#:number) deleted',
+    'quotation_submitted_for_review' => 'Quotation (#:number) submitted for internal review',
+    'quotation_approved' => 'Quotation (#:number) approved internally',
+    'quotation_revision_created' => 'New revision (#:number) created from quotation (#:from)',
+    'quotation_sent_to_client' => 'Quotation (#:number) dispatched to client',
+    'quotation_client_responded' => 'Client response recorded for quotation (#:number): :response',
+
     'setting_created' => 'Setting :key created',
     'setting_updated' => 'Setting :key updated',
     'setting_event' => 'Action :event on setting :key',

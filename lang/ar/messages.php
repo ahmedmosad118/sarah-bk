@@ -134,6 +134,27 @@ return [
     'estimation_boq_item_mismatch' => 'أحد بنود جدول الكميات المختارة لا ينتمي لجدول الكميات المرتبط بدراسة التسعير.',
     'only_approved_estimation_can_be_revised' => 'يمكن إنشاء مراجعة جديدة من دراسة تسعير معتمدة فقط. المسودة أو قيد المراجعة تُعدّل مباشرة.',
 
+    // Quotation (Phase 11)
+    'quotation_created_success' => 'تم إنشاء عرض السعر بنجاح',
+    'quotation_updated_success' => 'تم تحديث عرض السعر والأسعار بنجاح',
+    'quotation_deleted_success' => 'تم حذف عرض السعر بنجاح',
+    'quotation_submitted_for_review_success' => 'تم تقديم عرض السعر للمراجعة الداخلية بنجاح',
+    'quotation_approved_success' => 'تم اعتماد عرض السعر داخلياً بنجاح',
+    'quotation_revision_created_success' => 'تم إنشاء إصدار مراجعة جديد من عرض السعر بنجاح',
+    'quotation_marked_sent_success' => 'تم تسجيل إرسال عرض السعر للعميل بنجاح',
+    'quotation_response_recorded_success' => 'تم تسجيل رد العميل على عرض السعر بنجاح',
+    'quotation_requires_approved_estimation' => 'عرض السعر يتطلب ربطاً بدراسة تسعير وتكلفة معتمدة (Approved Estimation).',
+    'estimation_opportunity_mismatch' => 'دراسة التسعير المختارة لا تنتمي لنفس الفرصة التجارية.',
+    'cannot_quote_empty_estimation' => 'دراسة التسعير المختارة فارغة ولا تحتوي على بنود للتسعير.',
+    'estimation_item_mismatch' => 'أحد بنود التكلفة المختارة لا ينتمي لنفس دراسة التسعير المعتمدة المرتبطة بعرض السعر.',
+    'cannot_edit_approved_quotation' => 'عرض السعر المعتمد غير قابل للتعديل المباشر. يرجى إنشاء مراجعة جديدة (Revision).',
+    'cannot_delete_approved_quotation' => 'لا يمكن حذف عرض سعر معتمد للحفاظ على تاريخ العروض الصادرة.',
+    'quotation_only_draft_can_submit_review' => 'يمكن فقط تقديم عرض السعر في حالة المسودة للمراجعة.',
+    'quotation_already_approved_or_invalid' => 'لا يمكن اعتماد عرض السعر في حالته الحالية أو أنه معتمد مسبقاً.',
+    'quotation_revision_only_from_approved' => 'يمكن إنشاء مراجعة جديدة من عرض سعر معتمد داخلياً فقط.',
+    'cannot_send_unapproved_quotation' => 'لا يمكن إرسال عرض السعر للعميل قبل اعتماده داخلياً أولاً.',
+    'cannot_record_response_for_unsent_quotation' => 'لا يمكن تسجيل رد العميل قبل إرسال عرض السعر رسمياً وتغيير حالته إلى "أُرسل".',
+
     // Settings
     'settings_saved_success' => 'تم حفظ الإعدادات بنجاح',
 ];

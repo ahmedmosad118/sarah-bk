@@ -81,6 +81,14 @@ class Estimation extends Model implements HasMedia
     }
 
     /**
+     * Quotations originating from this Estimation baseline.
+     */
+    public function quotations(): HasMany
+    {
+        return $this->hasMany(Quotation::class);
+    }
+
+    /**
      * Estimator / Cost engineer who prepared the study.
      */
     public function preparedUser(): BelongsTo

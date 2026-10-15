@@ -92,6 +92,16 @@ return [
     'estimation_submitted_for_review' => 'تم إرسال دراسة التسعير (#:number) للمراجعة الفنية والإدارية',
     'estimation_approved' => 'تم اعتماد دراسة التسعير والتكلفة (#:number) رسمياً',
 
+    // Quotations (Phase 11)
+    'quotation_created' => 'تم إنشاء عرض السعر (#:number)',
+    'quotation_updated' => 'تم تحديث عرض السعر والأسعار (#:number)',
+    'quotation_deleted' => 'تم حذف عرض السعر (#:number)',
+    'quotation_submitted_for_review' => 'تم تقديم عرض السعر (#:number) للمراجعة الداخلية',
+    'quotation_approved' => 'تم اعتماد عرض السعر (#:number) داخلياً',
+    'quotation_revision_created' => 'تم إنشاء إصدار جديد (#:number) من عرض السعر (#:from)',
+    'quotation_sent_to_client' => 'تم تسجيل إرسال عرض السعر (#:number) رسمياً للعميل',
+    'quotation_client_responded' => 'تم تسجيل رد العميل على عرض السعر (#:number) بـ :response',
+
     'setting_created' => 'تم إنشاء الإعداد :key',
     'setting_updated' => 'تم تحديث الإعداد :key',
     'setting_event' => 'إجراء :event على الإعداد :key',

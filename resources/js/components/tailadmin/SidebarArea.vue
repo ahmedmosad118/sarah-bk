@@ -191,6 +191,16 @@
                 <span>{{ $t('nav.estimations') }}</span>
               </router-link>
             </li>
+            <li>
+              <router-link
+                to="/quotations"
+                active-class="bg-[#00C896]/10 text-[#00A87E] dark:bg-[#00C896]/15 dark:text-[#00C896] font-bold shadow-xs"
+                class="group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800/60 transition-colors"
+              >
+                <Receipt class="h-4 w-4 shrink-0 text-[#00C896]" />
+                <span>{{ $t('nav.quotations') }}</span>
+              </router-link>
+            </li>
           </ul>
         </transition>
       </div>
@@ -293,6 +303,7 @@ import {
   ClipboardList,
   TableProperties,
   Calculator,
+  Receipt,
   X,
   ChevronDown,
 } from 'lucide-vue-next';
@@ -311,7 +322,7 @@ const { locale } = useI18n();
 const isRtl = computed(() => locale.value === 'ar');
 
 const CRM_ROUTES = ['/customers', '/leads', '/opportunities'];
-const TECH_ROUTES = ['/site-visits', '/measurements', '/scopes', '/boqs', '/estimations'];
+const TECH_ROUTES = ['/site-visits', '/measurements', '/scopes', '/boqs', '/estimations', '/quotations'];
 
 const isRouteInList = (path, list) => list.some((prefix) => path === prefix || path.startsWith(prefix + '/'));
 
