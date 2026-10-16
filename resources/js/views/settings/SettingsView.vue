@@ -141,10 +141,12 @@ import { useI18n } from 'vue-i18n';
 import { Building2, Settings } from 'lucide-vue-next';
 import api from '../../services/api';
 import { useNotificationStore } from '../../stores/notification';
+import { useAuthStore } from '../../stores/auth';
 import BreadcrumbDefault from '../../components/tailadmin/BreadcrumbDefault.vue';
 
 const { t } = useI18n();
 const notificationStore = useNotificationStore();
+const authStore = useAuthStore();
 const tenant = ref(null);
 const saving = ref(false);
 
@@ -168,6 +170,12 @@ const loadSettings = async () => {
         form.value[s.key] = s.value;
       }
     });
+
+    if (authStore.tenant && form.value.currency_symbol) {
+      authStore.tenant.currency = form.value.currency;
+      authStore.tenant.currency_symbol = form.value.currency_symbol;
+      localStorage.setItem('sarh_tenant', JSON.stringify(authStore.tenant));
+    }
   } catch (err) {
     // Ignore
   }
@@ -182,6 +190,13 @@ const saveSettings = async () => {
     }));
 
     await api.post('/settings', { settings: settingsArray });
+
+    if (authStore.tenant) {
+      authStore.tenant.currency = form.value.currency;
+      authStore.tenant.currency_symbol = form.value.currency_symbol;
+      localStorage.setItem('sarh_tenant', JSON.stringify(authStore.tenant));
+    }
+
     notificationStore.success(t('settings.savedSuccess'));
   } catch (err) {
     notificationStore.error(err.response?.data?.message || 'Error saving settings.');

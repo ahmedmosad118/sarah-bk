@@ -11,6 +11,8 @@ use App\Models\Opportunity;
 use App\Services\EstimationCalculationService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -190,6 +192,19 @@ class EstimationController extends CRUDController
         ]);
     }
 
+    /**
+     * Determine if authenticated user is authorized to assign or reassign document preparer.
+     */
+    protected function canAssignPreparer(string $permission = 'estimations.approve'): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasRole('Owner') || $user->hasRole('Super Admin') || $user->hasPermissionTo($permission);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $this->authorizePermission('estimations.create');
@@ -216,6 +231,20 @@ class EstimationController extends CRUDController
 
         $opportunity = Opportunity::findOrFail($validated['opportunity_id']);
         $boq = Boq::with('items')->findOrFail($validated['boq_id']);
+
+        // Identity check: default prepared_by to authenticated user
+        $preparedBy = auth()->id();
+        if ($request->filled('prepared_by')) {
+            $requestedPreparer = (int) $request->input('prepared_by');
+            if ($requestedPreparer !== (int) auth()->id()) {
+                if (! $this->canAssignPreparer('estimations.approve')) {
+                    throw ValidationException::withMessages([
+                        'prepared_by' => [__('messages.unauthorized_to_assign_preparer')],
+                    ]);
+                }
+                $preparedBy = $requestedPreparer;
+            }
+        }
 
         // Rule 1: BOQ MUST be Approved
         if (! $boq->isApproved()) {
@@ -254,57 +283,70 @@ class EstimationController extends CRUDController
             ]);
         }
 
-        $estimation = DB::transaction(function () use ($validated, $opportunity, $boq) {
-            $number = $validated['estimation_number'] ?? $this->generateEstimationNumber($opportunity->id);
-            $overheadRate = isset($validated['overhead_rate']) ? (float) $validated['overhead_rate'] : 0.00;
+        $maxAttempts = 3;
+        $estimation = null;
+        $overheadRate = isset($validated['overhead_rate']) ? (float) $validated['overhead_rate'] : 0.00;
 
-            $estimation = Estimation::create([
-                'opportunity_id' => $opportunity->id,
-                'boq_id' => $boq->id,
-                'estimation_number' => $number,
-                'version' => 1,
-                'status' => 'Draft',
-                'title' => $validated['title'] ?? "دراسة تسعير وتكلفة {$opportunity->title}",
-                'prepared_by' => $validated['prepared_by'] ?? auth()->id(),
-                'prepared_at' => $validated['prepared_at'] ?? Carbon::today()->toDateString(),
-                'overhead_rate' => $overheadRate,
-                'notes' => $validated['notes'] ?? null,
-                'created_by' => auth()->id(),
-            ]);
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                $estimation = DB::transaction(function () use ($validated, $opportunity, $boq, $preparedBy, $overheadRate) {
+                    $number = $validated['estimation_number'] ?? $this->generateEstimationNumber($opportunity->id);
 
-            // Index optional initial costs by boq_item_id
-            $initialItemsData = collect($validated['items'] ?? [])->keyBy('boq_item_id');
+                    $estimation = Estimation::create([
+                        'opportunity_id' => $opportunity->id,
+                        'boq_id' => $boq->id,
+                        'estimation_number' => $number,
+                        'version' => 1,
+                        'status' => 'Draft',
+                        'title' => $validated['title'] ?? (__('messages.estimation_title_prefix').' '.$opportunity->title),
+                        'prepared_by' => $preparedBy,
+                        'prepared_at' => $validated['prepared_at'] ?? Carbon::today()->toDateString(),
+                        'overhead_rate' => $overheadRate,
+                        'notes' => $validated['notes'] ?? null,
+                        'created_by' => auth()->id(),
+                    ]);
 
-            // Generate estimation lines for ALL source BOQ items (quantities and units strictly read-only)
-            foreach ($boq->items as $boqItem) {
-                $itemInput = $initialItemsData->get($boqItem->id);
+                    // Index optional initial costs by boq_item_id
+                    $initialItemsData = collect($validated['items'] ?? [])->keyBy('boq_item_id');
 
-                $estItem = $estimation->items()->create([
-                    'boq_item_id' => $boqItem->id,
-                    'item_code' => $boqItem->item_code,
-                    'description' => $boqItem->description,
-                    'unit' => $boqItem->unit,
-                    'quantity' => $boqItem->quantity,
-                    'notes' => $itemInput['notes'] ?? null,
-                    'sort_order' => $boqItem->sort_order,
-                ]);
+                    // Generate estimation lines for ALL source BOQ items (quantities and units strictly read-only)
+                    foreach ($boq->items as $boqItem) {
+                        $itemInput = $initialItemsData->get($boqItem->id);
 
-                if (! empty($itemInput['costs']) && is_array($itemInput['costs'])) {
-                    $this->calculationService->syncItemCosts($estItem, $itemInput['costs']);
+                        $estItem = $estimation->items()->create([
+                            'boq_item_id' => $boqItem->id,
+                            'item_code' => $boqItem->item_code,
+                            'description' => $boqItem->description,
+                            'unit' => $boqItem->unit,
+                            'quantity' => $boqItem->quantity,
+                            'notes' => $itemInput['notes'] ?? null,
+                            'sort_order' => $boqItem->sort_order,
+                        ]);
+
+                        if (! empty($itemInput['costs']) && is_array($itemInput['costs'])) {
+                            $this->calculationService->syncItemCosts($estItem, $itemInput['costs']);
+                        }
+                    }
+
+                    // Calculate document totals
+                    $this->calculationService->recalculateEstimationTotals($estimation, $overheadRate);
+
+                    activity('commercial')
+                        ->event('created')
+                        ->performedOn($estimation)
+                        ->causedBy(auth()->user())
+                        ->log(__('activity.estimation_created', ['number' => $estimation->estimation_number]));
+
+                    return $estimation;
+                });
+                break;
+            } catch (UniqueConstraintViolationException|QueryException $e) {
+                if ($attempt < $maxAttempts && empty($validated['estimation_number']) && str_contains($e->getMessage(), 'estimations_number_unique')) {
+                    continue;
                 }
+                throw $e;
             }
-
-            // Calculate document totals
-            $this->calculationService->recalculateEstimationTotals($estimation, $overheadRate);
-
-            activity('commercial')
-                ->event('created')
-                ->performedOn($estimation)
-                ->causedBy(auth()->user())
-                ->log(__('activity.estimation_created', ['number' => $estimation->estimation_number]));
-
-            return $estimation;
-        });
+        }
 
         return response()->json([
             'success' => true,
@@ -375,6 +417,18 @@ class EstimationController extends CRUDController
                 if (! in_array((int) $itemInput['boq_item_id'], $validBoqItemIds, true)) {
                     throw ValidationException::withMessages([
                         "items.{$idx}.boq_item_id" => [__('messages.estimation_boq_item_mismatch')],
+                    ]);
+                }
+            }
+        }
+
+        // Identity check: modifying prepared_by requires manager/approval permission
+        if ($request->filled('prepared_by')) {
+            $requestedPreparer = (int) $request->input('prepared_by');
+            if ($requestedPreparer !== (int) $estimation->prepared_by && $requestedPreparer !== (int) auth()->id()) {
+                if (! $this->canAssignPreparer('estimations.approve')) {
+                    throw ValidationException::withMessages([
+                        'prepared_by' => [__('messages.unauthorized_to_assign_preparer')],
                     ]);
                 }
             }
@@ -523,86 +577,99 @@ class EstimationController extends CRUDController
     {
         $this->authorizePermission('estimations.approve');
 
-        $estimation = Estimation::with(['items.costs', 'boq'])->findOrFail($id);
+        return DB::transaction(function () use ($id) {
+            // 1. Lock the Estimation record for update
+            $estimation = Estimation::with(['items.costs', 'boq'])
+                ->where('id', $id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if (! $estimation->canBeApproved()) {
-            throw ValidationException::withMessages([
-                'status' => [__('messages.estimation_cannot_be_approved_in_current_state')],
-            ]);
-        }
-
-        // 1. Source BOQ must still be Approved
-        if (! $estimation->boq || ! $estimation->boq->isApproved()) {
-            throw ValidationException::withMessages([
-                'boq_id' => [__('messages.cannot_approve_stale_source_boq')],
-            ]);
-        }
-
-        // 2. Source BOQ must not be superseded by a newer approved BOQ
-        $latestApprovedBoq = Boq::where('opportunity_id', $estimation->opportunity_id)
-            ->where('status', 'Approved')
-            ->orderBy('version', 'desc')
-            ->orderBy('id', 'desc')
-            ->first();
-
-        if ($latestApprovedBoq && (int) $latestApprovedBoq->id !== (int) $estimation->boq_id) {
-            throw ValidationException::withMessages([
-                'boq_id' => [__('messages.cannot_approve_stale_source_boq')],
-            ]);
-        }
-
-        // 3. Cannot approve an older estimation revision if a newer approved estimation exists
-        $hasNewerApproved = Estimation::where('opportunity_id', $estimation->opportunity_id)
-            ->where('status', 'Approved')
-            ->where('version', '>', $estimation->version)
-            ->exists();
-
-        if ($hasNewerApproved) {
-            throw ValidationException::withMessages([
-                'version' => [__('messages.cannot_approve_superseded_estimation')],
-            ]);
-        }
-
-        // 4. Estimation must have items
-        if ($estimation->items->isEmpty()) {
-            throw ValidationException::withMessages([
-                'items' => [__('messages.cannot_approve_empty_estimation')],
-            ]);
-        }
-
-        // 5. Incomplete check: Every single item must have at least one cost entry or documented note
-        $unpricedItems = $estimation->items->filter(function ($item) {
-            return $item->costs->isEmpty() && empty(trim((string) $item->notes));
-        });
-
-        if ($unpricedItems->isNotEmpty()) {
-            throw ValidationException::withMessages([
-                'items' => [__('messages.all_items_must_be_costed')],
-                'total_cost' => [__('messages.cannot_approve_zero_cost_estimation')],
-            ]);
-        }
-
-        // 6. Zero-cost check: If total_cost is 0.00, require explicit justification note
-        $totalCost = (float) $estimation->total_cost;
-        if ($totalCost <= 0) {
-            $hasNotes = ! empty(trim((string) $estimation->notes)) ||
-                $estimation->items->contains(fn ($it) => ! empty(trim((string) $it->notes)) ||
-                    $it->costs->contains(fn ($c) => ! empty(trim((string) $c->notes)) || ! empty(trim((string) $c->description)))
-                );
-
-            if (! $hasNotes) {
+            if (! $estimation->canBeApproved()) {
                 throw ValidationException::withMessages([
-                    'total_cost' => [__('messages.zero_cost_requires_justification')],
+                    'status' => [__('messages.estimation_cannot_be_approved_in_current_state')],
                 ]);
             }
-        }
 
-        $estimation = DB::transaction(function () use ($estimation) {
-            // Supersede any previously approved Estimation for this opportunity
-            Estimation::where('opportunity_id', $estimation->opportunity_id)
+            // 2. Lock sibling approved estimations for this opportunity to serialize concurrent approvals
+            $siblingApproved = Estimation::where('opportunity_id', $estimation->opportunity_id)
                 ->where('id', '!=', $estimation->id)
                 ->where('status', 'Approved')
-                ->update(['status' => 'Superseded']);
+                ->lockForUpdate()
+                ->get();
+
+            // 3. Source BOQ must still be Approved and locked against race conditions
+            $sourceBoq = Boq::where('id', $estimation->boq_id)->lockForUpdate()->first();
+            if (! $sourceBoq || ! $sourceBoq->isApproved()) {
+                throw ValidationException::withMessages([
+                    'boq_id' => [__('messages.cannot_approve_stale_source_boq')],
+                ]);
+            }
+
+            // 4. Source BOQ must not be superseded by a newer approved BOQ
+            $latestApprovedBoq = Boq::where('opportunity_id', $estimation->opportunity_id)
+                ->where('status', 'Approved')
+                ->orderBy('version', 'desc')
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($latestApprovedBoq && (int) $latestApprovedBoq->id !== (int) $estimation->boq_id) {
+                throw ValidationException::withMessages([
+                    'boq_id' => [__('messages.cannot_approve_stale_source_boq')],
+                ]);
+            }
+
+            // 5. Cannot approve an older estimation revision if a newer approved estimation exists
+            $hasNewerApproved = Estimation::where('opportunity_id', $estimation->opportunity_id)
+                ->where('status', 'Approved')
+                ->where('version', '>', $estimation->version)
+                ->exists();
+
+            if ($hasNewerApproved) {
+                throw ValidationException::withMessages([
+                    'version' => [__('messages.cannot_approve_superseded_estimation')],
+                ]);
+            }
+
+            // 6. Estimation must have items
+            if ($estimation->items->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'items' => [__('messages.cannot_approve_empty_estimation')],
+                ]);
+            }
+
+            // 7. Incomplete check: Every single item must have at least one cost entry or documented note
+            $unpricedItems = $estimation->items->filter(function ($item) {
+                return $item->costs->isEmpty() && empty(trim((string) $item->notes));
+            });
+
+            if ($unpricedItems->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'items' => [__('messages.all_items_must_be_costed')],
+                    'total_cost' => [__('messages.cannot_approve_zero_cost_estimation')],
+                ]);
+            }
+
+            // 8. Zero-cost check: If total_cost is 0.00, require explicit, meaningful justification
+            $totalCost = (float) $estimation->total_cost;
+            if ($totalCost <= 0) {
+                $docNotes = trim((string) $estimation->notes);
+                $hasMeaningfulDocNotes = strlen($docNotes) >= 10;
+                $hasMeaningfulItemNotes = $estimation->items->contains(function ($it) {
+                    return strlen(trim((string) $it->notes)) >= 10;
+                });
+
+                // Cost component descriptions (e.g. "Labor", "Cement") alone must never count as justification!
+                if (! $hasMeaningfulDocNotes && ! $hasMeaningfulItemNotes) {
+                    throw ValidationException::withMessages([
+                        'total_cost' => [__('messages.zero_cost_requires_justification')],
+                    ]);
+                }
+            }
+
+            // Supersede any previously approved Estimation for this opportunity
+            foreach ($siblingApproved as $prevApproved) {
+                $prevApproved->update(['status' => 'Superseded']);
+            }
 
             $estimation->status = 'Approved';
             $estimation->approved_by = auth()->id();
@@ -615,14 +682,12 @@ class EstimationController extends CRUDController
                 ->causedBy(auth()->user())
                 ->log(__('activity.estimation_approved', ['number' => $estimation->estimation_number]));
 
-            return $estimation;
+            return response()->json([
+                'success' => true,
+                'message' => __('messages.estimation_approved_success'),
+                'data' => $estimation->fresh($this->with),
+            ]);
         });
-
-        return response()->json([
-            'success' => true,
-            'message' => __('messages.estimation_approved_success'),
-            'data' => $estimation->fresh($this->with),
-        ]);
     }
 
     /**
@@ -653,7 +718,10 @@ class EstimationController extends CRUDController
                 'title' => $parent->title,
                 'prepared_by' => auth()->id(),
                 'prepared_at' => Carbon::today()->toDateString(),
-                'notes' => "مراجعة تسعير رقم ({$newVersion}) مستخرجة من دراسة التسعير #{$parent->estimation_number}.",
+                'notes' => __('messages.estimation_revision_note', [
+                    'version' => $newVersion,
+                    'number' => $parent->estimation_number,
+                ]),
                 'direct_cost' => $parent->direct_cost,
                 'overhead_rate' => $parent->overhead_rate,
                 'overhead_amount' => $parent->overhead_amount,
@@ -694,7 +762,10 @@ class EstimationController extends CRUDController
                 ->event('created')
                 ->performedOn($newEst)
                 ->causedBy(auth()->user())
-                ->log("تم إنشاء مراجعة دراسة تسعير جديدة رقم #{$newEst->estimation_number} (الإصدار {$newVersion}).");
+                ->log(__('messages.estimation_revision_activity', [
+                    'number' => $newEst->estimation_number,
+                    'version' => $newVersion,
+                ]));
 
             return $newEst;
         });
@@ -708,8 +779,17 @@ class EstimationController extends CRUDController
 
     protected function generateEstimationNumber(int $opportunityId): string
     {
-        $existingCount = Estimation::where('opportunity_id', $opportunityId)->count();
-        $seq = $existingCount + 1;
+        $latestNumber = Estimation::where('opportunity_id', $opportunityId)
+            ->where('estimation_number', 'like', "EST-OPP{$opportunityId}-%")
+            ->orderByRaw('LENGTH(estimation_number) desc, estimation_number desc')
+            ->value('estimation_number');
+
+        if ($latestNumber && preg_match('/EST-OPP\d+-(\d+)/', $latestNumber, $matches)) {
+            $seq = (int) $matches[1] + 1;
+        } else {
+            $seq = Estimation::where('opportunity_id', $opportunityId)->count() + 1;
+        }
+
         $candidate = "EST-OPP{$opportunityId}-".str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
 
         while (Estimation::where('estimation_number', $candidate)->exists()) {

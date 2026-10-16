@@ -197,6 +197,19 @@ class BoqController extends CRUDController
         ));
     }
 
+    /**
+     * Determine if authenticated user is authorized to assign or reassign document preparer.
+     */
+    protected function canAssignPreparer(string $permission = 'boqs.approve'): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasRole('Owner') || $user->hasRole('Super Admin') || $user->hasPermissionTo($permission);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $this->authorizePermission(['boqs.create', 'boq.create']);
@@ -215,6 +228,20 @@ class BoqController extends CRUDController
         $opportunity = Opportunity::findOrFail($validated['opportunity_id']);
         $scope = Scope::with('items.measurementItems')->findOrFail($validated['scope_id']);
 
+        // Identity check: default prepared_by to authenticated user
+        $preparedBy = auth()->id();
+        if ($request->filled('prepared_by')) {
+            $requested = (int) $request->input('prepared_by');
+            if ($requested !== (int) auth()->id()) {
+                if (! $this->canAssignPreparer('boqs.approve')) {
+                    throw ValidationException::withMessages([
+                        'prepared_by' => [__('messages.unauthorized_to_assign_preparer')],
+                    ]);
+                }
+                $preparedBy = $requested;
+            }
+        }
+
         // Strict Rule: Scope MUST be Approved
         if (! $scope->isApproved()) {
             throw ValidationException::withMessages([
@@ -231,7 +258,7 @@ class BoqController extends CRUDController
 
         $generated = $this->generationService->buildItemsFromScope($scope);
 
-        $boq = DB::transaction(function () use ($validated, $opportunity, $scope, $generated) {
+        $boq = DB::transaction(function () use ($validated, $opportunity, $scope, $generated, $preparedBy) {
             $number = $validated['boq_number'] ?? $this->generateBoqNumber($opportunity->id);
 
             $boq = Boq::create([
@@ -240,8 +267,8 @@ class BoqController extends CRUDController
                 'boq_number' => $number,
                 'version' => 1,
                 'status' => 'Draft',
-                'title' => $validated['title'] ?? "جدول كميات {$opportunity->title}",
-                'prepared_by' => $validated['prepared_by'] ?? auth()->id(),
+                'title' => $validated['title'] ?? (__('messages.boq_title_prefix').' '.$opportunity->title),
+                'prepared_by' => $preparedBy,
                 'prepared_at' => $validated['prepared_at'] ?? Carbon::today()->toDateString(),
                 'notes' => $validated['notes'] ?? null,
                 'created_by' => auth()->id(),
@@ -305,6 +332,18 @@ class BoqController extends CRUDController
                 if (! in_array((int) $item['scope_item_id'], $validScopeItemIds, true)) {
                     throw ValidationException::withMessages([
                         "items.{$idx}.scope_item_id" => [__('messages.boq_scope_item_mismatch')],
+                    ]);
+                }
+            }
+        }
+
+        // Identity check: modifying prepared_by requires manager/approval permission
+        if ($request->filled('prepared_by')) {
+            $requested = (int) $request->input('prepared_by');
+            if ($requested !== (int) $boq->prepared_by && $requested !== (int) auth()->id()) {
+                if (! $this->canAssignPreparer('boqs.approve')) {
+                    throw ValidationException::withMessages([
+                        'prepared_by' => [__('messages.unauthorized_to_assign_preparer')],
                     ]);
                 }
             }
@@ -437,26 +476,42 @@ class BoqController extends CRUDController
     {
         $this->authorizePermission(['boqs.approve', 'boq.approve']);
 
-        $boq = Boq::with('items')->findOrFail($id);
+        return DB::transaction(function () use ($id) {
+            $boq = Boq::with('items')
+                ->where('id', $id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if (! $boq->canBeApproved()) {
-            throw ValidationException::withMessages([
-                'status' => [__('messages.boq_cannot_be_approved_in_current_state')],
-            ]);
-        }
+            if (! $boq->canBeApproved()) {
+                throw ValidationException::withMessages([
+                    'status' => [__('messages.boq_cannot_be_approved_in_current_state')],
+                ]);
+            }
 
-        if ($boq->items->isEmpty()) {
-            throw ValidationException::withMessages([
-                'items' => [__('messages.cannot_approve_empty_boq')],
-            ]);
-        }
+            // Source scope must still be Approved and locked
+            $sourceScope = Scope::where('id', $boq->scope_id)->lockForUpdate()->first();
+            if (! $sourceScope || ! $sourceScope->isApproved()) {
+                throw ValidationException::withMessages([
+                    'scope_id' => [__('messages.boq_requires_approved_scope')],
+                ]);
+            }
 
-        $boq = DB::transaction(function () use ($boq) {
-            // Supersede any previously approved BOQ for this opportunity
-            Boq::where('opportunity_id', $boq->opportunity_id)
+            if ($boq->items->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'items' => [__('messages.cannot_approve_empty_boq')],
+                ]);
+            }
+
+            // Supersede any previously approved BOQ for this opportunity (locked)
+            $siblingApproved = Boq::where('opportunity_id', $boq->opportunity_id)
                 ->where('id', '!=', $boq->id)
                 ->where('status', 'Approved')
-                ->update(['status' => 'Superseded']);
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($siblingApproved as $prevApproved) {
+                $prevApproved->update(['status' => 'Superseded']);
+            }
 
             $boq->status = 'Approved';
             $boq->approved_by = auth()->id();
@@ -469,14 +524,12 @@ class BoqController extends CRUDController
                 ->causedBy(auth()->user())
                 ->log(__('activity.boq_approved', ['number' => $boq->boq_number]));
 
-            return $boq;
+            return response()->json([
+                'success' => true,
+                'message' => __('messages.boq_approved_success'),
+                'data' => $boq->fresh($this->with),
+            ]);
         });
-
-        return response()->json([
-            'success' => true,
-            'message' => __('messages.boq_approved_success'),
-            'data' => $boq->fresh($this->with),
-        ]);
     }
 
     /**
@@ -509,7 +562,10 @@ class BoqController extends CRUDController
                 'title' => $parent->title,
                 'prepared_by' => auth()->id(),
                 'prepared_at' => Carbon::today()->toDateString(),
-                'notes' => "إصدار ومراجعة رقم ({$newVersion}) مستخرجة من جدول الكميات #{$parent->boq_number}.",
+                'notes' => __('messages.boq_revision_note', [
+                    'version' => $newVersion,
+                    'number' => $parent->boq_number,
+                ]),
                 'created_by' => auth()->id(),
             ]);
 
@@ -529,7 +585,10 @@ class BoqController extends CRUDController
                 ->event('created')
                 ->performedOn($newBoq)
                 ->causedBy(auth()->user())
-                ->log("تم إنشاء مراجعة جدول كميات جديدة رقم #{$newBoq->boq_number} (الإصدار {$newVersion}).");
+                ->log(__('messages.boq_revision_activity', [
+                    'number' => $newBoq->boq_number,
+                    'version' => $newVersion,
+                ]));
 
             return $newBoq;
         });
@@ -569,10 +628,26 @@ class BoqController extends CRUDController
      */
     protected function generateBoqNumber(int $opportunityId): string
     {
-        $count = Boq::where('opportunity_id', $opportunityId)->count();
-        $next = $count + 1;
-        $padded = str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        $latestNumber = Boq::where('opportunity_id', $opportunityId)
+            ->where('boq_number', 'like', "BOQ-OPP{$opportunityId}-%")
+            ->orderByRaw('LENGTH(boq_number) desc, boq_number desc')
+            ->value('boq_number');
 
-        return "BOQ-OPP{$opportunityId}-{$padded}";
+        if ($latestNumber && preg_match('/BOQ-OPP\d+-(\d+)/', $latestNumber, $matches)) {
+            $seq = (int) $matches[1] + 1;
+        } else {
+            $seq = Boq::where('opportunity_id', $opportunityId)->count() + 1;
+        }
+
+        $padded = str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+        $candidate = "BOQ-OPP{$opportunityId}-{$padded}";
+
+        while (Boq::where('boq_number', $candidate)->exists()) {
+            $seq++;
+            $padded = str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+            $candidate = "BOQ-OPP{$opportunityId}-{$padded}";
+        }
+
+        return $candidate;
     }
 }

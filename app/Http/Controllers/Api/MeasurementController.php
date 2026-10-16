@@ -6,7 +6,6 @@ use App\Core\CRUD\CRUDController;
 use App\Core\CRUD\Field;
 use App\Core\CRUD\InputMaker;
 use App\Models\Measurement;
-use App\Models\MeasurementItem;
 use App\Models\Opportunity;
 use App\Models\SiteVisit;
 use App\Models\User;
@@ -14,7 +13,6 @@ use App\Services\DxfParserService;
 use App\Services\MeasurementCalculationService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,12 +21,17 @@ use Illuminate\Validation\ValidationException;
 class MeasurementController extends CRUDController
 {
     protected string $model = Measurement::class;
+
     protected array $searchable = ['measurement_number', 'notes'];
+
     protected array $with = ['opportunity.customer', 'siteVisit', 'measuredUser', 'reviewedUser', 'approvedUser', 'creator', 'items', 'media'];
+
     protected string $defaultSortBy = 'id';
+
     protected string $defaultSortOrder = 'desc';
 
     protected MeasurementCalculationService $calculationService;
+
     protected DxfParserService $dxfParserService;
 
     public function __construct(
@@ -167,7 +170,21 @@ class MeasurementController extends CRUDController
     public function show(int|string $id): JsonResponse
     {
         $this->authorizePermission('measurements.view');
+
         return parent::show($id);
+    }
+
+    /**
+     * Determine if authenticated user is authorized to assign or reassign document measurer/preparer.
+     */
+    protected function canAssignPreparer(string $permission = 'measurements.approve'): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasRole('Owner') || $user->hasRole('Super Admin') || $user->hasPermissionTo($permission);
     }
 
     public function store(Request $request): JsonResponse
@@ -196,7 +213,22 @@ class MeasurementController extends CRUDController
         ]);
 
         $opportunity = Opportunity::findOrFail($validated['opportunity_id']);
-        if (!empty($validated['site_visit_id'])) {
+
+        // Identity check: default measured_by to authenticated user
+        $measuredBy = auth()->id();
+        if ($request->filled('measured_by')) {
+            $requested = (int) $request->input('measured_by');
+            if ($requested !== (int) auth()->id()) {
+                if (! $this->canAssignPreparer('measurements.approve')) {
+                    throw ValidationException::withMessages([
+                        'measured_by' => [__('messages.unauthorized_to_assign_preparer')],
+                    ]);
+                }
+                $measuredBy = $requested;
+            }
+        }
+
+        if (! empty($validated['site_visit_id'])) {
             $siteVisit = SiteVisit::findOrFail($validated['site_visit_id']);
             if ($siteVisit->customer_id && $opportunity->customer_id !== $siteVisit->customer_id) {
                 throw ValidationException::withMessages([
@@ -210,7 +242,7 @@ class MeasurementController extends CRUDController
             }
         }
 
-        $measurement = DB::transaction(function () use ($validated, $opportunity, $request) {
+        $measurement = DB::transaction(function () use ($validated, $measuredBy) {
             $number = $validated['measurement_number'] ?? $this->generateMeasurementNumber($validated['opportunity_id']);
             $itemsData = $validated['items'] ?? [];
 
@@ -234,7 +266,7 @@ class MeasurementController extends CRUDController
                 'measurement_number' => $number,
                 'version' => 1,
                 'status' => 'Draft',
-                'measured_by' => $validated['measured_by'] ?? auth()->id(),
+                'measured_by' => $measuredBy,
                 'measured_at' => $validated['measured_at'] ?? Carbon::today()->toDateString(),
                 'total_area' => $summary['total_area'],
                 'total_volume' => $summary['total_volume'],
@@ -270,7 +302,7 @@ class MeasurementController extends CRUDController
 
         $measurement = Measurement::with('opportunity')->findOrFail($id);
 
-        if (!$measurement->canBeEdited()) {
+        if (! $measurement->canBeEdited()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.approved_measurement_cannot_be_edited')],
             ]);
@@ -310,11 +342,23 @@ class MeasurementController extends CRUDController
             }
         }
 
-        $measurement = DB::transaction(function () use ($measurement, $validated, $request) {
+        // Identity check: modifying measured_by requires manager/approval permission
+        if ($request->filled('measured_by')) {
+            $requested = (int) $request->input('measured_by');
+            if ($requested !== (int) $measurement->measured_by && $requested !== (int) auth()->id()) {
+                if (! $this->canAssignPreparer('measurements.approve')) {
+                    throw ValidationException::withMessages([
+                        'measured_by' => [__('messages.unauthorized_to_assign_preparer')],
+                    ]);
+                }
+            }
+        }
+
+        $measurement = DB::transaction(function () use ($measurement, $validated) {
             if (isset($validated['site_visit_id'])) {
                 $measurement->site_visit_id = $validated['site_visit_id'];
             }
-            if (!empty($validated['measurement_number'])) {
+            if (! empty($validated['measurement_number'])) {
                 $measurement->measurement_number = $validated['measurement_number'];
             }
             if (isset($validated['measured_by'])) {
@@ -429,6 +473,7 @@ class MeasurementController extends CRUDController
         ]);
 
         $request->merge(['opportunity_id' => $opportunity->id]);
+
         return $this->store($request);
     }
 
@@ -498,7 +543,7 @@ class MeasurementController extends CRUDController
                 }
             }
 
-            if (!empty($itemsData)) {
+            if (! empty($itemsData)) {
                 $summary = $this->calculationService->calculateSummary($itemsData);
                 $measurement->update([
                     'total_area' => $summary['total_area'],
@@ -599,7 +644,7 @@ class MeasurementController extends CRUDController
                 'status' => 'Draft', // Strict Rule: DXF import is always Draft until reviewed by an engineer
                 'measured_by' => auth()->id(),
                 'measured_at' => Carbon::today()->toDateString(),
-                'notes' => 'تم استيراد أبعاد ومساحات الغرف من ملف أوتوكاد DXF (' . ($request->file('file')->getClientOriginalName()) . ').',
+                'notes' => 'تم استيراد أبعاد ومساحات الغرف من ملف أوتوكاد DXF ('.($request->file('file')->getClientOriginalName()).').',
                 'created_by' => auth()->id(),
             ]);
 
@@ -624,7 +669,7 @@ class MeasurementController extends CRUDController
                 $measurement->items()->create($calc);
             }
 
-            if (!empty($calculatedItems)) {
+            if (! empty($calculatedItems)) {
                 $summary = $this->calculationService->calculateSummary($calculatedItems);
                 $measurement->update([
                     'total_area' => $summary['total_area'],
@@ -659,7 +704,7 @@ class MeasurementController extends CRUDController
 
         $measurement = Measurement::findOrFail($id);
 
-        if (!$measurement->isDraft()) {
+        if (! $measurement->isDraft()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.only_draft_can_be_submitted_for_review')],
             ]);
@@ -686,39 +731,50 @@ class MeasurementController extends CRUDController
     /**
      * Approve measurement as authoritative technical truth.
      */
+    /**
+     * Approve measurement as authoritative technical truth.
+     */
     public function approve(Request $request, int|string $id): JsonResponse
     {
-        $this->authorizePermission('measurements.approve');
+        $this->authorizePermission(['measurements.approve', 'measurement.approve']);
 
-        $measurement = Measurement::with('items')->findOrFail($id);
+        return DB::transaction(function () use ($id) {
+            $measurement = Measurement::with('items')
+                ->where('id', $id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if (!$measurement->canBeApproved()) {
-            throw ValidationException::withMessages([
-                'status' => [__('messages.measurement_cannot_be_approved_in_current_state')],
-            ]);
-        }
-
-        if ($measurement->items->isEmpty()) {
-            throw ValidationException::withMessages([
-                'items' => [__('messages.cannot_approve_empty_measurement')],
-            ]);
-        }
-
-        // Validate items integrity
-        foreach ($measurement->items as $item) {
-            if (empty($item->room_name) || empty($item->item_name)) {
+            if (! $measurement->canBeApproved()) {
                 throw ValidationException::withMessages([
-                    'items' => [__('messages.measurement_items_missing_required_info')],
+                    'status' => [__('messages.measurement_cannot_be_approved_in_current_state')],
                 ]);
             }
-        }
 
-        $measurement = DB::transaction(function () use ($measurement) {
-            // Supersede any previously approved measurement for this opportunity
-            Measurement::where('opportunity_id', $measurement->opportunity_id)
+            if ($measurement->items->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'items' => [__('messages.cannot_approve_empty_measurement')],
+                ]);
+            }
+
+            // Validate items integrity
+            foreach ($measurement->items as $item) {
+                if (empty($item->room_name) || empty($item->item_name)) {
+                    throw ValidationException::withMessages([
+                        'items' => [__('messages.measurement_items_missing_required_info')],
+                    ]);
+                }
+            }
+
+            // Supersede any previously approved measurement for this opportunity (locked)
+            $siblingApproved = Measurement::where('opportunity_id', $measurement->opportunity_id)
                 ->where('id', '!=', $measurement->id)
                 ->where('status', 'Approved')
-                ->update(['status' => 'Superseded']);
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($siblingApproved as $prevApproved) {
+                $prevApproved->update(['status' => 'Superseded']);
+            }
 
             $measurement->status = 'Approved';
             $measurement->approved_by = auth()->id();
@@ -731,14 +787,12 @@ class MeasurementController extends CRUDController
                 ->causedBy(auth()->user())
                 ->log(__('activity.measurement_approved', ['number' => $measurement->measurement_number]));
 
-            return $measurement;
+            return response()->json([
+                'success' => true,
+                'message' => __('messages.measurement_approved_success'),
+                'data' => $measurement->fresh($this->with),
+            ]);
         });
-
-        return response()->json([
-            'success' => true,
-            'message' => __('messages.measurement_approved_success'),
-            'data' => $measurement->fresh($this->with),
-        ]);
     }
 
     /**
@@ -746,9 +800,15 @@ class MeasurementController extends CRUDController
      */
     public function createRevision(Request $request, int|string $id): JsonResponse
     {
-        $this->authorizePermission('measurements.create');
+        $this->authorizePermission(['measurements.create', 'measurement.create']);
 
         $parent = Measurement::with('items')->findOrFail($id);
+
+        if (! $parent->isApproved()) {
+            throw ValidationException::withMessages([
+                'status' => [__('messages.measurement_cannot_be_approved_in_current_state')],
+            ]);
+        }
 
         $revision = DB::transaction(function () use ($parent) {
             $newVersion = $parent->version + 1;
@@ -766,7 +826,10 @@ class MeasurementController extends CRUDController
                 'total_volume' => $parent->total_volume,
                 'total_linear' => $parent->total_linear,
                 'total_count' => $parent->total_count,
-                'notes' => "إصدار ومراجعة رقم ({$newVersion}) مستخرجة من المقايسة #{$parent->measurement_number}.",
+                'notes' => __('messages.measurement_revision_note', [
+                    'version' => $newVersion,
+                    'number' => $parent->measurement_number,
+                ]),
                 'created_by' => auth()->id(),
             ]);
 
@@ -792,7 +855,10 @@ class MeasurementController extends CRUDController
                 ->event('created')
                 ->performedOn($newMeasurement)
                 ->causedBy(auth()->user())
-                ->log("تم إنشاء مراجعة مقايسة جديدة رقم #{$newMeasurement->measurement_number} (الإصدار {$newVersion}).");
+                ->log(__('messages.measurement_revision_activity', [
+                    'number' => $newMeasurement->measurement_number,
+                    'version' => $newVersion,
+                ]));
 
             return $newMeasurement;
         });
@@ -809,9 +875,26 @@ class MeasurementController extends CRUDController
      */
     protected function generateMeasurementNumber(int $opportunityId): string
     {
-        $count = Measurement::where('opportunity_id', $opportunityId)->count();
-        $next = $count + 1;
-        $padded = str_pad((string) $next, 4, '0', STR_PAD_LEFT);
-        return "M-OPP{$opportunityId}-{$padded}";
+        $latestNumber = Measurement::where('opportunity_id', $opportunityId)
+            ->where('measurement_number', 'like', "M-OPP{$opportunityId}-%")
+            ->orderByRaw('LENGTH(measurement_number) desc, measurement_number desc')
+            ->value('measurement_number');
+
+        if ($latestNumber && preg_match('/M-OPP\d+-(\d+)/', $latestNumber, $matches)) {
+            $seq = (int) $matches[1] + 1;
+        } else {
+            $seq = Measurement::where('opportunity_id', $opportunityId)->count() + 1;
+        }
+
+        $padded = str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+        $candidate = "M-OPP{$opportunityId}-{$padded}";
+
+        while (Measurement::where('measurement_number', $candidate)->exists()) {
+            $seq++;
+            $padded = str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+            $candidate = "M-OPP{$opportunityId}-{$padded}";
+        }
+
+        return $candidate;
     }
 }

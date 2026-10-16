@@ -56,6 +56,17 @@ https://developer.mozilla.org/
 Prefer official sources. Use reputable secondary sources only when
 useful, and distinguish them from official guidance.
 
+### Mandatory Engineering Directives:
+1. **Zero Hardcoded Arabic in Code (100% Strict Localization):**
+   - NEVER hardcode Arabic strings directly in PHP classes (Controllers, Services, Models, Repositories, Migrations, or Config). All user-facing text, status labels, error messages, and descriptions must strictly reside in `lang/ar/` (with English equivalents in `lang/en/`) and be retrieved via `__('file.key')` or `trans()`.
+   - In Vue 3, NEVER hardcode Arabic strings in templates or script tags. Use `$t('key')` or `t('key')` mapped to `resources/js/locales/ar.js` and `en.js`.
+2. **Ecosystem & Official Libraries (Vue 3, Pinia, Vite):**
+   - Use official libraries (Vue 3 Composition API, Pinia stores, Vue Router, Vue-i18n, Vite, Tailwind CSS). Do not reinvent ad-hoc state management or custom UI wheels when official ecosystem packages exist.
+3. **Idiomatic PHP & Laravel Collections:**
+   - Always leverage native Laravel Collection methods (`map`, `filter`, `pluck`, `groupBy`, `sortBy`, `firstWhere`, `sum`) and built-in PHP 8.3 functions over crude manual loops or duplicate helper algorithms.
+4. **Zero-Error Delivery Standard:**
+   - No exceptions, no broken builds (`npm run build`), zero failing tests (`php artisan test`), and zero formatting violations (`vendor/bin/pint`). Every change must be validated with real execution evidence.
+
 ## 3. Inspect Before Changing
 
 Before implementation or refactoring: - Read this file, local agent

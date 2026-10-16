@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Core\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,13 +25,13 @@ class AuthController extends Controller
 
         $user = User::where('email', strtolower(trim($validated['email'])))->first();
 
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
+        if (! $user || ! Hash::check($validated['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'email' => [__('auth.failed')],
             ]);
         }
 
-        if (!$user->isActive()) {
+        if (! $user->isActive()) {
             return response()->json([
                 'success' => false,
                 'message' => __('auth.account_inactive'),
@@ -75,6 +76,8 @@ class AuthController extends Controller
                     'slug' => $tenant->slug,
                     'company_code' => $tenant->company_code,
                     'plan' => $tenant->plan,
+                    'currency' => Setting::get('currency', 'EGP'),
+                    'currency_symbol' => Setting::get('currency_symbol', 'ج.م'),
                 ] : null,
             ],
         ]);
@@ -87,7 +90,7 @@ class AuthController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
                 'message' => __('auth.unauthorized'),
@@ -118,6 +121,8 @@ class AuthController extends Controller
                     'slug' => $tenant->slug,
                     'company_code' => $tenant->company_code,
                     'plan' => $tenant->plan,
+                    'currency' => Setting::get('currency', 'EGP'),
+                    'currency_symbol' => Setting::get('currency_symbol', 'ج.م'),
                 ] : null,
             ],
         ]);
@@ -160,7 +165,7 @@ class AuthController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if (!Hash::check($validated['current_password'], $user->password)) {
+        if (! Hash::check($validated['current_password'], $user->password)) {
             throw ValidationException::withMessages([
                 'current_password' => [__('auth.current_password_invalid')],
             ]);

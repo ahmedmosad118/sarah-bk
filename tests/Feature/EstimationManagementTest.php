@@ -14,6 +14,7 @@ use App\Models\Scope;
 use App\Models\SiteVisit;
 use App\Models\User;
 use App\Services\Tenant\TenantProvisioningService;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -23,13 +24,21 @@ use Tests\TestCase;
 class EstimationManagementTest extends TestCase
 {
     protected TenantProvisioningService $provisioningService;
+
     protected Tenant $tenantA;
+
     protected Tenant $tenantB;
+
     protected User $ownerA;
+
     protected User $ownerB;
+
     protected string $slugA;
+
     protected string $slugB;
+
     protected string $tokenA;
+
     protected string $tokenB;
 
     protected function setUp(): void
@@ -44,15 +53,15 @@ class EstimationManagementTest extends TestCase
 
         $this->provisioningService = app(TenantProvisioningService::class);
 
-        $this->slugA = str_replace('.', '', uniqid('est-a-', true)) . rand(100, 999);
-        $this->slugB = str_replace('.', '', uniqid('est-b-', true)) . rand(100, 999);
+        $this->slugA = str_replace('.', '', uniqid('est-a-', true)).rand(100, 999);
+        $this->slugB = str_replace('.', '', uniqid('est-b-', true)).rand(100, 999);
 
         // Provision Tenant A
         $resA = $this->provisioningService->provision([
             'name' => 'Alpha Estimation Corp',
             'slug' => $this->slugA,
-            'company_code' => 'ALPH-' . uniqid(),
-            'domain' => $this->slugA . '.localhost',
+            'company_code' => 'ALPH-'.uniqid(),
+            'domain' => $this->slugA.'.localhost',
         ], [
             'name' => 'Alpha Owner',
             'email' => "owner@{$this->slugA}.test",
@@ -66,8 +75,8 @@ class EstimationManagementTest extends TestCase
         $resB = $this->provisioningService->provision([
             'name' => 'Beta Estimation Corp',
             'slug' => $this->slugB,
-            'company_code' => 'BETA-' . uniqid(),
-            'domain' => $this->slugB . '.localhost',
+            'company_code' => 'BETA-'.uniqid(),
+            'domain' => $this->slugB.'.localhost',
         ], [
             'name' => 'Beta Owner',
             'email' => "owner@{$this->slugB}.test",
@@ -107,7 +116,7 @@ class EstimationManagementTest extends TestCase
     protected function headersA(): array
     {
         return [
-            'Authorization' => 'Bearer ' . $this->tokenA,
+            'Authorization' => 'Bearer '.$this->tokenA,
             'X-Tenant-Slug' => $this->slugA,
             'Accept' => 'application/json',
         ];
@@ -116,7 +125,7 @@ class EstimationManagementTest extends TestCase
     protected function headersB(): array
     {
         return [
-            'Authorization' => 'Bearer ' . $this->tokenB,
+            'Authorization' => 'Bearer '.$this->tokenB,
             'X-Tenant-Slug' => $this->slugB,
             'Accept' => 'application/json',
         ];
@@ -130,15 +139,15 @@ class EstimationManagementTest extends TestCase
         TenantDatabaseManager::switchToTenant($this->tenantA);
 
         $customer = Customer::create([
-            'name' => 'Client ' . $suffix,
+            'name' => 'Client '.$suffix,
             'customer_type' => 'company',
-            'phone' => '010' . rand(10000000, 99999999),
+            'phone' => '010'.rand(10000000, 99999999),
             'status' => 'active',
         ]);
 
         $opportunity = Opportunity::create([
             'customer_id' => $customer->id,
-            'title' => 'Project ' . $suffix,
+            'title' => 'Project '.$suffix,
             'stage' => 'Proposal',
         ]);
 
@@ -154,7 +163,7 @@ class EstimationManagementTest extends TestCase
 
         $measurement = Measurement::create([
             'opportunity_id' => $opportunity->id,
-            'measurement_number' => 'M-' . $suffix . '-001',
+            'measurement_number' => 'M-'.$suffix.'-001',
             'version' => 1,
             'status' => 'Approved',
             'total_area' => 120.00,
@@ -187,10 +196,10 @@ class EstimationManagementTest extends TestCase
         $scope = Scope::create([
             'opportunity_id' => $opportunity->id,
             'measurement_id' => $measurement->id,
-            'scope_number' => 'SC-' . $suffix . '-001',
+            'scope_number' => 'SC-'.$suffix.'-001',
             'version' => 1,
             'status' => 'Approved',
-            'title' => 'Scope ' . $suffix,
+            'title' => 'Scope '.$suffix,
             'approved_by' => $this->ownerA->id,
             'approved_at' => now(),
         ]);
@@ -212,10 +221,10 @@ class EstimationManagementTest extends TestCase
         $boq = Boq::create([
             'opportunity_id' => $opportunity->id,
             'scope_id' => $scope->id,
-            'boq_number' => 'BOQ-' . $suffix . '-001',
+            'boq_number' => 'BOQ-'.$suffix.'-001',
             'version' => 1,
             'status' => 'Approved',
-            'title' => 'BOQ ' . $suffix,
+            'title' => 'BOQ '.$suffix,
             'approved_by' => $this->ownerA->id,
             'approved_at' => now(),
         ]);
@@ -695,7 +704,7 @@ class EstimationManagementTest extends TestCase
         $plainToken = $plainUser->createToken('plain_token')->plainTextToken;
 
         $plainHeaders = [
-            'Authorization' => 'Bearer ' . $plainToken,
+            'Authorization' => 'Bearer '.$plainToken,
             'X-Tenant-Slug' => $this->slugA,
             'Accept' => 'application/json',
         ];
@@ -908,7 +917,7 @@ class EstimationManagementTest extends TestCase
         $this->assertStringContainsString("EST-OPP{$chain['opportunity']->id}-002", $number2);
 
         // Database unique constraint prevents inserting a duplicate estimation_number
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
         TenantDatabaseManager::switchToTenant($this->tenantA);
         Estimation::create([
             'opportunity_id' => $chain['opportunity']->id,
@@ -917,5 +926,190 @@ class EstimationManagementTest extends TestCase
             'version' => 3,
             'status' => 'Draft',
         ]);
+    }
+
+    /**
+     * Test 19: Identity manipulation protection on prepared_by and prepared_at.
+     */
+    public function test_unauthorized_user_cannot_manipulate_prepared_by_on_create_or_update(): void
+    {
+        $chain = $this->makeApprovedBoq('T19');
+
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        // Target user to fraudulently assign as preparer
+        $otherUser = User::create([
+            'name' => 'Target Preparer',
+            'email' => 'target.preparer@test.com',
+            'password' => bcrypt('TargetPass123!'),
+            'status' => 'active',
+        ]);
+
+        // Regular estimator without 'estimations.approve' permission
+        $estimator = User::create([
+            'name' => 'Junior Estimator',
+            'email' => 'junior.estimator@test.com',
+            'password' => bcrypt('JuniorPass123!'),
+            'status' => 'active',
+        ]);
+        $estimator->givePermissionTo(['estimations.view', 'estimations.create', 'estimations.update']);
+        $estimatorToken = $estimator->createToken('est_token')->plainTextToken;
+
+        $estimatorHeaders = [
+            'Authorization' => 'Bearer '.$estimatorToken,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ];
+
+        // 1. Unauthorized attempt to supply a different prepared_by on store() -> 422
+        $fraudulentStore = $this->postJson('/api/estimations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'boq_id' => $chain['boq']->id,
+            'prepared_by' => $otherUser->id,
+        ], $estimatorHeaders);
+        $fraudulentStore->assertStatus(422);
+        $fraudulentStore->assertJsonValidationErrors(['prepared_by']);
+
+        // 2. Defaulting: when prepared_by is omitted, it defaults to auth()->id()
+        $legitStore = $this->postJson('/api/estimations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'boq_id' => $chain['boq']->id,
+        ], $estimatorHeaders);
+        $legitStore->assertStatus(200);
+        $legitStore->assertJsonPath('data.prepared_by', $estimator->id);
+        $this->assertNotNull($legitStore->json('data.prepared_at'));
+
+        $estId = $legitStore->json('data.id');
+
+        // 3. Unauthorized attempt to reassign prepared_by on update() -> 422
+        $fraudulentUpdate = $this->putJson("/api/estimations/{$estId}", [
+            'prepared_by' => $otherUser->id,
+        ], $estimatorHeaders);
+        $fraudulentUpdate->assertStatus(422);
+        $fraudulentUpdate->assertJsonValidationErrors(['prepared_by']);
+
+        // 4. Authorized user (Owner / estimations.approve) CAN reassign prepared_by
+        $this->app['auth']->forgetGuards();
+        $authorizedUpdate = $this->putJson("/api/estimations/{$estId}", [
+            'prepared_by' => $otherUser->id,
+        ], $this->headersA());
+        $authorizedUpdate->assertStatus(200);
+        $authorizedUpdate->assertJsonPath('data.prepared_by', $otherUser->id);
+    }
+
+    /**
+     * Test 20: Cost component description alone does not justify zero-cost estimation.
+     */
+    public function test_zero_cost_approval_rejects_description_alone_and_insufficient_justification(): void
+    {
+        $chain = $this->makeApprovedBoq('T20');
+
+        $createRes = $this->postJson('/api/estimations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'boq_id' => $chain['boq']->id,
+        ], $this->headersA());
+        $estId = $createRes->json('data.id');
+
+        // Case A: Cost component description alone provided, rates 0.00, notes empty -> 422
+        $this->putJson("/api/estimations/{$estId}", [
+            'notes' => null,
+            'items' => [
+                [
+                    'boq_item_id' => $chain['boqItem1']->id,
+                    'notes' => null,
+                    'costs' => [
+                        [
+                            'cost_type' => 'material',
+                            'cost_rate' => 0.00,
+                            'description' => 'Supplier offers 100% discount on initial samples',
+                        ],
+                    ],
+                ],
+                [
+                    'boq_item_id' => $chain['boqItem2']->id,
+                    'notes' => null,
+                    'costs' => [
+                        [
+                            'cost_type' => 'labor',
+                            'cost_rate' => 0.00,
+                            'description' => 'In-house existing labor without extra charge',
+                        ],
+                    ],
+                ],
+            ],
+        ], $this->headersA());
+
+        $resDescAlone = $this->postJson("/api/estimations/{$estId}/approve", [], $this->headersA());
+        $resDescAlone->assertStatus(422);
+        $resDescAlone->assertJsonValidationErrors(['total_cost']);
+
+        // Case B: Insufficient / trivial note (< 10 chars) -> 422
+        $this->putJson("/api/estimations/{$estId}", [
+            'notes' => 'free', // 4 chars only
+        ], $this->headersA());
+
+        $resTrivialNote = $this->postJson("/api/estimations/{$estId}/approve", [], $this->headersA());
+        $resTrivialNote->assertStatus(422);
+        $resTrivialNote->assertJsonValidationErrors(['total_cost']);
+
+        // Case C: Meaningful explicit justification in estimation notes (>= 10 chars) -> 200 Approved
+        $this->putJson("/api/estimations/{$estId}", [
+            'notes' => 'Complimentary scope approved by general manager as goodwill discount',
+        ], $this->headersA());
+
+        $resValidDocNote = $this->postJson("/api/estimations/{$estId}/approve", [], $this->headersA());
+        $resValidDocNote->assertStatus(200);
+        $resValidDocNote->assertJsonPath('data.status', 'Approved');
+    }
+
+    /**
+     * Test 21: Approval consistency guarantees exactly one approved estimation per opportunity.
+     */
+    public function test_concurrent_estimation_approval_guarantees_single_approved_record(): void
+    {
+        $chain = $this->makeApprovedBoq('T21');
+
+        // Create Estimation V1
+        $res1 = $this->postJson('/api/estimations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'boq_id' => $chain['boq']->id,
+        ], $this->headersA());
+        $estId1 = $res1->json('data.id');
+
+        $this->putJson("/api/estimations/{$estId1}", [
+            'items' => [
+                ['boq_item_id' => $chain['boqItem1']->id, 'costs' => [['cost_type' => 'material', 'cost_rate' => 100.00]]],
+                ['boq_item_id' => $chain['boqItem2']->id, 'costs' => [['cost_type' => 'labor', 'cost_rate' => 50.00]]],
+            ],
+        ], $this->headersA());
+
+        // Approve V1
+        $approve1 = $this->postJson("/api/estimations/{$estId1}/approve", [], $this->headersA());
+        $approve1->assertStatus(200);
+
+        // Attempting to re-approve an already approved estimation is rejected by workflow (status must be Draft/Under Review)
+        $duplicateApprove = $this->postJson("/api/estimations/{$estId1}/approve", [], $this->headersA());
+        $duplicateApprove->assertStatus(422);
+        $duplicateApprove->assertJsonValidationErrors(['status']);
+
+        // Create revision V2
+        $revRes = $this->postJson("/api/estimations/{$estId1}/create-revision", [], $this->headersA());
+        $estId2 = $revRes->json('data.id');
+
+        // Approve V2
+        $approve2 = $this->postJson("/api/estimations/{$estId2}/approve", [], $this->headersA());
+        $approve2->assertStatus(200);
+
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        $approvedCount = Estimation::where('opportunity_id', $chain['opportunity']->id)
+            ->where('status', 'Approved')
+            ->count();
+        $this->assertEquals(1, $approvedCount, 'Multiple estimations are in Approved status for the same Opportunity!');
+
+        $supersededCount = Estimation::where('opportunity_id', $chain['opportunity']->id)
+            ->where('status', 'Superseded')
+            ->count();
+        $this->assertEquals(1, $supersededCount);
     }
 }

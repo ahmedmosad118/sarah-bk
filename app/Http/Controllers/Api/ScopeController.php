@@ -6,10 +6,8 @@ use App\Core\CRUD\CRUDController;
 use App\Core\CRUD\Field;
 use App\Core\CRUD\InputMaker;
 use App\Models\Measurement;
-use App\Models\MeasurementItem;
 use App\Models\Opportunity;
 use App\Models\Scope;
-use App\Models\ScopeItem;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,7 +19,9 @@ use Illuminate\Validation\ValidationException;
 class ScopeController extends CRUDController
 {
     protected string $model = Scope::class;
+
     protected array $searchable = ['scope_number', 'title', 'general_inclusions', 'general_exclusions', 'notes'];
+
     protected array $with = [
         'opportunity.customer',
         'measurement',
@@ -30,9 +30,11 @@ class ScopeController extends CRUDController
         'approvedUser',
         'creator',
         'items.measurementItems',
-        'media'
+        'media',
     ];
+
     protected string $defaultSortBy = 'id';
+
     protected string $defaultSortOrder = 'desc';
 
     protected function inputMaker(): InputMaker
@@ -174,7 +176,21 @@ class ScopeController extends CRUDController
     public function show(int|string $id): JsonResponse
     {
         $this->authorizePermission(['scopes.view', 'scope.view']);
+
         return parent::show($id);
+    }
+
+    /**
+     * Determine if authenticated user is authorized to assign or reassign document preparer.
+     */
+    protected function canAssignPreparer(string $permission = 'scopes.approve'): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasRole('Owner') || $user->hasRole('Super Admin') || $user->hasPermissionTo($permission);
     }
 
     public function store(Request $request): JsonResponse
@@ -206,8 +222,22 @@ class ScopeController extends CRUDController
         $opportunity = Opportunity::findOrFail($validated['opportunity_id']);
         $measurement = Measurement::with('items')->findOrFail($validated['measurement_id']);
 
+        // Identity check: default prepared_by to authenticated user
+        $preparedBy = auth()->id();
+        if ($request->filled('prepared_by')) {
+            $requested = (int) $request->input('prepared_by');
+            if ($requested !== (int) auth()->id()) {
+                if (! $this->canAssignPreparer('scopes.approve')) {
+                    throw ValidationException::withMessages([
+                        'prepared_by' => [__('messages.unauthorized_to_assign_preparer')],
+                    ]);
+                }
+                $preparedBy = $requested;
+            }
+        }
+
         // Strict Rule: Measurement MUST be Approved
-        if (!$measurement->isApproved()) {
+        if (! $measurement->isApproved()) {
             throw ValidationException::withMessages([
                 'measurement_id' => [__('messages.scope_requires_approved_measurement')],
             ]);
@@ -227,7 +257,7 @@ class ScopeController extends CRUDController
         foreach ($itemsData as $idx => $item) {
             $linkedIds = $item['measurement_item_ids'] ?? [];
             foreach ($linkedIds as $mItemId) {
-                if (!in_array((int) $mItemId, $validMeasurementItemIds, true)) {
+                if (! in_array((int) $mItemId, $validMeasurementItemIds, true)) {
                     throw ValidationException::withMessages([
                         "items.{$idx}.measurement_item_ids" => [__('messages.scope_measurement_item_mismatch')],
                     ]);
@@ -235,7 +265,7 @@ class ScopeController extends CRUDController
             }
         }
 
-        $scope = DB::transaction(function () use ($validated, $opportunity, $measurement, $itemsData, $request) {
+        $scope = DB::transaction(function () use ($validated, $opportunity, $measurement, $itemsData, $preparedBy) {
             $number = $validated['scope_number'] ?? $this->generateScopeNumber($opportunity->id);
 
             $scope = Scope::create([
@@ -244,10 +274,10 @@ class ScopeController extends CRUDController
                 'scope_number' => $number,
                 'version' => 1,
                 'status' => 'Draft',
-                'title' => $validated['title'] ?? "نطاق أعمال مشروع {$opportunity->title}",
+                'title' => $validated['title'] ?? (__('messages.scope_title_prefix').' '.$opportunity->title),
                 'general_inclusions' => $validated['general_inclusions'] ?? null,
                 'general_exclusions' => $validated['general_exclusions'] ?? null,
-                'prepared_by' => $validated['prepared_by'] ?? auth()->id(),
+                'prepared_by' => $preparedBy,
                 'prepared_at' => $validated['prepared_at'] ?? Carbon::today()->toDateString(),
                 'notes' => $validated['notes'] ?? null,
                 'created_by' => auth()->id(),
@@ -255,7 +285,7 @@ class ScopeController extends CRUDController
 
             foreach ($itemsData as $idx => $item) {
                 $scopeItem = $scope->items()->create([
-                    'trade_category' => trim((string) ($item['trade_category'] ?? 'عام')),
+                    'trade_category' => trim((string) ($item['trade_category'] ?? 'general')),
                     'item_name' => trim((string) ($item['item_name'] ?? '')),
                     'specification' => $item['specification'] ?? null,
                     'inclusions' => $item['inclusions'] ?? null,
@@ -264,7 +294,7 @@ class ScopeController extends CRUDController
                     'sort_order' => $item['sort_order'] ?? $idx,
                 ]);
 
-                if (!empty($item['measurement_item_ids'])) {
+                if (! empty($item['measurement_item_ids'])) {
                     $scopeItem->measurementItems()->sync($item['measurement_item_ids']);
                 }
             }
@@ -291,7 +321,7 @@ class ScopeController extends CRUDController
 
         $scope = Scope::with('items')->findOrFail($id);
 
-        if (!$scope->canBeEdited()) {
+        if (! $scope->canBeEdited()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.approved_scope_cannot_be_edited')],
             ]);
@@ -321,7 +351,7 @@ class ScopeController extends CRUDController
         $measurementId = $validated['measurement_id'] ?? $scope->measurement_id;
         $measurement = Measurement::with('items')->findOrFail($measurementId);
 
-        if (!$measurement->isApproved()) {
+        if (! $measurement->isApproved()) {
             throw ValidationException::withMessages([
                 'measurement_id' => [__('messages.scope_requires_approved_measurement')],
             ]);
@@ -339,7 +369,7 @@ class ScopeController extends CRUDController
         foreach ($itemsData as $idx => $item) {
             $linkedIds = $item['measurement_item_ids'] ?? [];
             foreach ($linkedIds as $mItemId) {
-                if (!in_array((int) $mItemId, $validMeasurementItemIds, true)) {
+                if (! in_array((int) $mItemId, $validMeasurementItemIds, true)) {
                     throw ValidationException::withMessages([
                         "items.{$idx}.measurement_item_ids" => [__('messages.scope_measurement_item_mismatch')],
                     ]);
@@ -347,11 +377,23 @@ class ScopeController extends CRUDController
             }
         }
 
-        $scope = DB::transaction(function () use ($scope, $validated, $measurementId, $itemsData, $request) {
+        // Identity check: modifying prepared_by requires manager/approval permission
+        if ($request->filled('prepared_by')) {
+            $requested = (int) $request->input('prepared_by');
+            if ($requested !== (int) $scope->prepared_by && $requested !== (int) auth()->id()) {
+                if (! $this->canAssignPreparer('scopes.approve')) {
+                    throw ValidationException::withMessages([
+                        'prepared_by' => [__('messages.unauthorized_to_assign_preparer')],
+                    ]);
+                }
+            }
+        }
+
+        $scope = DB::transaction(function () use ($scope, $validated, $measurementId, $itemsData) {
             if (isset($validated['measurement_id'])) {
                 $scope->measurement_id = $measurementId;
             }
-            if (!empty($validated['scope_number'])) {
+            if (! empty($validated['scope_number'])) {
                 $scope->scope_number = $validated['scope_number'];
             }
             if (isset($validated['title'])) {
@@ -388,7 +430,7 @@ class ScopeController extends CRUDController
                         'sort_order' => $item['sort_order'] ?? $idx,
                     ]);
 
-                    if (!empty($item['measurement_item_ids'])) {
+                    if (! empty($item['measurement_item_ids'])) {
                         $scopeItem->measurementItems()->sync($item['measurement_item_ids']);
                     }
                 }
@@ -454,7 +496,7 @@ class ScopeController extends CRUDController
 
         $scope = Scope::findOrFail($id);
 
-        if (!$scope->isDraft()) {
+        if (! $scope->isDraft()) {
             throw ValidationException::withMessages([
                 'status' => [__('messages.only_draft_scope_can_be_submitted_for_review')],
             ]);
@@ -485,26 +527,42 @@ class ScopeController extends CRUDController
     {
         $this->authorizePermission(['scopes.approve', 'scope.approve']);
 
-        $scope = Scope::with('items')->findOrFail($id);
+        return DB::transaction(function () use ($id) {
+            $scope = Scope::with('items')
+                ->where('id', $id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if (!$scope->canBeApproved()) {
-            throw ValidationException::withMessages([
-                'status' => [__('messages.scope_cannot_be_approved_in_current_state')],
-            ]);
-        }
+            if (! $scope->canBeApproved()) {
+                throw ValidationException::withMessages([
+                    'status' => [__('messages.scope_cannot_be_approved_in_current_state')],
+                ]);
+            }
 
-        if ($scope->items->isEmpty()) {
-            throw ValidationException::withMessages([
-                'items' => [__('messages.cannot_approve_empty_scope')],
-            ]);
-        }
+            // Source measurement must still be Approved and locked
+            $sourceMeasurement = Measurement::where('id', $scope->measurement_id)->lockForUpdate()->first();
+            if (! $sourceMeasurement || ! $sourceMeasurement->isApproved()) {
+                throw ValidationException::withMessages([
+                    'measurement_id' => [__('messages.scope_requires_approved_measurement')],
+                ]);
+            }
 
-        $scope = DB::transaction(function () use ($scope) {
-            // Supersede any previously approved Scope for this opportunity
-            Scope::where('opportunity_id', $scope->opportunity_id)
+            if ($scope->items->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'items' => [__('messages.cannot_approve_empty_scope')],
+                ]);
+            }
+
+            // Supersede any previously approved Scope for this opportunity (locked)
+            $siblingApproved = Scope::where('opportunity_id', $scope->opportunity_id)
                 ->where('id', '!=', $scope->id)
                 ->where('status', 'Approved')
-                ->update(['status' => 'Superseded']);
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($siblingApproved as $prevApproved) {
+                $prevApproved->update(['status' => 'Superseded']);
+            }
 
             $scope->status = 'Approved';
             $scope->approved_by = auth()->id();
@@ -517,14 +575,12 @@ class ScopeController extends CRUDController
                 ->causedBy(auth()->user())
                 ->log(__('activity.scope_approved', ['number' => $scope->scope_number]));
 
-            return $scope;
+            return response()->json([
+                'success' => true,
+                'message' => __('messages.scope_approved_success'),
+                'data' => $scope->fresh($this->with),
+            ]);
         });
-
-        return response()->json([
-            'success' => true,
-            'message' => __('messages.scope_approved_success'),
-            'data' => $scope->fresh($this->with),
-        ]);
     }
 
     /**
@@ -535,6 +591,12 @@ class ScopeController extends CRUDController
         $this->authorizePermission(['scopes.create', 'scope.create']);
 
         $parent = Scope::with('items.measurementItems')->findOrFail($id);
+
+        if (! $parent->isApproved()) {
+            throw ValidationException::withMessages([
+                'status' => [__('messages.scope_cannot_be_approved_in_current_state')],
+            ]);
+        }
 
         $revision = DB::transaction(function () use ($parent) {
             $newVersion = $parent->version + 1;
@@ -551,7 +613,10 @@ class ScopeController extends CRUDController
                 'general_exclusions' => $parent->general_exclusions,
                 'prepared_by' => auth()->id(),
                 'prepared_at' => Carbon::today()->toDateString(),
-                'notes' => "إصدار ومراجعة رقم ({$newVersion}) مستخرجة من نطاق الأعمال #{$parent->scope_number}.",
+                'notes' => __('messages.scope_revision_note', [
+                    'version' => $newVersion,
+                    'number' => $parent->scope_number,
+                ]),
                 'created_by' => auth()->id(),
             ]);
 
@@ -575,7 +640,10 @@ class ScopeController extends CRUDController
                 ->event('created')
                 ->performedOn($newScope)
                 ->causedBy(auth()->user())
-                ->log("تم إنشاء مراجعة نطاق أعمال جديدة رقم #{$newScope->scope_number} (الإصدار {$newVersion}).");
+                ->log(__('messages.scope_revision_activity', [
+                    'number' => $newScope->scope_number,
+                    'version' => $newVersion,
+                ]));
 
             return $newScope;
         });
@@ -596,7 +664,7 @@ class ScopeController extends CRUDController
 
         $measurement = Measurement::with('items', 'opportunity')->findOrFail($measurementId);
 
-        if (!$measurement->isApproved()) {
+        if (! $measurement->isApproved()) {
             throw ValidationException::withMessages([
                 'measurement_id' => [__('messages.scope_requires_approved_measurement')],
             ]);
@@ -615,9 +683,26 @@ class ScopeController extends CRUDController
      */
     protected function generateScopeNumber(int $opportunityId): string
     {
-        $count = Scope::where('opportunity_id', $opportunityId)->count();
-        $next = $count + 1;
-        $padded = str_pad((string) $next, 4, '0', STR_PAD_LEFT);
-        return "SC-OPP{$opportunityId}-{$padded}";
+        $latestNumber = Scope::where('opportunity_id', $opportunityId)
+            ->where('scope_number', 'like', "SC-OPP{$opportunityId}-%")
+            ->orderByRaw('LENGTH(scope_number) desc, scope_number desc')
+            ->value('scope_number');
+
+        if ($latestNumber && preg_match('/SC-OPP\d+-(\d+)/', $latestNumber, $matches)) {
+            $seq = (int) $matches[1] + 1;
+        } else {
+            $seq = Scope::where('opportunity_id', $opportunityId)->count() + 1;
+        }
+
+        $padded = str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+        $candidate = "SC-OPP{$opportunityId}-{$padded}";
+
+        while (Scope::where('scope_number', $candidate)->exists()) {
+            $seq++;
+            $padded = str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+            $candidate = "SC-OPP{$opportunityId}-{$padded}";
+        }
+
+        return $candidate;
     }
 }
