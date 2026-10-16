@@ -162,6 +162,7 @@ return [
     'cannot_approve_superseded_estimation' => 'Cannot approve this estimation because a newer revision is already approved.',
     'all_items_must_be_costed' => 'All BOQ items must be costed or have documented zero-cost notes before approval.',
     'zero_cost_requires_justification' => 'Cannot approve an estimation with zero total cost without explicit justification in notes.',
+    'zero_cost_reason_required' => 'A valid zero-cost reason is required to approve an estimation with zero total cost.',
     'cannot_quote_stale_estimation' => 'The selected cost estimation has been superseded by a newer approved revision.',
     'cannot_quote_stale_estimation_boq' => 'The source BOQ for this estimation has been superseded. Please update the estimation first.',
     'cannot_approve_stale_source_estimation' => 'Cannot approve a quotation linked to a non-approved or superseded estimation.',

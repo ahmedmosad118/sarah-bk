@@ -399,6 +399,7 @@ class EstimationController extends CRUDController
             'prepared_at' => ['nullable', 'date'],
             'overhead_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'zero_cost_reason' => ['nullable', 'string', 'in:Client-Supplied Material,Included in Another Item,Pending Vendor Quote,Other — see notes'],
             'items' => ['nullable', 'array'],
             'items.*.boq_item_id' => ['required', 'integer', 'exists:boq_items,id'],
             'items.*.notes' => ['nullable', 'string', 'max:2000'],
@@ -425,7 +426,7 @@ class EstimationController extends CRUDController
         // Identity check: modifying prepared_by requires manager/approval permission
         if ($request->filled('prepared_by')) {
             $requestedPreparer = (int) $request->input('prepared_by');
-            if ($requestedPreparer !== (int) $estimation->prepared_by && $requestedPreparer !== (int) auth()->id()) {
+            if ($requestedPreparer !== (int) $estimation->prepared_by) {
                 if (! $this->canAssignPreparer('estimations.approve')) {
                     throw ValidationException::withMessages([
                         'prepared_by' => [__('messages.unauthorized_to_assign_preparer')],
@@ -434,7 +435,7 @@ class EstimationController extends CRUDController
             }
         }
 
-        $estimation = DB::transaction(function () use ($estimation, $validated, $itemsData) {
+        $estimation = DB::transaction(function () use ($estimation, $validated, $itemsData, $request) {
             if (! empty($validated['estimation_number'])) {
                 $estimation->estimation_number = $validated['estimation_number'];
             }
@@ -452,6 +453,9 @@ class EstimationController extends CRUDController
             }
             if (isset($validated['notes'])) {
                 $estimation->notes = $validated['notes'];
+            }
+            if ($request->has('zero_cost_reason')) {
+                $estimation->zero_cost_reason = $validated['zero_cost_reason'];
             }
 
             if (is_array($itemsData)) {
@@ -577,7 +581,7 @@ class EstimationController extends CRUDController
     {
         $this->authorizePermission('estimations.approve');
 
-        return DB::transaction(function () use ($id) {
+        return DB::transaction(function () use ($id, $request) {
             // 1. Lock the Estimation record for update
             $estimation = Estimation::with(['items.costs', 'boq'])
                 ->where('id', $id)
@@ -599,6 +603,7 @@ class EstimationController extends CRUDController
 
             // 3. Source BOQ must still be Approved and locked against race conditions
             $sourceBoq = Boq::where('id', $estimation->boq_id)->lockForUpdate()->first();
+
             if (! $sourceBoq || ! $sourceBoq->isApproved()) {
                 throw ValidationException::withMessages([
                     'boq_id' => [__('messages.cannot_approve_stale_source_boq')],
@@ -649,21 +654,41 @@ class EstimationController extends CRUDController
                 ]);
             }
 
-            // 8. Zero-cost check: If total_cost is 0.00, require explicit, meaningful justification
+            // 8. Zero-cost check: If total_cost is 0.00, require zero_cost_reason & explicit justification
             $totalCost = (float) $estimation->total_cost;
             if ($totalCost <= 0) {
-                $docNotes = trim((string) $estimation->notes);
-                $hasMeaningfulDocNotes = strlen($docNotes) >= 10;
-                $hasMeaningfulItemNotes = $estimation->items->contains(function ($it) {
-                    return strlen(trim((string) $it->notes)) >= 10;
-                });
+                $zeroCostReason = $request->input('zero_cost_reason') ?? $estimation->zero_cost_reason;
+                $validReasons = [
+                    'Client-Supplied Material',
+                    'Included in Another Item',
+                    'Pending Vendor Quote',
+                    'Other — see notes',
+                ];
 
-                // Cost component descriptions (e.g. "Labor", "Cement") alone must never count as justification!
-                if (! $hasMeaningfulDocNotes && ! $hasMeaningfulItemNotes) {
+                if (! $zeroCostReason || ! in_array($zeroCostReason, $validReasons, true)) {
                     throw ValidationException::withMessages([
-                        'total_cost' => [__('messages.zero_cost_requires_justification')],
+                        'zero_cost_reason' => [__('messages.zero_cost_reason_required')],
+                        'total_cost' => [__('messages.cannot_approve_zero_cost_estimation')],
                     ]);
                 }
+
+                if ($zeroCostReason === 'Other — see notes') {
+                    $docNotes = trim((string) ($request->input('notes') ?? $estimation->notes));
+                    $hasMeaningfulDocNotes = strlen($docNotes) >= 10;
+                    $hasMeaningfulItemNotes = $estimation->items->contains(function ($it) {
+                        return strlen(trim((string) $it->notes)) >= 10;
+                    });
+
+                    // Cost component descriptions (e.g. "Labor", "Cement") alone must never count as justification!
+                    if (! $hasMeaningfulDocNotes && ! $hasMeaningfulItemNotes) {
+                        throw ValidationException::withMessages([
+                            'notes' => [__('messages.zero_cost_requires_justification')],
+                            'total_cost' => [__('messages.zero_cost_requires_justification')],
+                        ]);
+                    }
+                }
+
+                $estimation->zero_cost_reason = $zeroCostReason;
             }
 
             // Supersede any previously approved Estimation for this opportunity

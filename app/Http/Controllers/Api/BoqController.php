@@ -340,7 +340,7 @@ class BoqController extends CRUDController
         // Identity check: modifying prepared_by requires manager/approval permission
         if ($request->filled('prepared_by')) {
             $requested = (int) $request->input('prepared_by');
-            if ($requested !== (int) $boq->prepared_by && $requested !== (int) auth()->id()) {
+            if ($requested !== (int) $boq->prepared_by) {
                 if (! $this->canAssignPreparer('boqs.approve')) {
                     throw ValidationException::withMessages([
                         'prepared_by' => [__('messages.unauthorized_to_assign_preparer')],

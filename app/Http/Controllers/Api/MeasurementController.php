@@ -345,7 +345,7 @@ class MeasurementController extends CRUDController
         // Identity check: modifying measured_by requires manager/approval permission
         if ($request->filled('measured_by')) {
             $requested = (int) $request->input('measured_by');
-            if ($requested !== (int) $measurement->measured_by && $requested !== (int) auth()->id()) {
+            if ($requested !== (int) $measurement->measured_by) {
                 if (! $this->canAssignPreparer('measurements.approve')) {
                     throw ValidationException::withMessages([
                         'measured_by' => [__('messages.unauthorized_to_assign_preparer')],

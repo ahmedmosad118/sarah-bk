@@ -873,18 +873,20 @@ class EstimationManagementTest extends TestCase
 
         $resZeroNoNotes = $this->postJson("/api/estimations/{$estId}/approve", [], $this->headersA());
         $resZeroNoNotes->assertStatus(422);
-        $resZeroNoNotes->assertJsonValidationErrors(['total_cost']);
+        $resZeroNoNotes->assertJsonValidationErrors(['zero_cost_reason']);
 
         // Case 4: Legitimate zero-cost estimation with explicit justification in notes -> 200 Approved
         $this->putJson("/api/estimations/{$estId}", [
-            'notes' => 'المواد والعمالة مقدمة بالكامل من العميل مجاناً وفق البند رقم 4 من العقد',
+            'notes' => 'Materials and labor fully supplied by client per contract clause 4',
             'items' => [
                 ['boq_item_id' => $chain['boqItem1']->id, 'costs' => [['cost_type' => 'material', 'cost_rate' => 0.00]]],
                 ['boq_item_id' => $chain['boqItem2']->id, 'costs' => [['cost_type' => 'labor', 'cost_rate' => 0.00]]],
             ],
         ], $this->headersA());
 
-        $resZeroJustified = $this->postJson("/api/estimations/{$estId}/approve", [], $this->headersA());
+        $resZeroJustified = $this->postJson("/api/estimations/{$estId}/approve", [
+            'zero_cost_reason' => 'Other — see notes',
+        ], $this->headersA());
         $resZeroJustified->assertStatus(200);
         $resZeroJustified->assertJsonPath('data.status', 'Approved');
         $this->assertEquals(0.00, (float) $resZeroJustified->json('data.total_cost'));
@@ -981,12 +983,27 @@ class EstimationManagementTest extends TestCase
 
         $estId = $legitStore->json('data.id');
 
-        // 3. Unauthorized attempt to reassign prepared_by on update() -> 422
+        // 3. Unauthorized attempt to reassign prepared_by to a third party on update() -> 422
         $fraudulentUpdate = $this->putJson("/api/estimations/{$estId}", [
             'prepared_by' => $otherUser->id,
         ], $estimatorHeaders);
         $fraudulentUpdate->assertStatus(422);
         $fraudulentUpdate->assertJsonValidationErrors(['prepared_by']);
+
+        // 3b. Self-reassignment attempt: user B without approve permission tries to reassign prepared_by to themself -> 422
+        // First, authorized owner sets prepared_by to otherUser
+        $this->app['auth']->forgetGuards();
+        $this->putJson("/api/estimations/{$estId}", [
+            'prepared_by' => $otherUser->id,
+        ], $this->headersA())->assertStatus(200);
+
+        // Now estimator attempts to reassign prepared_by to themself (auth()->id())
+        $this->app['auth']->forgetGuards();
+        $stealPreparerRes = $this->putJson("/api/estimations/{$estId}", [
+            'prepared_by' => $estimator->id,
+        ], $estimatorHeaders);
+        $stealPreparerRes->assertStatus(422);
+        $stealPreparerRes->assertJsonValidationErrors(['prepared_by']);
 
         // 4. Authorized user (Owner / estimations.approve) CAN reassign prepared_by
         $this->app['auth']->forgetGuards();
@@ -999,8 +1016,9 @@ class EstimationManagementTest extends TestCase
 
     /**
      * Test 20: Cost component description alone does not justify zero-cost estimation.
+     * Enforces mandatory zero_cost_reason and notes verification on "Other — see notes".
      */
-    public function test_zero_cost_approval_rejects_description_alone_and_insufficient_justification(): void
+    public function test_zero_cost_approval_rejects_description_alone_and_requires_zero_cost_reason(): void
     {
         $chain = $this->makeApprovedBoq('T20');
 
@@ -1010,7 +1028,7 @@ class EstimationManagementTest extends TestCase
         ], $this->headersA());
         $estId = $createRes->json('data.id');
 
-        // Case A: Cost component description alone provided, rates 0.00, notes empty -> 422
+        // Setup zero rates with cost descriptions
         $this->putJson("/api/estimations/{$estId}", [
             'notes' => null,
             'items' => [
@@ -1039,33 +1057,56 @@ class EstimationManagementTest extends TestCase
             ],
         ], $this->headersA());
 
-        $resDescAlone = $this->postJson("/api/estimations/{$estId}/approve", [], $this->headersA());
-        $resDescAlone->assertStatus(422);
-        $resDescAlone->assertJsonValidationErrors(['total_cost']);
+        // Case A: Missing zero_cost_reason -> 422
+        $resNoReason = $this->postJson("/api/estimations/{$estId}/approve", [], $this->headersA());
+        $resNoReason->assertStatus(422);
+        $resNoReason->assertJsonValidationErrors(['zero_cost_reason']);
 
-        // Case B: Insufficient / trivial note (< 10 chars) -> 422
-        $this->putJson("/api/estimations/{$estId}", [
-            'notes' => 'free', // 4 chars only
+        // Case B: Reason is 'Other — see notes' but notes is missing or trivial (< 10 chars) -> 422
+        $resOtherNoNotes = $this->postJson("/api/estimations/{$estId}/approve", [
+            'zero_cost_reason' => 'Other — see notes',
+            'notes' => 'free', // only 4 characters
         ], $this->headersA());
+        $resOtherNoNotes->assertStatus(422);
+        $resOtherNoNotes->assertJsonValidationErrors(['notes']);
 
-        $resTrivialNote = $this->postJson("/api/estimations/{$estId}/approve", [], $this->headersA());
-        $resTrivialNote->assertStatus(422);
-        $resTrivialNote->assertJsonValidationErrors(['total_cost']);
-
-        // Case C: Meaningful explicit justification in estimation notes (>= 10 chars) -> 200 Approved
-        $this->putJson("/api/estimations/{$estId}", [
+        // Case C: Reason is 'Other — see notes' with meaningful notes (>= 10 chars) -> 200 Approved
+        $resOtherValid = $this->postJson("/api/estimations/{$estId}/approve", [
+            'zero_cost_reason' => 'Other — see notes',
             'notes' => 'Complimentary scope approved by general manager as goodwill discount',
         ], $this->headersA());
+        $resOtherValid->assertStatus(200);
+        $resOtherValid->assertJsonPath('data.status', 'Approved');
+        $resOtherValid->assertJsonPath('data.zero_cost_reason', 'Other — see notes');
 
-        $resValidDocNote = $this->postJson("/api/estimations/{$estId}/approve", [], $this->headersA());
-        $resValidDocNote->assertStatus(200);
-        $resValidDocNote->assertJsonPath('data.status', 'Approved');
+        // Case D: Reason is a specific predefined reason ('Client-Supplied Material') -> 200 Approved without notes requirement
+        // Create another draft estimation to test predefined reason
+        $createRes2 = $this->postJson('/api/estimations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'boq_id' => $chain['boq']->id,
+        ], $this->headersA());
+        $estId2 = $createRes2->json('data.id');
+
+        $this->putJson("/api/estimations/{$estId2}", [
+            'notes' => null, // empty notes
+            'items' => [
+                ['boq_item_id' => $chain['boqItem1']->id, 'costs' => [['cost_type' => 'material', 'cost_rate' => 0.00]]],
+                ['boq_item_id' => $chain['boqItem2']->id, 'costs' => [['cost_type' => 'labor', 'cost_rate' => 0.00]]],
+            ],
+        ], $this->headersA());
+
+        $resPredefined = $this->postJson("/api/estimations/{$estId2}/approve", [
+            'zero_cost_reason' => 'Client-Supplied Material',
+        ], $this->headersA());
+        $resPredefined->assertStatus(200);
+        $resPredefined->assertJsonPath('data.status', 'Approved');
+        $resPredefined->assertJsonPath('data.zero_cost_reason', 'Client-Supplied Material');
     }
 
     /**
-     * Test 21: Approval consistency guarantees exactly one approved estimation per opportunity.
+     * Test 21: Sequential double approval is rejected by workflow immutability rules.
      */
-    public function test_concurrent_estimation_approval_guarantees_single_approved_record(): void
+    public function test_sequential_double_approval_is_rejected(): void
     {
         $chain = $this->makeApprovedBoq('T21');
 
@@ -1111,5 +1152,54 @@ class EstimationManagementTest extends TestCase
             ->where('status', 'Superseded')
             ->count();
         $this->assertEquals(1, $supersededCount);
+    }
+
+    /**
+     * Test 22: Active pessimistic locking blocks concurrent database access under separate connections.
+     */
+    public function test_concurrent_pessimistic_lock_blocks_concurrent_approval(): void
+    {
+        $chain = $this->makeApprovedBoq('T22');
+
+        $createRes = $this->postJson('/api/estimations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'boq_id' => $chain['boq']->id,
+        ], $this->headersA());
+        $estId = $createRes->json('data.id');
+
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        // Connection 1 begins transaction and acquires exclusive lockForUpdate()
+        DB::connection('tenant')->beginTransaction();
+        $lockedRecord = Estimation::where('id', $estId)->lockForUpdate()->first();
+        $this->assertNotNull($lockedRecord);
+
+        // Connection 2: instantiate a separate PDO connection to the same tenant database
+        $tenantConfig = config('database.connections.tenant');
+        $dsn = "mysql:host={$tenantConfig['host']};port={$tenantConfig['port']};dbname={$tenantConfig['database']}";
+        $pdo2 = new \PDO($dsn, $tenantConfig['username'], $tenantConfig['password']);
+        $pdo2->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $pdo2->exec('SET innodb_lock_wait_timeout = 1');
+
+        $blockedAndTimedOut = false;
+        try {
+            // Attempt to acquire pessimistic lock on the same row from connection 2
+            $stmt = $pdo2->prepare('SELECT * FROM estimations WHERE id = :id FOR UPDATE');
+            $stmt->execute(['id' => $estId]);
+            $stmt->fetchAll();
+        } catch (\PDOException $e) {
+            // Error code 1205: Lock wait timeout exceeded
+            if (str_contains($e->getMessage(), '1205') || str_contains($e->getMessage(), 'Lock wait timeout')) {
+                $blockedAndTimedOut = true;
+            }
+        } finally {
+            // Release lock on connection 1
+            DB::connection('tenant')->rollBack();
+        }
+
+        $this->assertTrue(
+            $blockedAndTimedOut,
+            'Pessimistic lock failed to block concurrent connection 2 from acquiring lock on the same estimation row.'
+        );
     }
 }

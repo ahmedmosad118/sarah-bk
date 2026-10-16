@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Core\Concerns\HasApprovalWorkflow;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +14,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 
 class Estimation extends Model implements HasMedia
 {
-    use HasFactory, LogsActivity, InteractsWithMedia, HasApprovalWorkflow;
+    use HasApprovalWorkflow, HasFactory, InteractsWithMedia, LogsActivity;
 
     protected function numberColumn(): string
     {
@@ -36,6 +35,7 @@ class Estimation extends Model implements HasMedia
         'approved_by',
         'approved_at',
         'notes',
+        'zero_cost_reason',
         'direct_cost',
         'overhead_rate',
         'overhead_amount',

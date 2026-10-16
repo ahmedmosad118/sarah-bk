@@ -34,7 +34,7 @@
     <div v-if="showGovernanceNotice" class="rounded-xl border border-blue-100 bg-blue-50/50 p-3.5 dark:border-blue-900/30 dark:bg-blue-950/20 flex items-center justify-between gap-3 text-xs">
       <div class="flex items-center gap-2.5 text-blue-950 dark:text-blue-200">
         <ShieldCheck class="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
-        <span class="font-bold">دراسة التكاليف مبنية حصرًا على جدول كميات معتمد (Approved BOQ)، والكميات والوحدات محمية هندسياً.</span>
+        <span class="font-bold">{{ $t('estimation.governanceNotice') }}</span>
       </div>
       <button
         type="button"
@@ -54,7 +54,7 @@
         </div>
         <div>
           <p class="font-bold">{{ $t('estimation.filterByOpportunity') }} #{{ filterOpportunityId }}</p>
-          <p class="text-[11px] text-emerald-700/80 dark:text-emerald-400">يتم تصفية دراسات التسعير للفرصة المحددة فقط.</p>
+          <p class="text-[11px] text-emerald-700/80 dark:text-emerald-400">{{ $t('estimation.filterByOpportunityDesc') }}</p>
         </div>
       </div>
 
@@ -64,14 +64,14 @@
           @click="openCreateModal(filterOpportunityId)"
           class="px-3 py-1.5 rounded-xl bg-[#00C896] hover:bg-[#00A87E] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
         >
-          + إعداد دراسة تسعير لهذه الفرصة
+          {{ $t('estimation.createForOpp') }}
         </button>
         <button
           type="button"
           @click="clearOpportunityFilter"
           class="px-3 py-1.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all cursor-pointer dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
         >
-          عرض كل الدراسات
+          {{ $t('estimation.viewAll') }}
         </button>
       </div>
     </div>
@@ -404,7 +404,7 @@
             >
               <option value="" disabled>{{ $t('estimation.selectOpportunity') }}</option>
               <option v-for="opp in opportunitiesList" :key="opp.id" :value="opp.id">
-                #{{ opp.opportunity_number || opp.id }} — {{ opp.title }} ({{ opp.customer?.name || opp.customer?.company_name || 'عميل' }})
+                #{{ opp.opportunity_number || opp.id }} — {{ opp.title }} ({{ opp.customer?.name || opp.customer?.company_name || $t('estimation.clientFallback') }})
               </option>
             </select>
           </div>
@@ -414,10 +414,10 @@
               {{ $t('estimation.formSourceBoq') }} *
             </label>
             <div v-if="loadingBoqs" class="p-3 text-center text-gray-400">
-              <span class="animate-spin inline-block mr-2">⏳</span> جاري تحميل جداول الكميات المعتمدة...
+              <span class="animate-spin inline-block mr-2">⏳</span> {{ $t('estimation.loadingApprovedBoqs') }}
             </div>
             <div v-else-if="eligibleBoqs.length === 0" class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
-              ⚠️ لا يوجد أي جدول كميات معتمد (Approved BOQ) لهذه الفرصة. يجب إعداد جدول كميات واعتماده أولاً.
+              ⚠️ {{ $t('estimation.noApprovedBoqsWarn') }}
             </div>
             <select
               v-else
@@ -428,7 +428,7 @@
             >
               <option value="" disabled>{{ $t('estimation.selectBoq') }}</option>
               <option v-for="b in eligibleBoqs" :key="b.id" :value="b.id">
-                #{{ b.boq_number }} (الإصدار V{{ b.version }}) — {{ b.items?.length || 0 }} بند كميات
+                #{{ b.boq_number }} ({{ $t('estimation.boqVersion') }} V{{ b.version }}) — {{ b.items?.length || 0 }} {{ $t('estimation.boqItemsCount') }}
               </option>
             </select>
           </div>
@@ -437,10 +437,10 @@
           <div v-if="selectedBoqPreview" class="rounded-2xl border border-gray-100 bg-gray-50/50 p-3.5 dark:border-gray-800 dark:bg-gray-800/40">
             <div class="flex items-center justify-between mb-2">
               <span class="font-bold text-gray-700 dark:text-gray-300 text-[11px]">
-                معاينة بنود جدول الكميات المراد تسعيرها ({{ selectedBoqPreview.items?.length || 0 }} بند):
+                {{ $t('estimation.previewItemsHeader', { count: selectedBoqPreview.items?.length || 0 }) }}
               </span>
               <span class="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                كميات ووحدات مجمدة
+                {{ $t('estimation.frozenQuantitiesBadge') }}
               </span>
             </div>
             <div class="max-h-40 overflow-y-auto space-y-1 text-[11px]">
@@ -469,7 +469,7 @@
                 v-model="createForm.title"
                 type="text"
                 class="w-full rounded-xl border border-gray-200 bg-gray-50/50 p-2.5 text-xs text-gray-900 focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                placeholder="دراسة تكلفة أعمال الفرصة..."
+                :placeholder="$t('estimation.titlePlaceholder')"
               />
             </div>
 
@@ -497,7 +497,7 @@
               v-model="createForm.notes"
               rows="2"
               class="w-full rounded-xl border border-gray-200 bg-gray-50/50 p-2.5 text-xs text-gray-900 focus:border-[#00C896] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              placeholder="ملاحظات أو اشتراطات تسعير..."
+              :placeholder="$t('estimation.notesPlaceholder')"
             ></textarea>
           </div>
 
@@ -514,7 +514,7 @@
               :disabled="saving || !createForm.boq_id"
               class="px-5 py-2 rounded-xl bg-[#00C896] hover:bg-[#00A87E] text-white font-bold disabled:opacity-50 transition-colors cursor-pointer"
             >
-              <span v-if="saving">جاري الإنشاء...</span>
+              <span v-if="saving">{{ $t('estimation.creating') }}</span>
               <span v-else>{{ $t('estimation.btnGenerate') }}</span>
             </button>
           </div>
@@ -534,7 +534,7 @@
             <div>
               <div class="flex items-center gap-2">
                 <h3 class="text-sm font-black text-gray-900 dark:text-white">
-                  دراسة تسعير #{{ activeEstimation.estimation_number }}
+                  {{ $t('estimation.docNumberPrefix') }}{{ activeEstimation.estimation_number }}
                 </h3>
                 <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-black text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                   V{{ activeEstimation.version }}
@@ -544,7 +544,7 @@
                 </span>
               </div>
               <p class="text-[11px] text-gray-500">
-                جدول الكميات المصدر: #{{ activeEstimation.boq?.boq_number }} (V{{ activeEstimation.boq?.version }}) • {{ activeEstimation.opportunity?.title }}
+                {{ $t('estimation.sourceBoqPrefix') }} #{{ activeEstimation.boq?.boq_number }} (V{{ activeEstimation.boq?.version }}) • {{ activeEstimation.opportunity?.title }}
               </p>
             </div>
           </div>
@@ -570,7 +570,7 @@
 
             <div>
               <label class="block font-bold text-gray-700 dark:text-gray-300 mb-1">
-                نسبة المصاريف العمومية والإشراف (Overhead %)
+                {{ $t('estimation.overheadRateLabel') }}
               </label>
               <div class="flex items-center gap-1.5">
                 <input
@@ -602,10 +602,10 @@
           <div class="rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
             <div class="p-3 bg-gray-50/75 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
               <span class="font-black text-gray-800 dark:text-gray-200 text-xs">
-                بنود التكلفة المباشرة (Direct Cost Components):
+                {{ $t('estimation.directCostComponentsHeader') }}
               </span>
               <span class="text-[11px] text-gray-500">
-                الكميات مجمدة، والأسعار المدخلة هي سعر تكلفة الوحدة المباشرة
+                {{ $t('estimation.directCostComponentsSubtitle') }}
               </span>
             </div>
 
@@ -629,14 +629,14 @@
 
                   <div class="flex items-center gap-3 shrink-0 text-xs">
                     <div class="text-end">
-                      <span class="text-[10px] text-gray-400 block">كمية البند:</span>
+                      <span class="text-[10px] text-gray-400 block">{{ $t('estimation.itemQuantityLabel') }}</span>
                       <span class="font-black text-[#00A87E] dark:text-[#00C896]">
                         {{ Number(item.quantity).toFixed(2) }} {{ item.unit }}
                       </span>
                     </div>
 
                     <div class="text-end border-s border-gray-200 dark:border-gray-800 ps-3">
-                      <span class="text-[10px] text-gray-400 block">إجمالي تكلفة البند:</span>
+                      <span class="text-[10px] text-gray-400 block">{{ $t('estimation.itemTotalCostLabel') }}</span>
                       <span class="font-black text-gray-900 dark:text-white">
                         {{ formatCurrency(calculateLineDirectCost(item)) }}
                       </span>
@@ -647,7 +647,7 @@
                 <!-- 5 Direct Cost Components Grid -->
                 <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-2 border-t border-gray-50 dark:border-gray-800/60 text-xs">
                   <div>
-                    <label class="block text-[10px] font-bold text-gray-500 mb-0.5">مواد (Material / وحدة)</label>
+                    <label class="block text-[10px] font-bold text-gray-500 mb-0.5">{{ $t('estimation.matCostLabel') }}</label>
                     <input
                       v-model.number="item.rates.material"
                       type="number"
@@ -659,7 +659,7 @@
                   </div>
 
                   <div>
-                    <label class="block text-[10px] font-bold text-gray-500 mb-0.5">مصنعيات (Labor / وحدة)</label>
+                    <label class="block text-[10px] font-bold text-gray-500 mb-0.5">{{ $t('estimation.labCostLabel') }}</label>
                     <input
                       v-model.number="item.rates.labor"
                       type="number"
@@ -671,7 +671,7 @@
                   </div>
 
                   <div>
-                    <label class="block text-[10px] font-bold text-gray-500 mb-0.5">معدات (Equipment / وحدة)</label>
+                    <label class="block text-[10px] font-bold text-gray-500 mb-0.5">{{ $t('estimation.eqpCostLabel') }}</label>
                     <input
                       v-model.number="item.rates.equipment"
                       type="number"
@@ -683,7 +683,7 @@
                   </div>
 
                   <div>
-                    <label class="block text-[10px] font-bold text-gray-500 mb-0.5">مقاولو باطن (Subcon / وحدة)</label>
+                    <label class="block text-[10px] font-bold text-gray-500 mb-0.5">{{ $t('estimation.subCostLabel') }}</label>
                     <input
                       v-model.number="item.rates.subcontractor"
                       type="number"
@@ -695,7 +695,7 @@
                   </div>
 
                   <div>
-                    <label class="block text-[10px] font-bold text-gray-500 mb-0.5">أخرى (Other / وحدة)</label>
+                    <label class="block text-[10px] font-bold text-gray-500 mb-0.5">{{ $t('estimation.othCostLabel') }}</label>
                     <input
                       v-model.number="item.rates.other"
                       type="number"
@@ -716,7 +716,7 @@
           <!-- Totals Breakdown Pills -->
           <div class="flex flex-wrap items-center gap-4 text-xs">
             <div class="p-2 rounded-xl bg-gray-50 dark:bg-gray-800">
-              <span class="text-gray-400 block text-[10px]">إجمالي التكلفة المباشرة:</span>
+              <span class="text-gray-400 block text-[10px]">{{ $t('estimation.totalDirectCostLabel') }}</span>
               <span class="font-black text-gray-800 dark:text-gray-200">
                 {{ formatCurrency(computedDirectCostSubtotal) }}
               </span>
@@ -724,7 +724,7 @@
 
             <div class="p-2 rounded-xl bg-gray-50 dark:bg-gray-800">
               <span class="text-gray-400 block text-[10px]">
-                المصاريف العمومية ({{ editForm.overhead_rate || 0 }}%):
+                {{ $t('estimation.overheadAmountLabel', { rate: editForm.overhead_rate || 0 }) }}
               </span>
               <span class="font-black text-gray-800 dark:text-gray-200">
                 {{ formatCurrency(computedOverheadAmount) }}
@@ -733,7 +733,7 @@
 
             <div class="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
               <span class="text-emerald-700 dark:text-emerald-300 block text-[10px] font-bold">
-                إجمالي التكلفة التقديرية (Total Estimated Cost):
+                {{ $t('estimation.totalEstimatedCostLabel') }}
               </span>
               <span class="font-black text-emerald-950 dark:text-emerald-200 text-sm">
                 {{ formatCurrency(computedGrandTotalCost) }}
@@ -755,8 +755,8 @@
               :disabled="saving"
               class="px-5 py-2 rounded-xl bg-[#00C896] hover:bg-[#00A87E] text-white font-bold disabled:opacity-50 transition-colors cursor-pointer text-xs"
             >
-              <span v-if="saving">جاري الحفظ...</span>
-              <span v-else>حفظ دراسة التكلفة</span>
+              <span v-if="saving">{{ $t('estimation.saving') }}</span>
+              <span v-else>{{ $t('estimation.saveCosting') }}</span>
             </button>
           </div>
         </div>
@@ -775,7 +775,7 @@
             <div>
               <div class="flex items-center gap-2">
                 <h3 class="text-sm font-black text-gray-900 dark:text-white">
-                  وثيقة دراسة التسعير والتكلفة #{{ activeEstimation.estimation_number }}
+                  {{ $t('estimation.sheetTitle', { number: activeEstimation.estimation_number }) }}
                 </h3>
                 <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-black text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                   V{{ activeEstimation.version }}
@@ -785,7 +785,7 @@
                 </span>
               </div>
               <p class="text-[11px] text-gray-500">
-                الفرصة: {{ activeEstimation.opportunity?.title }} ({{ activeEstimation.opportunity?.customer?.name }})
+                {{ $t('estimation.oppLabel') }} {{ activeEstimation.opportunity?.title }} ({{ activeEstimation.opportunity?.customer?.name }})
               </p>
             </div>
           </div>
@@ -796,7 +796,7 @@
               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold hover:bg-gray-50 cursor-pointer"
             >
               <Printer class="h-4 w-4" />
-              <span>طباعة الشيت</span>
+              <span>{{ $t('estimation.printSheet') }}</span>
             </button>
             <button @click="showDetailsModal = false" class="text-gray-400 hover:text-gray-600 p-1">
               <X class="h-5 w-5" />
@@ -811,9 +811,14 @@
             <div class="flex items-start gap-3">
               <AlertTriangle class="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <p class="font-black text-xs">تحذير: جدول الكميات المعتمد الحالي لهذه الفرصة تم تحديثه!</p>
+                <p class="font-black text-xs">{{ $t('estimation.staleBoqWarningTitle') }}</p>
                 <p class="text-[11px] mt-0.5 leading-relaxed">
-                  هذه الدراسة مرتبطة بجدول كميات سابق (#{{ activeEstimation.boq?.boq_number }} - V{{ activeEstimation.boq?.version }}). تم اعتماد إصدار أحدث (#{{ activeEstimationDetails.latest_approved_boq?.boq_number }} - V{{ activeEstimationDetails.latest_approved_boq?.version }}). تعتبر هذه الدراسة تاريخية، ويجب توليد دراسة تسعير جديدة من جدول الكميات الأحدث.
+                  {{ $t('estimation.staleBoqWarningBody', {
+                    oldBoq: activeEstimation.boq?.boq_number,
+                    oldVer: activeEstimation.boq?.version,
+                    newBoq: activeEstimationDetails.latest_approved_boq?.boq_number,
+                    newVer: activeEstimationDetails.latest_approved_boq?.version
+                  }) }}
                 </p>
               </div>
             </div>
@@ -822,28 +827,28 @@
           <!-- Document Metadata Grid -->
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/40 text-xs">
             <div>
-              <span class="text-gray-400 block text-[10px]">جدول الكميات المصدر:</span>
+              <span class="text-gray-400 block text-[10px]">{{ $t('estimation.sourceBoqLabel') }}</span>
               <span class="font-bold text-gray-900 dark:text-white">
                 #{{ activeEstimation.boq?.boq_number }} (V{{ activeEstimation.boq?.version }})
               </span>
             </div>
 
             <div>
-              <span class="text-gray-400 block text-[10px]">تاريخ الإعداد:</span>
+              <span class="text-gray-400 block text-[10px]">{{ $t('estimation.preparedAtLabel') }}</span>
               <span class="font-bold text-gray-900 dark:text-white">
                 {{ activeEstimation.prepared_at || '—' }}
               </span>
             </div>
 
             <div>
-              <span class="text-gray-400 block text-[10px]">معد الدراسة:</span>
+              <span class="text-gray-400 block text-[10px]">{{ $t('estimation.preparedByLabel') }}</span>
               <span class="font-bold text-gray-900 dark:text-white">
                 {{ activeEstimation.prepared_user?.name || '—' }}
               </span>
             </div>
 
             <div>
-              <span class="text-gray-400 block text-[10px]">معتمد الدراسة:</span>
+              <span class="text-gray-400 block text-[10px]">{{ $t('estimation.approvedByLabel') }}</span>
               <span class="font-bold text-gray-900 dark:text-white">
                 {{ activeEstimation.approved_user?.name || '—' }}
               </span>
@@ -856,10 +861,10 @@
               <thead>
                 <tr class="bg-gray-50 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800 text-[10px] font-bold text-gray-500">
                   <th class="p-2.5 text-start">#</th>
-                  <th class="p-2.5 text-start">الوصف والمواصفة</th>
-                  <th class="p-2.5 text-end">الكمية والوحدة</th>
-                  <th class="p-2.5 text-end">تكلفة الوحدة</th>
-                  <th class="p-2.5 text-end">التكلفة المباشرة</th>
+                  <th class="p-2.5 text-start">{{ $t('estimation.thDescription') }}</th>
+                  <th class="p-2.5 text-end">{{ $t('estimation.thQuantityUnit') }}</th>
+                  <th class="p-2.5 text-end">{{ $t('estimation.thUnitCost') }}</th>
+                  <th class="p-2.5 text-end">{{ $t('estimation.thDirectCost') }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -868,11 +873,11 @@
                   <td class="p-2.5">
                     <p class="font-bold text-gray-900 dark:text-white">{{ line.description }}</p>
                     <div class="flex flex-wrap gap-2 text-[10px] text-gray-400 mt-1">
-                      <span v-if="Number(line.material_cost) > 0">مواد: {{ formatCurrency(line.material_cost) }}</span>
-                      <span v-if="Number(line.labor_cost) > 0">مصنعيات: {{ formatCurrency(line.labor_cost) }}</span>
-                      <span v-if="Number(line.equipment_cost) > 0">معدات: {{ formatCurrency(line.equipment_cost) }}</span>
-                      <span v-if="Number(line.subcontractor_cost) > 0">باطن: {{ formatCurrency(line.subcontractor_cost) }}</span>
-                      <span v-if="Number(line.other_cost) > 0">أخرى: {{ formatCurrency(line.other_cost) }}</span>
+                      <span v-if="Number(line.material_cost) > 0">{{ $t('estimation.lblMat') }} {{ formatCurrency(line.material_cost) }}</span>
+                      <span v-if="Number(line.labor_cost) > 0">{{ $t('estimation.lblLab') }} {{ formatCurrency(line.labor_cost) }}</span>
+                      <span v-if="Number(line.equipment_cost) > 0">{{ $t('estimation.lblEqp') }} {{ formatCurrency(line.equipment_cost) }}</span>
+                      <span v-if="Number(line.subcontractor_cost) > 0">{{ $t('estimation.lblSub') }} {{ formatCurrency(line.subcontractor_cost) }}</span>
+                      <span v-if="Number(line.other_cost) > 0">{{ $t('estimation.lblOth') }} {{ formatCurrency(line.other_cost) }}</span>
                     </div>
                   </td>
                   <td class="p-2.5 text-end font-bold text-gray-700 dark:text-gray-300">
@@ -893,13 +898,13 @@
           <div class="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div class="space-y-1 text-xs">
               <div class="flex items-center gap-4 text-gray-600 dark:text-gray-400">
-                <span>إجمالي التكاليف المباشرة (Direct Subtotal):</span>
+                <span>{{ $t('estimation.totalDirectSubtotal') }}</span>
                 <span class="font-bold text-gray-900 dark:text-white">
                   {{ formatCurrency(activeEstimation.direct_cost) }}
                 </span>
               </div>
               <div class="flex items-center gap-4 text-gray-600 dark:text-gray-400">
-                <span>المصاريف العمومية والإشراف ({{ Number(activeEstimation.overhead_rate) }}%):</span>
+                <span>{{ $t('estimation.overheadSubtotal', { rate: Number(activeEstimation.overhead_rate) }) }}</span>
                 <span class="font-bold text-gray-900 dark:text-white">
                   {{ formatCurrency(activeEstimation.overhead_amount) }}
                 </span>
@@ -908,7 +913,7 @@
 
             <div class="p-3 rounded-2xl bg-[#00C896]/10 border border-[#00C896]/20 text-end">
               <span class="text-[10px] font-bold text-[#00A87E] dark:text-[#00C896] block">
-                إجمالي التكلفة التقديرية المعتمدة (Internal Estimated Cost):
+                {{ $t('estimation.approvedInternalCost') }}
               </span>
               <span class="text-xl font-black text-[#00A87E] dark:text-[#00C896]">
                 {{ formatCurrency(activeEstimation.total_cost) }}
@@ -926,7 +931,7 @@
               @click="submitReview(activeEstimation); showDetailsModal = false"
               class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs cursor-pointer"
             >
-              تقديم للمراجعة
+              {{ $t('estimation.submitReviewBtn') }}
             </button>
 
             <!-- Approve -->
@@ -935,7 +940,7 @@
               @click="approveEstimation(activeEstimation); showDetailsModal = false"
               class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer"
             >
-              اعتماد الدراسة رسمياً
+              {{ $t('estimation.approveBtn') }}
             </button>
 
             <!-- Create Revision -->
@@ -944,7 +949,7 @@
               @click="createRevision(activeEstimation); showDetailsModal = false"
               class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs cursor-pointer"
             >
-              إنشاء مراجعة جديدة (V{{ activeEstimation.version + 1 }})
+              {{ $t('estimation.createRevisionBtn', { version: activeEstimation.version + 1 }) }}
             </button>
           </div>
 
@@ -1191,8 +1196,8 @@ const submitCreate = async () => {
       showCreateModal.value = false;
       await fetchData();
       alertService.showSuccess({
-        title: 'تم إنشاء دراسة التسعير بنجاح',
-        text: 'يمكنك الآن إدخال أسعار التكلفة للبنود المباشرة والمصاريف العمومية.',
+        title: t('estimation.createdSuccessTitle'),
+        text: t('estimation.createdSuccessText'),
       });
       // Immediately open costing editor for the new estimation
       if (res.data.data?.id) {
@@ -1200,8 +1205,8 @@ const submitCreate = async () => {
       }
     }
   } catch (err) {
-    const msg = err.response?.data?.message || 'حدث خطأ أثناء إنشاء دراسة التسعير';
-    alertService.showError({ title: 'خطأ', text: msg });
+    const msg = err.response?.data?.message || t('estimation.createdErrorMsg');
+    alertService.showError({ title: t('common.error'), text: msg });
   } finally {
     saving.value = false;
   }
@@ -1308,12 +1313,12 @@ const submitUpdate = async () => {
       showEditModal.value = false;
       await fetchData();
       alertService.showSuccess({
-        title: 'تم حفظ دراسة التكلفة بنجاح',
+        title: t('estimation.savedSuccessTitle'),
       });
     }
   } catch (err) {
-    const msg = err.response?.data?.message || 'حدث خطأ أثناء حفظ التعديلات';
-    alertService.showError({ title: 'خطأ', text: msg });
+    const msg = err.response?.data?.message || t('estimation.savedErrorMsg');
+    alertService.showError({ title: t('common.error'), text: msg });
   } finally {
     saving.value = false;
   }
@@ -1336,11 +1341,11 @@ const openDetailsModal = async (id) => {
 // Approval Workflow
 const submitReview = async (row) => {
   const confirmed = await alertService.confirmAction({
-    title: 'تقديم دراسة التسعير للمراجعة؟',
-    text: `سيتم تحويل دراسة التسعير رقم #${row.estimation_number} إلى حالة "قيد المراجعة" للتدقيق الفني والإداري.`,
+    title: t('estimation.submitReviewConfirmTitle'),
+    text: t('estimation.submitReviewConfirmText', { number: row.estimation_number }),
     icon: 'question',
-    confirmButtonText: 'نعم، تقديم للمراجعة',
-    cancelButtonText: 'إلغاء',
+    confirmButtonText: t('estimation.submitReviewConfirmBtn'),
+    cancelButtonText: t('common.cancel'),
   });
 
   if (confirmed) {
@@ -1348,22 +1353,22 @@ const submitReview = async (row) => {
       const res = await api.post(`/estimations/${row.id}/submit-review`);
       if (res.data?.success) {
         await fetchData();
-        alertService.showSuccess({ title: 'تم تقديم الدراسة للمراجعة بنجاح' });
+        alertService.showSuccess({ title: t('estimation.submitReviewSuccess') });
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'تعذر تقديم الدراسة للمراجعة';
-      alertService.showError({ title: 'خطأ', text: msg });
+      const msg = err.response?.data?.message || t('estimation.submitReviewError');
+      alertService.showError({ title: t('common.error'), text: msg });
     }
   }
 };
 
 const approveEstimation = async (row) => {
   const confirmed = await alertService.confirmAction({
-    title: 'اعتماد دراسة التسعير والتكلفة؟',
-    text: `سيتم قفل تعديل دراسة التسعير #${row.estimation_number} واعتمادها رسمياً كالأساس المالي لعرض السعر (Quotation).`,
+    title: t('estimation.approveConfirmTitle'),
+    text: t('estimation.approveConfirmText', { number: row.estimation_number }),
     icon: 'warning',
-    confirmButtonText: 'نعم، اعتماد رسمي',
-    cancelButtonText: 'إلغاء',
+    confirmButtonText: t('estimation.approveConfirmBtn'),
+    cancelButtonText: t('common.cancel'),
   });
 
   if (confirmed) {
@@ -1371,22 +1376,22 @@ const approveEstimation = async (row) => {
       const res = await api.post(`/estimations/${row.id}/approve`);
       if (res.data?.success) {
         await fetchData();
-        alertService.showSuccess({ title: 'تم اعتماد دراسة التسعير بنجاح' });
+        alertService.showSuccess({ title: t('estimation.approveSuccess') });
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'تعذر اعتماد دراسة التسعير';
-      alertService.showError({ title: 'خطأ', text: msg });
+      const msg = err.response?.data?.message || t('estimation.approveError');
+      alertService.showError({ title: t('common.error'), text: msg });
     }
   }
 };
 
 const createRevision = async (row) => {
   const confirmed = await alertService.confirmAction({
-    title: 'إنشاء مراجعة تسعير جديدة؟',
-    text: `سيتم إنشاء مسودة جديدة V${row.version + 1} مستنسخة من النسخة المعتمدة الحالية للتعديل عليها دون المساس بالتاريخ السابق.`,
+    title: t('estimation.createRevisionConfirmTitle'),
+    text: t('estimation.createRevisionConfirmText', { version: row.version + 1 }),
     icon: 'info',
-    confirmButtonText: 'إنشاء مراجعة',
-    cancelButtonText: 'إلغاء',
+    confirmButtonText: t('estimation.createRevisionConfirmBtn'),
+    cancelButtonText: t('common.cancel'),
   });
 
   if (confirmed) {
@@ -1394,24 +1399,24 @@ const createRevision = async (row) => {
       const res = await api.post(`/estimations/${row.id}/create-revision`);
       if (res.data?.success) {
         await fetchData();
-        alertService.showSuccess({ title: 'تم إنشاء المراجعة بنجاح' });
+        alertService.showSuccess({ title: t('estimation.createRevisionSuccess') });
         if (res.data.data?.id) {
           openEditModal(res.data.data.id);
         }
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'تعذر إنشاء المراجعة';
-      alertService.showError({ title: 'خطأ', text: msg });
+      const msg = err.response?.data?.message || t('estimation.createRevisionError');
+      alertService.showError({ title: t('common.error'), text: msg });
     }
   }
 };
 
 const confirmDelete = async (row) => {
   const confirmed = await alertService.confirmDelete({
-    title: 'حذف دراسة التسعير؟',
-    text: `هل أنت متأكد من حذف مسودة دراسة التسعير رقم #${row.estimation_number}؟ لا يمكن التراجع عن هذا الإجراء.`,
-    confirmButtonText: 'نعم، حذف',
-    cancelButtonText: 'إلغاء',
+    title: t('estimation.deleteConfirmTitle'),
+    text: t('estimation.deleteConfirmText', { number: row.estimation_number }),
+    confirmButtonText: t('estimation.deleteConfirmBtn'),
+    cancelButtonText: t('common.cancel'),
   });
 
   if (confirmed) {
@@ -1419,11 +1424,11 @@ const confirmDelete = async (row) => {
       const res = await api.delete(`/estimations/${row.id}`);
       if (res.data?.success) {
         await fetchData();
-        alertService.showSuccess({ title: 'تم الحذف بنجاح' });
+        alertService.showSuccess({ title: t('estimation.deleteSuccess') });
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'تعذر حذف الدراسة';
-      alertService.showError({ title: 'خطأ', text: msg });
+      const msg = err.response?.data?.message || t('estimation.deleteError');
+      alertService.showError({ title: t('common.error'), text: msg });
     }
   }
 };
@@ -1434,7 +1439,7 @@ const printCostSheet = () => {
 
 const formatCurrency = (val) => {
   const num = Number(val) || 0;
-  const symbol = authStore.tenant?.currency_symbol || 'ج.م';
+  const symbol = authStore.tenant?.currency_symbol || t('common.currency');
   return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + symbol;
 };
 
