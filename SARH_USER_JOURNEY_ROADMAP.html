@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صَرْح ERP — دليل وخارطة طريق رحلة المستخدم</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-primary: #00C896;
+            --brand-primary-hover: #00A87E;
+            --brand-light: #E6FBF5;
+            --dark-bg: #0C1315;
+            --dark-card: #141E22;
+            --dark-border: rgba(255, 255, 255, 0.08);
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --accent-blue: #38BDF8;
+            --accent-amber: #FBBF24;
+            --accent-purple: #A855F7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text-main);
+            line-height: 1.7;
+            padding-bottom: 80px;
+        }
+
+        header {
+            background: linear-gradient(180deg, rgba(0, 200, 150, 0.12) 0%, rgba(12, 19, 21, 0) 100%);
+            border-bottom: 1px solid var(--dark-border);
+            padding: 40px 24px;
+            text-align: center;
+            position: relative;
+        }
+
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 200, 150, 0.15);
+            color: var(--brand-primary);
+            border: 1px solid rgba(0, 200, 150, 0.3);
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: 0.5px;
+        }
+
+        h1 {
+            font-size: 2.4rem;
+            font-weight: 900;
+            color: #FFFFFF;
+            margin-bottom: 12px;
+        }
+
+        h1 span {
+            color: var(--brand-primary);
+        }
+
+        .subtitle {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        /* Summary Hero Stats */
+        .hero-banner {
+            background: linear-gradient(135deg, rgba(20, 30, 34, 0.9) 0%, rgba(12, 19, 21, 0.9) 100%);
+            border: 1px solid rgba(0, 200, 150, 0.25);
+            border-radius: 20px;
+            padding: 28px;
+            margin-bottom: 40px;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .hero-info h2 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #FFFFFF;
+            margin-bottom: 8px;
+        }
+
+        .hero-info p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .hero-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 200, 150, 0.1);
+            border: 1px solid rgba(0, 200, 150, 0.4);
+            padding: 10px 20px;
+            border-radius: 12px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            background-color: var(--brand-primary);
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--brand-primary);
+        }
+
+        .status-text {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #FFFFFF;
+        }
+
+        /* Timeline Journey */
+        .timeline {
+            position: relative;
+            padding-right: 40px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            bottom: 20px;
+            right: 17px;
+            width: 3px;
+            background: linear-gradient(180deg, var(--brand-primary) 0%, rgba(0, 200, 150, 0.1) 100%);
+            border-radius: 9999px;
+        }
+
+        .step-card {
+            position: relative;
+            background: var(--dark-card);
+            border: 1px solid var(--dark-border);
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: 32px;
+            transition: all 0.25s ease;
+        }
+
+        .step-card:hover {
+            border-color: rgba(0, 200, 150, 0.4);
+            box-shadow: 0 10px 30px -10px rgba(0, 200, 150, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .step-circle {
+            position: absolute;
+            top: 28px;
+            right: -49px;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #0C1315;
+            border: 3px solid var(--brand-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.95rem;
+            color: #FFFFFF;
+            box-shadow: 0 0 15px rgba(0, 200, 150, 0.3);
+        }
+
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .step-title-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .step-title {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #FFFFFF;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .badge-primary { background: rgba(0, 200, 150, 0.15); color: var(--brand-primary); }
+        .badge-blue { background: rgba(56, 189, 248, 0.15); color: var(--accent-blue); }
+        .badge-amber { background: rgba(251, 191, 36, 0.15); color: var(--accent-amber); }
+        .badge-purple { background: rgba(168, 85, 247, 0.15); color: var(--accent-purple); }
+
+        .step-description {
+            color: #CBD5E1;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        /* Decisions Box (ممكن يعمل كذا أو كذا) */
+        .decisions-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 18px;
+            margin-top: 16px;
+        }
+
+        .decisions-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--accent-amber);
+            margin-bottom: 12px;
+        }
+
+        .decision-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 14px;
+        }
+
+        .decision-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px 14px;
+        }
+
+        .decision-item strong {
+            display: block;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+        }
+
+        .decision-item p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        /* System Rule Pill */
+        .rule-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 200, 150, 0.08);
+            border-right: 4px solid var(--brand-primary);
+            padding: 10px 14px;
+            border-radius: 0 8px 8px 0;
+            margin-top: 16px;
+            font-size: 0.88rem;
+            color: #A7F3D0;
+        }
+
+        /* Table */
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: right;
+            background: var(--dark-card);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--dark-border);
+        }
+
+        th {
+            background: rgba(0, 200, 150, 0.1);
+            color: var(--brand-primary);
+            font-weight: 700;
+            padding: 14px 16px;
+            font-size: 0.95rem;
+            border-bottom: 1px solid var(--dark-border);
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--dark-border);
+            font-size: 0.9rem;
+            color: #CBD5E1;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid var(--dark-border);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8rem; }
+            .timeline { padding-right: 30px; }
+            .step-circle { right: -36px; width: 32px; height: 32px; font-size: 0.8rem; }
+            .hero-banner { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand-badge">⚡ نظام صَرْح لإدارة المقاولات والتشطيبات | SARH ERP</div>
+        <h1>خارطة طريق رحلة المستخدم <span>(المهندس أحمد)</span></h1>
+        <p class="subtitle">من لحظة تسجيل الشركة في المنصة وحتى اعتماد خط التكلفة الهندسي الدقيق لمشروعه (المراحل 1 إلى 10)</p>
+    </header>
+
+    <div class="container">
+
+        <!-- Hero State Banner -->
+        <div class="hero-banner">
+            <div class="hero-info">
+                <h2>حالة المنظومة الحالية: المرحلة العاشرة (Phase 10 — Estimation) مكتملة ومغلقة بنجاح</h2>
+                <p>جميع الحسابات من المتر المربع إلى تكلفة الوحدة محكومة بسلاسل اعتماد مجمدة غير قابلة للكسر.</p>
+            </div>
+            <div class="hero-status">
+                <div class="status-dot"></div>
+                <div class="status-text">جاهز لتوليد عروض الأسعار (Quotations)</div>
+            </div>
+        </div>
+
+        <!-- The Timeline -->
+        <div class="timeline">
+
+            <!-- Step 1 -->
+            <div class="step-card">
+                <div class="step-circle">1</div>
+                <div class="step-header">
+                    <div class="step-title-area">
+                        <span class="step-title">تسجيل الشركة وتأسيس البيئة المعزولة (Tenant Onboarding)</span>
+                    </div>
+                    <span class="badge badge-primary">المعمارية المؤسسية</span>
+                </div>
+                <p class="step-description">
+                    يدخل المهندس أحمد ويسجل حسابه واسم شركته <em>(شركة الأفق للمقاولات)</em>. فوراً يقوم النظام بعزل بياناته في قاعدة بيانات مستقلة بالكامل <code>sarh_tenant_xxx</code> وتعيينه كمالك للنظام <code>Owner</code>.
+                </p>
+                <div class="decisions-box">
+                    <div class="decisions-title">🔀 القرارات والمسارات المتاحة لأحمد في هذه الخطوة:</div>
+                    <div class="decision-grid">
+                        <div class="decision-item">
+                            <strong>المسار (أ) — دعوة الفريق وتوزيع الأدوار:</strong>
+                            <p>يضيف مهندس الموقع (للمعاينات)، ومقدر التكاليف (لحساب الكميات)، ومدير المشاريع للاعتمادات.</p>
+                        </div>
+                        <div class="decision-item">
+                            <strong>المسار (ب) — العمل الفردي المباشر:</strong>
+                            <p>إذا كانت شركته ناشئة ويديرها بنفسه، يمتلك كـ Owner كامل الصلاحيات ويبدأ مباشرة دون خطوات إدارية إضافية.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="rule-pill">
+                    🛡️ <strong>ضابط صرح:</strong> عزل تام 100% بين قواعد بيانات الشركات — لا يمكن لأي مستخدم رؤية بيانات شركة أخرى.
+                </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="step-card">
+                <div class="step-circle">2</div>
+                <div class="step-header">
+                    <div class="step-title-area">
+                        <span class="step-title">تسجيل العميل وإطلاق الفرصة التجارية (Customer & Opportunity)</span>
+                    </div>
+                    <span class="badge badge-blue">المبيعات وتطوير الأعمال</span>
+                </div>
+                <p class="step-description">
+                    يتواصل عميل مع أحمد لطلب تشطيب مقر إداري أو فيلا سكنية. يسجل أحمد العميل ويفتح فرصة تجارية <code>Opportunity</code> باسم المشروع.
+                </p>
+                <div class="decisions-box">
+                    <div class="decisions-title">🔀 القرارات والمسارات المتاحة لأحمد في هذه الخطوة:</div>
+                    <div class="decision-grid">
+                        <div class="decision-item">
+                            <strong>المسار (أ) — المشروع يحتاج معاينة ميدانية:</strong>
+                            <p>إذا كان المبنى قائماً ويحتاج رفعاً وتوثيقاً على الطبيعة ⬅️ يجدول <strong>معاينة ميدانية (Site Visit)</strong>.</p>
+                        </div>
+                        <div class="decision-item">
+                            <strong>المسار (ب) — العميل يملك مخططات جاهزة:</strong>
+                            <p>إذا توفرت مخططات أوتوكاد معمارية نهائية ⬅️ يتجاوز المعاينة وينتقل فوراً إلى <strong>المقايسة (Measurement)</strong>.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="step-card">
+                <div class="step-circle">3</div>
+                <div class="step-header">
+                    <div class="step-title-area">
+                        <span class="step-title">المعاينة الميدانية التوثيقية (Site Visit)</span>
+                    </div>
+                    <span class="badge badge-amber">العمليات الميدانية</span>
+                </div>
+                <p class="step-description">
+                    ينزل مهندس الموقع حاملاً التابلت أو الهاتف لتوثيق الموقع، وتصوير التحديات الفنية ومصادر التغذية والمداخل.
+                </p>
+                <div class="decisions-box">
+                    <div class="decisions-title">🔀 المسارات المتاحة:</div>
+                    <div class="decision-grid">
+                        <div class="decision-item">
+                            <strong>اكتمال المعاينة (Completed):</strong>
+                            <p>رفع الصور والملاحظات الإنشائية وتأكيد جاهزية الموقع لبدء الرفع الهندسي الدقيق.</p>
+                        </div>
+                        <div class="decision-item">
+                            <strong>إعادة الجدولة أو الإلغاء (Rescheduled):</strong>
+                            <p>في حال تعذر دخول الموقع أو وجود عوائق أمنية تعيق الفحص.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="step-card">
+                <div class="step-circle">4</div>
+                <div class="step-header">
+                    <div class="step-title-area">
+                        <span class="step-title">الرفع الهندسي والمقايسة الرقمية (Measurements & CAD)</span>
+                    </div>
+                    <span class="badge badge-primary">الهندسة وحساب الكميات</span>
+                </div>
+                <p class="step-description">
+                    حساب مساحات الغرف والجدران والأسقف والحجوم والأطوال الصافية بعد الخصومات الهندسية للأبواب والشبابيك.
+                </p>
+                <div class="decisions-box">
+                    <div class="decisions-title">🔀 كيف يدخل أحمد القياسات؟</div>
+                    <div class="decision-grid">
+                        <div class="decision-item">
+                            <strong>الخيار الذكي السريع — استيراد DXF ⚡:</strong>
+                            <p>يرفع ملف الأوتوكاد، ومحرك صرح الذكي يستخرج الفراغات والمساحات آلياً في ثوانٍ معدودة.</p>
+                        </div>
+                        <div class="decision-item">
+                            <strong>الخيار الميداني اليدوي 📐:</strong>
+                            <p>إدخال الفراغات فراغاً فراغاً (طول × عرض × ارتفاع) مع تحديد خصم الفتحات.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="rule-pill">
+                    🔒 <strong>قفل صرح:</strong> المقايسة المعتمدة <code>Approved</code> تصبح مجمدة بالكامل؛ إذا طرأ تعديل، يُنشئ أحمد إصداراً جديداً <code>Revision V2</code> دون مساس بالنسخة السابقة.
+                </div>
+            </div>
+
+            <!-- Step 5 -->
+            <div class="step-card">
+                <div class="step-circle">5</div>
+                <div class="step-header">
+                    <div class="step-title-area">
+                        <span class="step-title">نطاق الأعمال والمواصفات (Scope of Work — SOW)</span>
+                    </div>
+                    <span class="badge badge-purple">التوصيف والاشتراطات</span>
+                </div>
+                <p class="step-description">
+                    تحويل الأبعاد الصامتة إلى بنود أعمال تشطيبية مصنفة تخصصياً (دهانات، أرضيات، جبس، كهروميكانيك) مع ربطها بالغرف المحددة في المقايسة.
+                </p>
+                <div class="decisions-box">
+                    <div class="decisions-title">🔀 قرارات التوصيف والمشتملات:</div>
+                    <div class="decision-grid">
+                        <div class="decision-item">
+                            <strong>تحديد المشتملات (Inclusions):</strong>
+                            <p>ما يلتزم المقاول بتوريده وتنفيذه حرفياً في البند (مثل نوع المعجون، نوع فواصل التمدد).</p>
+                        </div>
+                        <div class="decision-item">
+                            <strong>تحديد الاستثناءات (Exclusions):</strong>
+                            <p>ما لا يشمله البند لحماية الشركة من مطالبات العميل غير المنطقية لاحقاً.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 6 -->
+            <div class="step-card">
+                <div class="step-circle">6</div>
+                <div class="step-header">
+                    <div class="step-title-area">
+                        <span class="step-title">جدول الكميات الفني المؤتمت (Bill of Quantities — BOQ)</span>
+                    </div>
+                    <span class="badge badge-primary">الأتمتة الهندسية</span>
+                </div>
+                <p class="step-description">
+                    بضغطة زر واحدة: يقوم النظام بتوليد جدول الكميات الفني مباشرة من نطاق الأعمال المعتمد.
+                </p>
+                <div class="rule-pill">
+                    🛡️ <strong>ضابط صرح:</strong> الكميات والوحدات مسحوبة آلياً ومجمدة <code>Frozen</code> لمنع أي خطأ بشري أو تلاعب يدوي. جدول الـ BOQ فني خالص ولا يحوي أي أسعار.
+                </div>
+            </div>
+
+            <!-- Step 7 -->
+            <div class="step-card">
+                <div class="step-circle">7</div>
+                <div class="step-header">
+                    <div class="step-title-area">
+                        <span class="step-title">دراسة التكاليف والأسعار الداخلية (Cost Estimation — المرحلة 10)</span>
+                    </div>
+                    <span class="badge badge-primary">القلب المالي للمشروع</span>
+                </div>
+                <p class="step-description">
+                    تفكيك التكلفة الحقيقية الصافية لكل بند قبل وضع هامش الربح لمخاطبة العميل.
+                </p>
+                <div class="decisions-box">
+                    <div class="decisions-title">🔀 تفكيك عناصر سعر التكلفة المباشرة (Direct Rate Breakdown):</div>
+                    <div class="decision-grid">
+                        <div class="decision-item">
+                            <strong>1. المواد (Material):</strong>
+                            <p>سعر شراء الخامات من الموردين.</p>
+                        </div>
+                        <div class="decision-item">
+                            <strong>2. العمالة (Labor):</strong>
+                            <p>أجور ومصنعيات الفنيين والمساعدين.</p>
+                        </div>
+                        <div class="decision-item">
+                            <strong>3. المعدات (Equipment):</strong>
+                            <p>إيجار السقالات وأدوات الرش والرافعات.</p>
+                        </div>
+                        <div class="decision-item">
+                            <strong>4. مقاول الباطن (Subcontractor):</strong>
+                            <p>في حال إسناد البند لجهة متخصصة.</p>
+                        </div>
+                        <div class="decision-item">
+                            <strong>5. مصاريف أخرى (Other):</strong>
+                            <p>رسوم نقل، إكراميات، أو هدر مخصص.</p>
+                        </div>
+                        <div class="decision-item">
+                            <strong>نسبة المصاريف الإدارية (Overhead %):</strong>
+                            <p>نسبة مئوية لتغطية مصاريف المكتب والهوالك العامة.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="decisions-box" style="margin-top: 14px;">
+                    <div class="decisions-title">⚖️ حوكمة البنود الصفرية أو المجانية (Zero-Cost):</div>
+                    <p style="font-size: 0.9rem; color: #CBD5E1; margin-bottom: 8px;">
+                        إذا كانت تكلفة أي بند صفرية (0.00 ريال)، يمنع النظام الاعتماد إلا باختيار مبرر نظامي صريح:
+                    </p>
+                    <div class="decision-grid">
+                        <div class="decision-item">
+                            <strong>مواد موردة من العميل (Client-Supplied)</strong>
+                        </div>
+                        <div class="decision-item">
+                            <strong>محملة على بند آخر (Included in Another)</strong>
+                        </div>
+                        <div class="decision-item">
+                            <strong>بانتظار تسعيرة مورد (Pending Quote)</strong>
+                        </div>
+                        <div class="decision-item">
+                            <strong>أخرى مع مبرر مكتوب (Other — see notes >= 10 أحرف)</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="rule-pill">
+                    🔒 <strong>القفل الحصري:</strong> عند الاعتماد، يتم قفل الفرصة لمنع أي تضارب متزامن، وتصبح هذه النسخة خط الأساس المعتمد والوحيد <code>Single Approved Cost Baseline</code>.
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Matrix Table -->
+        <div class="table-responsive">
+            <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 16px; color: #FFFFFF;">
+                📊 مصفوفة تدرج الوثائق المنجزة في النظام (حتى المرحلة 10)
+            </h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>المرحلة</th>
+                        <th>اسم الوثيقة</th>
+                        <th>ما يدخله أحمد وفريقه</th>
+                        <th>المخرجات المحققة والمعتمدة</th>
+                        <th>الضوابط الصارمة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>01-03</strong></td>
+                        <td>العملاء والفرص</td>
+                        <td>بيانات العميل ونوع المشروع</td>
+                        <td>فرصة تجارية مؤهلة <code>Opportunity</code></td>
+                        <td>عزل تام لكل شركة 100%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>04</strong></td>
+                        <td>المعاينة الميدانية</td>
+                        <td>صور الموقع وملاحظات المعاينة</td>
+                        <td>تقرير معاينة ميداني معتمد</td>
+                        <td>توثيق الحالة القائمة قبل أي التزام</td>
+                    </tr>
+                    <tr>
+                        <td><strong>05</strong></td>
+                        <td>المقايسة الهندسية</td>
+                        <td>أبعاد الغرف أو ملف DXF</td>
+                        <td>مسطحات وكميات صافية مجمدة</td>
+                        <td>لا يسمح بأي أسعار داخل المقايسة</td>
+                    </tr>
+                    <tr>
+                        <td><strong>06</strong></td>
+                        <td>نطاق الأعمال SOW</td>
+                        <td>المواصفات وتصنيف الأعمال</td>
+                        <td>نطاق أعمال معتمد ومرتبط بالكميات</td>
+                        <td>إلزام بتحديد المشتملات والاستثناءات</td>
+                    </tr>
+                    <tr>
+                        <td><strong>07</strong></td>
+                        <td>جدول الكميات BOQ</td>
+                        <td>توليد آلي بضغطة زر</td>
+                        <td>جدول كميات فني معتمد ومجمد</td>
+                        <td>الكميات مستمدة حصراً من المقايسة</td>
+                    </tr>
+                    <tr>
+                        <td><strong>08-10</strong></td>
+                        <td>دراسة التكاليف Estimation</td>
+                        <td>تفكيك التكلفة (مواد/عمالة/معدات)</td>
+                        <td>خط أساس التكلفة المعتمد <code>Cost Baseline</code></td>
+                        <td>نسخة معتمدة واحدة + حظر التكلفة الصفرية بدون مبرر</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>نظام <strong>صَرْح (SARH ERP)</strong> — منصة العمليات الإنشائية والتشطيبات الذكية © 2026</p>
+        <p style="font-size: 0.8rem; margin-top: 6px; color: rgba(148, 163, 184, 0.6);">توثيق معتمد لرحلة المستخدم — صالح للاستعراض المكتبي والعرض التقديمي</p>
+    </footer>
+
+</body>
+</html>

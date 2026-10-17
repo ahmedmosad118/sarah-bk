@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BoqController;
+use App\Http\Controllers\Api\ContractController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\EstimationController;
@@ -197,6 +198,24 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/{id}/create-revision', [QuotationController::class, 'createRevision']);
         Route::post('/{id}/mark-sent', [QuotationController::class, 'markSent']);
         Route::post('/{id}/record-response', [QuotationController::class, 'recordResponse']);
+    });
+
+    // Contract Management (Phase 12 - Legal Commitment & Milestones)
+    Route::prefix('contracts')->group(function () {
+        Route::get('/schema', [ContractController::class, 'schema']);
+        Route::get('/', [ContractController::class, 'index']);
+        Route::post('/', [ContractController::class, 'store']);
+        Route::post('/from-quotation/{quotationId}', [ContractController::class, 'createFromQuotation']);
+        Route::get('/{id}', [ContractController::class, 'show']);
+        Route::put('/{id}', [ContractController::class, 'update']);
+        Route::delete('/{ids}', [ContractController::class, 'destroy']);
+        Route::post('/{id}/submit-review', [ContractController::class, 'submitReview']);
+        Route::post('/{id}/review', [ContractController::class, 'review']);
+        Route::post('/{id}/approve', [ContractController::class, 'approve']);
+        Route::post('/{id}/create-revision', [ContractController::class, 'createRevision']);
+        Route::post('/{id}/send-for-signature', [ContractController::class, 'sendForSignature']);
+        Route::post('/{id}/mark-signed', [ContractController::class, 'markSigned']);
+        Route::post('/{id}/void-signature', [ContractController::class, 'voidSignature']);
     });
 
     // Roles & Permissions Management

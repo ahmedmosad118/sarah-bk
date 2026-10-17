@@ -5,13 +5,14 @@ namespace Database\Seeders\Tenant;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolePermissionMappingSeeder extends Seeder
 {
     public function run(): void
     {
         // Reset cached roles and permissions
-        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $allPermissions = Permission::all();
 
@@ -41,7 +42,7 @@ class RolePermissionMappingSeeder extends Seeder
             'reports.view', 'reports.export', 'reports.print',
             'activity_log.view', 'activity_log.export',
             'projects.view', 'customers.view', 'leads.view', 'opportunities.view', 'finance.view',
-            'media.view', 'media.upload', 'media.update', 'media.delete', 'media.download'
+            'media.view', 'media.upload', 'media.update', 'media.delete', 'media.download',
         ]);
 
         // 3. Administrator
@@ -53,7 +54,7 @@ class RolePermissionMappingSeeder extends Seeder
             'company.view',
             'reports.view',
             'activity_log.view',
-            'media.view', 'media.upload', 'media.download'
+            'media.view', 'media.upload', 'media.download',
         ]);
 
         // 4. General Manager
@@ -73,7 +74,7 @@ class RolePermissionMappingSeeder extends Seeder
             'finance.view', 'invoices.view', 'invoices.approve', 'project_cost.view', 'project_cost.export',
             'change_requests.view', 'change_requests.approve',
             'reports.view', 'reports.export', 'reports.print',
-            'activity_log.view'
+            'activity_log.view',
         ]);
 
         // 5. Project Manager
@@ -90,7 +91,7 @@ class RolePermissionMappingSeeder extends Seeder
             'boqs.view',
             'change_requests.view', 'change_requests.create', 'change_requests.update',
             'reports.view', 'reports.export',
-            'media.view', 'media.upload', 'media.download'
+            'media.view', 'media.upload', 'media.download',
         ]);
 
         // 6. Project Team
@@ -100,7 +101,7 @@ class RolePermissionMappingSeeder extends Seeder
             'planning.view', 'wbs.view',
             'tasks.view', 'tasks.update', 'tasks.complete',
             'measurements.view',
-            'media.view', 'media.upload', 'media.download'
+            'media.view', 'media.upload', 'media.download',
         ]);
 
         // 7. Site Engineer
@@ -110,7 +111,7 @@ class RolePermissionMappingSeeder extends Seeder
             'tasks.view', 'tasks.update', 'tasks.complete',
             'site_visits.view', 'site_visits.create', 'site_visits.update', 'site_visits.complete', 'site_visits.cancel',
             'measurements.view', 'measurements.create', 'measurements.update',
-            'media.view', 'media.upload', 'media.download'
+            'media.view', 'media.upload', 'media.download',
         ]);
 
         // 8. Site Supervisor
@@ -118,7 +119,7 @@ class RolePermissionMappingSeeder extends Seeder
             'projects.view',
             'tasks.view', 'tasks.update', 'tasks.complete',
             'site_visits.view', 'site_visits.create',
-            'media.view', 'media.upload'
+            'media.view', 'media.upload',
         ]);
 
         // 9. Procurement
@@ -126,14 +127,14 @@ class RolePermissionMappingSeeder extends Seeder
             'materials.view', 'materials.create', 'materials.update',
             'suppliers.view', 'suppliers.create', 'suppliers.update',
             'procurement.view', 'procurement.create', 'procurement.update', 'procurement.request', 'procurement.export',
-            'media.view', 'media.upload', 'media.download'
+            'media.view', 'media.upload', 'media.download',
         ]);
 
         // 10. Warehouse
         $assign('Warehouse', [
             'materials.view',
             'inventory.view', 'inventory.receive', 'inventory.issue', 'inventory.transfer', 'inventory.adjust',
-            'media.view', 'media.upload'
+            'media.view', 'media.upload',
         ]);
 
         // 11. Accountant
@@ -143,7 +144,7 @@ class RolePermissionMappingSeeder extends Seeder
             'expenses.view', 'expenses.create', 'expenses.update',
             'invoices.view', 'invoices.create', 'invoices.update',
             'project_cost.view',
-            'reports.view', 'reports.export'
+            'reports.view', 'reports.export',
         ]);
 
         // 12. Sales
@@ -152,7 +153,8 @@ class RolePermissionMappingSeeder extends Seeder
             'leads.view', 'leads.create', 'leads.update', 'leads.assign', 'leads.convert',
             'opportunities.view', 'opportunities.create', 'opportunities.update', 'opportunities.assign', 'opportunities.convert',
             'site_visits.view', 'site_visits.create', 'site_visits.cancel',
-            'quotations.view', 'quotations.create', 'quotations.update', 'quotations.send', 'quotations.export'
+            'quotations.view', 'quotations.create', 'quotations.update', 'quotations.send', 'quotations.export',
+            'contracts.view', 'contracts.create', 'contracts.update', 'contracts.sign', 'contracts.export',
         ]);
 
         // 13. Estimator
@@ -163,7 +165,7 @@ class RolePermissionMappingSeeder extends Seeder
             'boq.view', 'boq.create', 'boq.update', 'boq.import', 'boq.export',
             'boqs.view', 'boqs.create', 'boqs.update',
             'estimations.view', 'estimations.create', 'estimations.update', 'estimations.export',
-            'materials.view'
+            'materials.view',
         ]);
 
         // 14. Finance
@@ -173,14 +175,14 @@ class RolePermissionMappingSeeder extends Seeder
             'expenses.view', 'expenses.create', 'expenses.update',
             'invoices.view', 'invoices.create', 'invoices.update', 'invoices.approve',
             'project_cost.view', 'project_cost.create', 'project_cost.update',
-            'reports.view', 'reports.export'
+            'reports.view', 'reports.export',
         ]);
 
         // 15. HR
         $assign('HR', [
             'dashboard.view',
             'users.view', 'users.create', 'users.update',
-            'reports.view'
+            'reports.view',
         ]);
 
         // 16. Quality
@@ -188,7 +190,7 @@ class RolePermissionMappingSeeder extends Seeder
             'dashboard.view',
             'projects.view',
             'tasks.view', 'tasks.approve',
-            'media.view', 'media.upload', 'media.download'
+            'media.view', 'media.upload', 'media.download',
         ]);
 
         // 17. HSE
@@ -197,14 +199,14 @@ class RolePermissionMappingSeeder extends Seeder
             'projects.view',
             'tasks.view',
             'media.view', 'media.upload',
-            'reports.view'
+            'reports.view',
         ]);
 
         // 18. Document Controller
         $assign('Document Controller', [
             'projects.view',
             'contracts.view',
-            'media.view', 'media.upload', 'media.update', 'media.delete', 'media.download'
+            'media.view', 'media.upload', 'media.update', 'media.delete', 'media.download',
         ]);
 
         // 19. Viewer (Read-Only)
@@ -216,7 +218,7 @@ class RolePermissionMappingSeeder extends Seeder
             'leads.view',
             'opportunities.view',
             'materials.view',
-            'tasks.view'
+            'tasks.view',
         ]);
     }
 }

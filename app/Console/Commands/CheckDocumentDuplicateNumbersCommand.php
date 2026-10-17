@@ -30,7 +30,7 @@ class CheckDocumentDuplicateNumbersCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Scan tenant databases for duplicate document numbers across measurements, scopes, boqs, estimations, and quotations.';
+    protected $description = 'Scan tenant databases for duplicate document numbers across measurements, scopes, boqs, estimations, quotations, and contracts.';
 
     /**
      * Execute the console command.
@@ -57,6 +57,7 @@ class CheckDocumentDuplicateNumbersCommand extends Command
         }
 
         $tablesToCheck = [
+            'contracts' => 'contract_number',
             'estimations' => 'estimation_number',
             'quotations' => 'quotation_number',
             'boqs' => 'boq_number',

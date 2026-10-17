@@ -105,4 +105,15 @@ return [
     'setting_created' => 'تم إنشاء الإعداد :key',
     'setting_updated' => 'تم تحديث الإعداد :key',
     'setting_event' => 'إجراء :event على الإعداد :key',
+
+    // Contracts (Phase 12)
+    'contract_created' => 'تم إنشاء العقد (#:number)',
+    'contract_updated' => 'تم تحديث العقد وجدول الدفعات (#:number)',
+    'contract_deleted' => 'تم حذف العقد (#:number)',
+    'contract_submitted_for_review' => 'تم تقديم العقد (#:number) للمراجعة القانونية والإدارية',
+    'contract_approved' => 'تم اعتماد العقد (#:number) رسمياً وقانونياً',
+    'contract_revision_created' => 'تم إنشاء إصدار مراجعة جديد (#:number) من العقد (#:from)',
+    'contract_sent_for_signature' => 'تم إرسال العقد (#:number) رسمياً للتوقيع',
+    'contract_signed' => 'تم توقيع واعتماد العقد (#:number) رسمياً',
+    'contract_signature_voided' => 'تم إلغاء حالة التوقيع للعقد (#:number)',
 ];

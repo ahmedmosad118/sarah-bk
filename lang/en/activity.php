@@ -105,4 +105,15 @@ return [
     'setting_created' => 'Setting :key created',
     'setting_updated' => 'Setting :key updated',
     'setting_event' => 'Action :event on setting :key',
+
+    // Contracts (Phase 12)
+    'contract_created' => 'Contract (#:number) created',
+    'contract_updated' => 'Contract (#:number) updated',
+    'contract_deleted' => 'Contract (#:number) deleted',
+    'contract_submitted_for_review' => 'Contract (#:number) submitted for internal review',
+    'contract_approved' => 'Contract (#:number) approved legally and financially',
+    'contract_revision_created' => 'New revision (#:number) created from contract (#:from)',
+    'contract_sent_for_signature' => 'Contract (#:number) dispatched for legal signature',
+    'contract_signed' => 'Contract (#:number) signed and validated officially',
+    'contract_signature_voided' => 'Contract (#:number) signature status voided',
 ];
