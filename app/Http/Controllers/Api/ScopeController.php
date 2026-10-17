@@ -11,6 +11,8 @@ use App\Models\Scope;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -236,6 +238,20 @@ class ScopeController extends CRUDController
             }
         }
 
+        // Preparation date: default to trusted server-side date; custom date requires manager permission
+        $preparedAt = Carbon::today()->toDateString();
+        if ($request->filled('prepared_at')) {
+            $requestedDate = Carbon::parse($request->input('prepared_at'))->toDateString();
+            if ($requestedDate !== $preparedAt) {
+                if (! $this->canAssignPreparer('scopes.approve')) {
+                    throw ValidationException::withMessages([
+                        'prepared_at' => [__('messages.unauthorized_to_assign_prepared_at')],
+                    ]);
+                }
+                $preparedAt = $requestedDate;
+            }
+        }
+
         // Strict Rule: Measurement MUST be Approved
         if (! $measurement->isApproved()) {
             throw ValidationException::withMessages([
@@ -265,48 +281,61 @@ class ScopeController extends CRUDController
             }
         }
 
-        $scope = DB::transaction(function () use ($validated, $opportunity, $measurement, $itemsData, $preparedBy) {
-            $number = $validated['scope_number'] ?? $this->generateScopeNumber($opportunity->id);
+        $maxAttempts = 3;
+        $scope = null;
 
-            $scope = Scope::create([
-                'opportunity_id' => $opportunity->id,
-                'measurement_id' => $measurement->id,
-                'scope_number' => $number,
-                'version' => 1,
-                'status' => 'Draft',
-                'title' => $validated['title'] ?? (__('messages.scope_title_prefix').' '.$opportunity->title),
-                'general_inclusions' => $validated['general_inclusions'] ?? null,
-                'general_exclusions' => $validated['general_exclusions'] ?? null,
-                'prepared_by' => $preparedBy,
-                'prepared_at' => $validated['prepared_at'] ?? Carbon::today()->toDateString(),
-                'notes' => $validated['notes'] ?? null,
-                'created_by' => auth()->id(),
-            ]);
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                $scope = DB::transaction(function () use ($validated, $opportunity, $measurement, $itemsData, $preparedBy, $preparedAt) {
+                    $number = $validated['scope_number'] ?? $this->generateScopeNumber($opportunity->id);
 
-            foreach ($itemsData as $idx => $item) {
-                $scopeItem = $scope->items()->create([
-                    'trade_category' => trim((string) ($item['trade_category'] ?? 'general')),
-                    'item_name' => trim((string) ($item['item_name'] ?? '')),
-                    'specification' => $item['specification'] ?? null,
-                    'inclusions' => $item['inclusions'] ?? null,
-                    'exclusions' => $item['exclusions'] ?? null,
-                    'notes' => $item['notes'] ?? null,
-                    'sort_order' => $item['sort_order'] ?? $idx,
-                ]);
+                    $scope = Scope::create([
+                        'opportunity_id' => $opportunity->id,
+                        'measurement_id' => $measurement->id,
+                        'scope_number' => $number,
+                        'version' => 1,
+                        'status' => 'Draft',
+                        'title' => $validated['title'] ?? (__('messages.scope_title_prefix').' '.$opportunity->title),
+                        'general_inclusions' => $validated['general_inclusions'] ?? null,
+                        'general_exclusions' => $validated['general_exclusions'] ?? null,
+                        'prepared_by' => $preparedBy,
+                        'prepared_at' => $preparedAt,
+                        'notes' => $validated['notes'] ?? null,
+                        'created_by' => auth()->id(),
+                    ]);
 
-                if (! empty($item['measurement_item_ids'])) {
-                    $scopeItem->measurementItems()->sync($item['measurement_item_ids']);
+                    foreach ($itemsData as $idx => $item) {
+                        $scopeItem = $scope->items()->create([
+                            'trade_category' => trim((string) ($item['trade_category'] ?? 'general')),
+                            'item_name' => trim((string) ($item['item_name'] ?? '')),
+                            'specification' => $item['specification'] ?? null,
+                            'inclusions' => $item['inclusions'] ?? null,
+                            'exclusions' => $item['exclusions'] ?? null,
+                            'notes' => $item['notes'] ?? null,
+                            'sort_order' => $item['sort_order'] ?? $idx,
+                        ]);
+
+                        if (! empty($item['measurement_item_ids'])) {
+                            $scopeItem->measurementItems()->sync($item['measurement_item_ids']);
+                        }
+                    }
+
+                    activity('commercial')
+                        ->event('created')
+                        ->performedOn($scope)
+                        ->causedBy(auth()->user())
+                        ->log(__('activity.scope_created', ['number' => $scope->scope_number]));
+
+                    return $scope;
+                });
+                break;
+            } catch (UniqueConstraintViolationException|QueryException $e) {
+                if ($attempt < $maxAttempts && empty($validated['scope_number']) && str_contains($e->getMessage(), 'scopes_number_unique')) {
+                    continue;
                 }
+                throw $e;
             }
-
-            activity('commercial')
-                ->event('created')
-                ->performedOn($scope)
-                ->causedBy(auth()->user())
-                ->log(__('activity.scope_created', ['number' => $scope->scope_number]));
-
-            return $scope;
-        });
+        }
 
         return response()->json([
             'success' => true,
@@ -384,6 +413,19 @@ class ScopeController extends CRUDController
                 if (! $this->canAssignPreparer('scopes.approve')) {
                     throw ValidationException::withMessages([
                         'prepared_by' => [__('messages.unauthorized_to_assign_preparer')],
+                    ]);
+                }
+            }
+        }
+
+        // Preparation date check: modifying prepared_at requires manager/approval permission
+        if ($request->filled('prepared_at')) {
+            $requestedDate = Carbon::parse($request->input('prepared_at'))->toDateString();
+            $currentDate = $scope->prepared_at ? Carbon::parse($scope->prepared_at)->toDateString() : null;
+            if ($requestedDate !== $currentDate) {
+                if (! $this->canAssignPreparer('scopes.approve')) {
+                    throw ValidationException::withMessages([
+                        'prepared_at' => [__('messages.unauthorized_to_assign_prepared_at')],
                     ]);
                 }
             }

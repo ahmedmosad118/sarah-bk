@@ -6,7 +6,7 @@ use App\Models\Central\Tenant;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Spatie\Permission\PermissionRegistrar;
 
 class TenantDatabaseManager
 {
@@ -16,19 +16,19 @@ class TenantDatabaseManager
     public static function getDatabaseName(Tenant|int|string $tenant): string
     {
         if ($tenant instanceof Tenant) {
-            return $tenant->database_name ?: ('sarh_tenant_' . $tenant->id);
+            return $tenant->database_name ?: ('sarh_tenant_'.$tenant->id);
         }
 
         if (is_numeric($tenant)) {
-            return 'sarh_tenant_' . $tenant;
+            return 'sarh_tenant_'.$tenant;
         }
 
-        $str = (string)$tenant;
+        $str = (string) $tenant;
         if (str_starts_with($str, 'sarh_tenant_')) {
             return $str;
         }
 
-        return 'sarh_tenant_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $str);
+        return 'sarh_tenant_'.preg_replace('/[^a-zA-Z0-9_]/', '_', $str);
     }
 
     /**
@@ -53,6 +53,11 @@ class TenantDatabaseManager
         $dbName = is_string($tenant) ? $tenant : self::getDatabaseName($tenant);
         $dbName = preg_replace('/[^a-zA-Z0-9_]/', '', $dbName);
 
+        if (Config::get('database.connections.tenant.database') === $dbName) {
+            DB::disconnect('tenant');
+            DB::purge('tenant');
+        }
+
         DB::connection('central')->statement("DROP DATABASE IF EXISTS `{$dbName}`;");
     }
 
@@ -64,8 +69,9 @@ class TenantDatabaseManager
         $dbName = is_string($tenant) ? $tenant : self::getDatabaseName($tenant);
         $dbName = preg_replace('/[^a-zA-Z0-9_]/', '', $dbName);
 
-        $result = DB::connection('central')->select("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?", [$dbName]);
-        return !empty($result);
+        $result = DB::connection('central')->select('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?', [$dbName]);
+
+        return ! empty($result);
     }
 
     /**
@@ -89,11 +95,11 @@ class TenantDatabaseManager
         TenantContext::setTenant($tenant);
 
         // Isolate permission cache key per tenant
-        Config::set('permission.cache.key', 'spatie.permission.cache.tenant.' . $tenant->id);
+        Config::set('permission.cache.key', 'spatie.permission.cache.tenant.'.$tenant->id);
 
         // Reset permission cache for current tenant database
         try {
-            app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
         } catch (\Throwable $e) {
             // PermissionRegistrar may not be registered yet in early bootstraps
         }

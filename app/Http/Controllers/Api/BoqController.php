@@ -11,6 +11,8 @@ use App\Models\Scope;
 use App\Services\BoqGenerationService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -242,6 +244,20 @@ class BoqController extends CRUDController
             }
         }
 
+        // Preparation date: default to trusted server-side date; custom date requires manager permission
+        $preparedAt = Carbon::today()->toDateString();
+        if ($request->filled('prepared_at')) {
+            $requestedDate = Carbon::parse($request->input('prepared_at'))->toDateString();
+            if ($requestedDate !== $preparedAt) {
+                if (! $this->canAssignPreparer('boqs.approve')) {
+                    throw ValidationException::withMessages([
+                        'prepared_at' => [__('messages.unauthorized_to_assign_prepared_at')],
+                    ]);
+                }
+                $preparedAt = $requestedDate;
+            }
+        }
+
         // Strict Rule: Scope MUST be Approved
         if (! $scope->isApproved()) {
             throw ValidationException::withMessages([
@@ -258,34 +274,47 @@ class BoqController extends CRUDController
 
         $generated = $this->generationService->buildItemsFromScope($scope);
 
-        $boq = DB::transaction(function () use ($validated, $opportunity, $scope, $generated, $preparedBy) {
-            $number = $validated['boq_number'] ?? $this->generateBoqNumber($opportunity->id);
+        $maxAttempts = 3;
+        $boq = null;
 
-            $boq = Boq::create([
-                'opportunity_id' => $opportunity->id,
-                'scope_id' => $scope->id,
-                'boq_number' => $number,
-                'version' => 1,
-                'status' => 'Draft',
-                'title' => $validated['title'] ?? (__('messages.boq_title_prefix').' '.$opportunity->title),
-                'prepared_by' => $preparedBy,
-                'prepared_at' => $validated['prepared_at'] ?? Carbon::today()->toDateString(),
-                'notes' => $validated['notes'] ?? null,
-                'created_by' => auth()->id(),
-            ]);
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                $boq = DB::transaction(function () use ($validated, $opportunity, $scope, $generated, $preparedBy, $preparedAt) {
+                    $number = $validated['boq_number'] ?? $this->generateBoqNumber($opportunity->id);
 
-            foreach ($generated['lines'] as $line) {
-                $boq->items()->create($line);
+                    $boq = Boq::create([
+                        'opportunity_id' => $opportunity->id,
+                        'scope_id' => $scope->id,
+                        'boq_number' => $number,
+                        'version' => 1,
+                        'status' => 'Draft',
+                        'title' => $validated['title'] ?? (__('messages.boq_title_prefix').' '.$opportunity->title),
+                        'prepared_by' => $preparedBy,
+                        'prepared_at' => $preparedAt,
+                        'notes' => $validated['notes'] ?? null,
+                        'created_by' => auth()->id(),
+                    ]);
+
+                    foreach ($generated['lines'] as $line) {
+                        $boq->items()->create($line);
+                    }
+
+                    activity('commercial')
+                        ->event('created')
+                        ->performedOn($boq)
+                        ->causedBy(auth()->user())
+                        ->log(__('activity.boq_created', ['number' => $boq->boq_number]));
+
+                    return $boq;
+                });
+                break;
+            } catch (UniqueConstraintViolationException|QueryException $e) {
+                if ($attempt < $maxAttempts && empty($validated['boq_number']) && str_contains($e->getMessage(), 'boqs_number_unique')) {
+                    continue;
+                }
+                throw $e;
             }
-
-            activity('commercial')
-                ->event('created')
-                ->performedOn($boq)
-                ->causedBy(auth()->user())
-                ->log(__('activity.boq_created', ['number' => $boq->boq_number]));
-
-            return $boq;
-        });
+        }
 
         return response()->json([
             'success' => true,
@@ -349,6 +378,19 @@ class BoqController extends CRUDController
             }
         }
 
+        // Preparation date check: modifying prepared_at requires manager/approval permission
+        if ($request->filled('prepared_at')) {
+            $requestedDate = Carbon::parse($request->input('prepared_at'))->toDateString();
+            $currentDate = $boq->prepared_at ? Carbon::parse($boq->prepared_at)->toDateString() : null;
+            if ($requestedDate !== $currentDate) {
+                if (! $this->canAssignPreparer('boqs.approve')) {
+                    throw ValidationException::withMessages([
+                        'prepared_at' => [__('messages.unauthorized_to_assign_prepared_at')],
+                    ]);
+                }
+            }
+        }
+
         $boq = DB::transaction(function () use ($boq, $validated, $itemsData) {
             if (! empty($validated['boq_number'])) {
                 $boq->boq_number = $validated['boq_number'];
@@ -360,7 +402,7 @@ class BoqController extends CRUDController
                 $boq->prepared_by = $validated['prepared_by'];
             }
             if (isset($validated['prepared_at'])) {
-                $boq->prepared_at = $validated['prepared_at'];
+                $boq->prepared_at = Carbon::parse($validated['prepared_at'])->toDateString();
             }
             if (isset($validated['notes'])) {
                 $boq->notes = $validated['notes'];

@@ -14,6 +14,7 @@ use App\Models\Scope;
 use App\Models\SiteVisit;
 use App\Models\User;
 use App\Services\Tenant\TenantProvisioningService;
+use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -96,6 +97,8 @@ class EstimationManagementTest extends TestCase
     protected function tearDown(): void
     {
         try {
+            DB::disconnect('tenant');
+            DB::purge('tenant');
             if (isset($this->tenantA)) {
                 TenantDatabaseManager::dropDatabase($this->tenantA);
                 $this->tenantA->domains()->delete();
@@ -1070,14 +1073,30 @@ class EstimationManagementTest extends TestCase
         $resOtherNoNotes->assertStatus(422);
         $resOtherNoNotes->assertJsonValidationErrors(['notes']);
 
+        // Verify rejected approval requests leave the record completely unchanged
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+        $unapproved = Estimation::findOrFail($estId);
+        $this->assertEquals('Draft', $unapproved->status);
+        $this->assertNull($unapproved->zero_cost_reason);
+        $this->assertNull($unapproved->notes);
+
         // Case C: Reason is 'Other — see notes' with meaningful notes (>= 10 chars) -> 200 Approved
+        $notesJustification = 'Complimentary scope approved by general manager as goodwill discount';
         $resOtherValid = $this->postJson("/api/estimations/{$estId}/approve", [
             'zero_cost_reason' => 'Other — see notes',
-            'notes' => 'Complimentary scope approved by general manager as goodwill discount',
+            'notes' => $notesJustification,
         ], $this->headersA());
         $resOtherValid->assertStatus(200);
         $resOtherValid->assertJsonPath('data.status', 'Approved');
         $resOtherValid->assertJsonPath('data.zero_cost_reason', 'Other — see notes');
+        $resOtherValid->assertJsonPath('data.notes', $notesJustification);
+
+        // Verify fresh database read retains both the selected reason and persisted justification
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+        $freshApproved = Estimation::findOrFail($estId);
+        $this->assertEquals('Approved', $freshApproved->status);
+        $this->assertEquals('Other — see notes', $freshApproved->zero_cost_reason);
+        $this->assertEquals($notesJustification, $freshApproved->notes);
 
         // Case D: Reason is a specific predefined reason ('Client-Supplied Material') -> 200 Approved without notes requirement
         // Create another draft estimation to test predefined reason
@@ -1101,12 +1120,17 @@ class EstimationManagementTest extends TestCase
         $resPredefined->assertStatus(200);
         $resPredefined->assertJsonPath('data.status', 'Approved');
         $resPredefined->assertJsonPath('data.zero_cost_reason', 'Client-Supplied Material');
+
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+        $freshPredefined = Estimation::findOrFail($estId2);
+        $this->assertEquals('Approved', $freshPredefined->status);
+        $this->assertEquals('Client-Supplied Material', $freshPredefined->zero_cost_reason);
     }
 
     /**
-     * Test 21: Sequential double approval is rejected by workflow immutability rules.
+     * Test 21: Guaranteed single approved estimation per opportunity, superseded handling, and atomic rollback on failure.
      */
-    public function test_sequential_double_approval_is_rejected(): void
+    public function test_single_approved_estimation_per_opportunity_and_rollback_on_failure(): void
     {
         $chain = $this->makeApprovedBoq('T21');
 
@@ -1137,7 +1161,33 @@ class EstimationManagementTest extends TestCase
         $revRes = $this->postJson("/api/estimations/{$estId1}/create-revision", [], $this->headersA());
         $estId2 = $revRes->json('data.id');
 
-        // Approve V2
+        // Subtest: Verification of atomic rollback on approval failure
+        // Configure V2 with unpriced items (which must fail approval validation)
+        $this->putJson("/api/estimations/{$estId2}", [
+            'items' => [
+                ['boq_item_id' => $chain['boqItem1']->id, 'costs' => []],
+                ['boq_item_id' => $chain['boqItem2']->id, 'costs' => []],
+            ],
+        ], $this->headersA());
+
+        $failedApprove = $this->postJson("/api/estimations/{$estId2}/approve", [], $this->headersA());
+        $failedApprove->assertStatus(422);
+
+        // Verify that upon failure, transaction rolled back completely: V1 is still Approved, V2 is still Draft
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+        $v1Record = Estimation::findOrFail($estId1);
+        $v2Record = Estimation::findOrFail($estId2);
+        $this->assertEquals('Approved', $v1Record->status, 'Previous approved estimation was prematurely altered before rollback!');
+        $this->assertEquals('Draft', $v2Record->status, 'Failed estimation approval left partial state changes!');
+
+        // Now cost V2 properly and approve it
+        $this->putJson("/api/estimations/{$estId2}", [
+            'items' => [
+                ['boq_item_id' => $chain['boqItem1']->id, 'costs' => [['cost_type' => 'material', 'cost_rate' => 120.00]]],
+                ['boq_item_id' => $chain['boqItem2']->id, 'costs' => [['cost_type' => 'labor', 'cost_rate' => 60.00]]],
+            ],
+        ], $this->headersA());
+
         $approve2 = $this->postJson("/api/estimations/{$estId2}/approve", [], $this->headersA());
         $approve2->assertStatus(200);
 
@@ -1155,9 +1205,9 @@ class EstimationManagementTest extends TestCase
     }
 
     /**
-     * Test 22: Active pessimistic locking blocks concurrent database access under separate connections.
+     * Test 22: Opportunity-level pessimistic lock blocks concurrent database approval under separate connections.
      */
-    public function test_concurrent_pessimistic_lock_blocks_concurrent_approval(): void
+    public function test_opportunity_level_pessimistic_lock_blocks_concurrent_approval(): void
     {
         $chain = $this->makeApprovedBoq('T22');
 
@@ -1169,10 +1219,10 @@ class EstimationManagementTest extends TestCase
 
         TenantDatabaseManager::switchToTenant($this->tenantA);
 
-        // Connection 1 begins transaction and acquires exclusive lockForUpdate()
+        // Connection 1 begins transaction and acquires exclusive lockForUpdate() on the parent Opportunity
         DB::connection('tenant')->beginTransaction();
-        $lockedRecord = Estimation::where('id', $estId)->lockForUpdate()->first();
-        $this->assertNotNull($lockedRecord);
+        $lockedOpportunity = Opportunity::where('id', $chain['opportunity']->id)->lockForUpdate()->first();
+        $this->assertNotNull($lockedOpportunity);
 
         // Connection 2: instantiate a separate PDO connection to the same tenant database
         $tenantConfig = config('database.connections.tenant');
@@ -1183,9 +1233,9 @@ class EstimationManagementTest extends TestCase
 
         $blockedAndTimedOut = false;
         try {
-            // Attempt to acquire pessimistic lock on the same row from connection 2
-            $stmt = $pdo2->prepare('SELECT * FROM estimations WHERE id = :id FOR UPDATE');
-            $stmt->execute(['id' => $estId]);
+            // Attempt to acquire pessimistic lock on the parent Opportunity row from connection 2
+            $stmt = $pdo2->prepare('SELECT * FROM opportunities WHERE id = :id FOR UPDATE');
+            $stmt->execute(['id' => $chain['opportunity']->id]);
             $stmt->fetchAll();
         } catch (\PDOException $e) {
             // Error code 1205: Lock wait timeout exceeded
@@ -1193,13 +1243,98 @@ class EstimationManagementTest extends TestCase
                 $blockedAndTimedOut = true;
             }
         } finally {
-            // Release lock on connection 1
+            // Release lock on connection 1 and close connection 2
             DB::connection('tenant')->rollBack();
+            $pdo2 = null;
         }
 
         $this->assertTrue(
             $blockedAndTimedOut,
-            'Pessimistic lock failed to block concurrent connection 2 from acquiring lock on the same estimation row.'
+            'Pessimistic lock on parent Opportunity failed to block concurrent connection 2.'
         );
+    }
+
+    /**
+     * Test 23: Protection of prepared_at with server-side defaults and manager authorization rules.
+     */
+    public function test_prepared_at_authorization_and_defaults(): void
+    {
+        $chain = $this->makeApprovedBoq('T23');
+
+        // Create a standard estimator user without 'estimations.approve' permission
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+        $estimator = User::create([
+            'name' => 'Standard Estimator',
+            'email' => 'estimator_t23_'.uniqid().'@test.com',
+            'password' => bcrypt('Password123!'),
+            'status' => 'active',
+        ]);
+        $estimator->givePermissionTo(['estimations.view', 'estimations.create', 'estimations.update']);
+        $estimatorToken = $estimator->createToken('est_token')->plainTextToken;
+        $headersEstimator = [
+            'Authorization' => 'Bearer '.$estimatorToken,
+            'X-Tenant-Slug' => $this->slugA,
+            'Accept' => 'application/json',
+        ];
+
+        // 1. Creation default: omitting prepared_at sets trusted server-side date (today)
+        $resDefault = $this->postJson('/api/estimations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'boq_id' => $chain['boq']->id,
+        ], $headersEstimator);
+        $resDefault->assertStatus(200);
+        $resDefault->assertJsonPath('data.prepared_at', Carbon::today()->toDateString());
+        $estId = $resDefault->json('data.id');
+
+        // 2. Unauthorized creation with custom date: normal estimator cannot falsify date
+        $resUnauthorizedCreate = $this->postJson('/api/estimations', [
+            'opportunity_id' => $chain['opportunity']->id,
+            'boq_id' => $chain['boq']->id,
+            'prepared_at' => '2025-01-15',
+        ], $headersEstimator);
+        $resUnauthorizedCreate->assertStatus(422);
+        $resUnauthorizedCreate->assertJsonValidationErrors(['prepared_at']);
+
+        // 3. Unauthorized update: normal estimator cannot alter prepared_at
+        $resUnauthorizedUpdate = $this->putJson("/api/estimations/{$estId}", [
+            'prepared_at' => '2025-01-15',
+        ], $headersEstimator);
+        $resUnauthorizedUpdate->assertStatus(422);
+        $resUnauthorizedUpdate->assertJsonValidationErrors(['prepared_at']);
+
+        // 4. Authorized manager (Owner) can correct prepared_at
+        $this->app['auth']->forgetGuards();
+        $resAuthorizedUpdate = $this->putJson("/api/estimations/{$estId}", [
+            'prepared_at' => '2025-01-15',
+        ], $this->headersA());
+        $resAuthorizedUpdate->assertStatus(200);
+        $resAuthorizedUpdate->assertJsonPath('data.prepared_at', '2025-01-15');
+
+        // Verify fresh database read retains the authorized date
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+        $freshEst = Estimation::findOrFail($estId);
+        $this->assertEquals('2025-01-15', Carbon::parse($freshEst->prepared_at)->toDateString());
+    }
+
+    /**
+     * Test 24: Unique document number constraints safety and duplicate check command.
+     */
+    public function test_document_numbers_unique_constraints_and_duplicate_check_safety(): void
+    {
+        TenantDatabaseManager::switchToTenant($this->tenantA);
+
+        // 1. Verify unique indexes exist on clean tenant
+        $boqIndexes = collect(DB::select("SHOW INDEXES FROM boqs WHERE Key_name = 'boqs_number_unique'"));
+        $this->assertTrue($boqIndexes->isNotEmpty(), 'boqs_number_unique index is missing on clean tenant database.');
+
+        $scopeIndexes = collect(DB::select("SHOW INDEXES FROM scopes WHERE Key_name = 'scopes_number_unique'"));
+        $this->assertTrue($scopeIndexes->isNotEmpty(), 'scopes_number_unique index is missing on clean tenant database.');
+
+        $measurementIndexes = collect(DB::select("SHOW INDEXES FROM measurements WHERE Key_name = 'measurements_number_unique'"));
+        $this->assertTrue($measurementIndexes->isNotEmpty(), 'measurements_number_unique index is missing on clean tenant database.');
+
+        // 2. Run duplicate check command on clean tenant: must succeed (exit code 0)
+        $cleanExitCode = Artisan::call('documents:check-duplicate-numbers', ['--tenant' => $this->slugA]);
+        $this->assertEquals(0, $cleanExitCode, 'CheckDocumentDuplicateNumbersCommand reported failure on a clean tenant.');
     }
 }

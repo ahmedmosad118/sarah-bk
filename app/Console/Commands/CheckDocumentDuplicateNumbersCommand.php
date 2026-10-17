@@ -23,7 +23,7 @@ class CheckDocumentDuplicateNumbersCommand extends Command
      *
      * @var array<int, string>
      */
-    protected $aliases = ['estimations:check-duplicate-numbers'];
+    protected $aliases = ['estimations:check-duplicate-numbers', 'sarh:check-document-duplicates'];
 
     /**
      * The console command description.
@@ -65,6 +65,7 @@ class CheckDocumentDuplicateNumbersCommand extends Command
         ];
 
         $totalDuplicates = 0;
+        $hasInspectionErrors = false;
         $findings = [];
 
         foreach ($tenants as $tenant) {
@@ -106,6 +107,7 @@ class CheckDocumentDuplicateNumbersCommand extends Command
                     }
                 }
             } catch (\Throwable $e) {
+                $hasInspectionErrors = true;
                 $this->error("  ⚠️ Error inspecting tenant {$tenant->slug}: {$e->getMessage()}");
             } finally {
                 TenantDatabaseManager::switchToCentral();
@@ -113,6 +115,12 @@ class CheckDocumentDuplicateNumbersCommand extends Command
         }
 
         $this->line('<fg=cyan>==================================================</>');
+        if ($hasInspectionErrors) {
+            $this->error('⚠️ One or more tenant database inspections failed. Review errors above.');
+
+            return self::FAILURE;
+        }
+
         if ($totalDuplicates > 0) {
             $this->error("⚠️ Total duplicate document numbers found across tenants: {$totalDuplicates}");
             $this->table(

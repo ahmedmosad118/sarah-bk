@@ -168,6 +168,8 @@ return [
     'cannot_approve_stale_source_estimation' => 'Cannot approve a quotation linked to a non-approved or superseded estimation.',
     'cannot_approve_superseded_quotation' => 'Cannot approve this quotation because a newer revision is already approved.',
     'unauthorized_to_assign_preparer' => 'You are not authorized to assign or change the preparer of this document.',
+    'unauthorized_to_assign_prepared_at' => 'You are not authorized to customize or change the preparation date.',
+    'unauthorized_to_assign_measured_at' => 'You are not authorized to customize or change the measurement date.',
     'estimation_title_prefix' => 'Cost estimation for',
     'estimation_revision_note' => 'Pricing revision (:version) extracted from cost estimation #:number.',
     'estimation_revision_activity' => 'Created new estimation revision #:number (version :version).',

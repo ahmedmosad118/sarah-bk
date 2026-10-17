@@ -13,6 +13,8 @@ use App\Services\DxfParserService;
 use App\Services\MeasurementCalculationService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -228,6 +230,20 @@ class MeasurementController extends CRUDController
             }
         }
 
+        // Measurement date: default to trusted server-side date; custom date requires manager permission
+        $measuredAt = Carbon::today()->toDateString();
+        if ($request->filled('measured_at')) {
+            $requestedDate = Carbon::parse($request->input('measured_at'))->toDateString();
+            if ($requestedDate !== $measuredAt) {
+                if (! $this->canAssignPreparer('measurements.approve')) {
+                    throw ValidationException::withMessages([
+                        'measured_at' => [__('messages.unauthorized_to_assign_measured_at')],
+                    ]);
+                }
+                $measuredAt = $requestedDate;
+            }
+        }
+
         if (! empty($validated['site_visit_id'])) {
             $siteVisit = SiteVisit::findOrFail($validated['site_visit_id']);
             if ($siteVisit->customer_id && $opportunity->customer_id !== $siteVisit->customer_id) {
@@ -242,52 +258,65 @@ class MeasurementController extends CRUDController
             }
         }
 
-        $measurement = DB::transaction(function () use ($validated, $measuredBy) {
-            $number = $validated['measurement_number'] ?? $this->generateMeasurementNumber($validated['opportunity_id']);
-            $itemsData = $validated['items'] ?? [];
+        $maxAttempts = 3;
+        $measurement = null;
 
-            $calculatedItems = [];
-            foreach ($itemsData as $idx => $item) {
-                try {
-                    $item['sort_order'] = $item['sort_order'] ?? $idx;
-                    $calculatedItems[] = $this->calculationService->calculateItem($item);
-                } catch (\InvalidArgumentException $e) {
-                    throw ValidationException::withMessages([
-                        "items.{$idx}.unit" => [$e->getMessage()],
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                $measurement = DB::transaction(function () use ($validated, $measuredBy, $measuredAt) {
+                    $number = $validated['measurement_number'] ?? $this->generateMeasurementNumber($validated['opportunity_id']);
+                    $itemsData = $validated['items'] ?? [];
+
+                    $calculatedItems = [];
+                    foreach ($itemsData as $idx => $item) {
+                        try {
+                            $item['sort_order'] = $item['sort_order'] ?? $idx;
+                            $calculatedItems[] = $this->calculationService->calculateItem($item);
+                        } catch (\InvalidArgumentException $e) {
+                            throw ValidationException::withMessages([
+                                "items.{$idx}.unit" => [$e->getMessage()],
+                            ]);
+                        }
+                    }
+
+                    $summary = $this->calculationService->calculateSummary($calculatedItems);
+
+                    $measurement = Measurement::create([
+                        'opportunity_id' => $validated['opportunity_id'],
+                        'site_visit_id' => $validated['site_visit_id'] ?? null,
+                        'measurement_number' => $number,
+                        'version' => 1,
+                        'status' => 'Draft',
+                        'measured_by' => $measuredBy,
+                        'measured_at' => $measuredAt,
+                        'total_area' => $summary['total_area'],
+                        'total_volume' => $summary['total_volume'],
+                        'total_linear' => $summary['total_linear'],
+                        'total_count' => $summary['total_count'],
+                        'notes' => $validated['notes'] ?? null,
+                        'created_by' => auth()->id(),
                     ]);
+
+                    foreach ($calculatedItems as $calcItem) {
+                        $measurement->items()->create($calcItem);
+                    }
+
+                    activity('commercial')
+                        ->event('created')
+                        ->performedOn($measurement)
+                        ->causedBy(auth()->user())
+                        ->log(__('activity.measurement_created', ['number' => $measurement->measurement_number]));
+
+                    return $measurement;
+                });
+                break;
+            } catch (UniqueConstraintViolationException|QueryException $e) {
+                if ($attempt < $maxAttempts && empty($validated['measurement_number']) && str_contains($e->getMessage(), 'measurements_number_unique')) {
+                    continue;
                 }
+                throw $e;
             }
-
-            $summary = $this->calculationService->calculateSummary($calculatedItems);
-
-            $measurement = Measurement::create([
-                'opportunity_id' => $validated['opportunity_id'],
-                'site_visit_id' => $validated['site_visit_id'] ?? null,
-                'measurement_number' => $number,
-                'version' => 1,
-                'status' => 'Draft',
-                'measured_by' => $measuredBy,
-                'measured_at' => $validated['measured_at'] ?? Carbon::today()->toDateString(),
-                'total_area' => $summary['total_area'],
-                'total_volume' => $summary['total_volume'],
-                'total_linear' => $summary['total_linear'],
-                'total_count' => $summary['total_count'],
-                'notes' => $validated['notes'] ?? null,
-                'created_by' => auth()->id(),
-            ]);
-
-            foreach ($calculatedItems as $calcItem) {
-                $measurement->items()->create($calcItem);
-            }
-
-            activity('commercial')
-                ->event('created')
-                ->performedOn($measurement)
-                ->causedBy(auth()->user())
-                ->log(__('activity.measurement_created', ['number' => $measurement->measurement_number]));
-
-            return $measurement;
-        });
+        }
 
         return response()->json([
             'success' => true,
@@ -349,6 +378,19 @@ class MeasurementController extends CRUDController
                 if (! $this->canAssignPreparer('measurements.approve')) {
                     throw ValidationException::withMessages([
                         'measured_by' => [__('messages.unauthorized_to_assign_preparer')],
+                    ]);
+                }
+            }
+        }
+
+        // Measurement date check: modifying measured_at requires manager/approval permission
+        if ($request->filled('measured_at')) {
+            $requestedDate = Carbon::parse($request->input('measured_at'))->toDateString();
+            $currentDate = $measurement->measured_at ? Carbon::parse($measurement->measured_at)->toDateString() : null;
+            if ($requestedDate !== $currentDate) {
+                if (! $this->canAssignPreparer('measurements.approve')) {
+                    throw ValidationException::withMessages([
+                        'measured_at' => [__('messages.unauthorized_to_assign_measured_at')],
                     ]);
                 }
             }

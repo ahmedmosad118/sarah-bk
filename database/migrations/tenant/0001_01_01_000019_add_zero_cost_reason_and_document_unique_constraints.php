@@ -20,33 +20,52 @@ return new class extends Migration
         }
 
         // 2. Add unique constraint to scopes table
-        if (Schema::hasTable('scopes')) {
-            Schema::table('scopes', function (Blueprint $table) {
-                $table->unique('scope_number', 'scopes_number_unique');
-            });
-        }
+        $this->applyUniqueConstraintSafely('scopes', 'scope_number', 'scopes_number_unique');
 
         // 3. Add unique constraint to boqs table
-        if (Schema::hasTable('boqs')) {
-            Schema::table('boqs', function (Blueprint $table) {
-                $table->unique('boq_number', 'boqs_number_unique');
-            });
+        $this->applyUniqueConstraintSafely('boqs', 'boq_number', 'boqs_number_unique');
+
+        // 4. Add unique constraint to measurements table
+        $this->applyUniqueConstraintSafely('measurements', 'measurement_number', 'measurements_number_unique');
+    }
+
+    /**
+     * Apply a unique constraint safely with duplicate pre-check and idempotent index check.
+     */
+    protected function applyUniqueConstraintSafely(string $table, string $column, string $indexName): void
+    {
+        if (! Schema::hasTable($table) || ! Schema::hasColumn($table, $column)) {
+            return;
         }
 
-        // 4. Add unique constraint to measurements table (safe guard for existing duplicates)
-        if (Schema::hasTable('measurements')) {
-            $hasMeasurementDupes = DB::table('measurements')
-                ->select('measurement_number')
-                ->groupBy('measurement_number')
-                ->havingRaw('COUNT(*) > 1')
-                ->exists();
-
-            if (! $hasMeasurementDupes) {
-                Schema::table('measurements', function (Blueprint $table) {
-                    $table->unique('measurement_number', 'measurements_number_unique');
-                });
-            }
+        // 1. Check if the unique constraint already exists (idempotent retry)
+        $indexes = collect(DB::select("SHOW INDEXES FROM `{$table}` WHERE Key_name = ?", [$indexName]));
+        if ($indexes->isNotEmpty()) {
+            return;
         }
+
+        // 2. Pre-check for duplicate document numbers before applying constraint
+        $duplicates = DB::table($table)
+            ->select($column, DB::raw('COUNT(*) as dupe_count'))
+            ->whereNotNull($column)
+            ->where($column, '!=', '')
+            ->groupBy($column)
+            ->havingRaw('COUNT(*) > 1')
+            ->get();
+
+        if ($duplicates->isNotEmpty()) {
+            $tenantDb = DB::connection()->getDatabaseName();
+            $dupeDetails = $duplicates->map(fn ($d) => "{$d->$column} (x{$d->dupe_count})")->implode(', ');
+
+            throw new RuntimeException(
+                "Cannot apply unique constraint '{$indexName}' on '{$table}.{$column}'. Existing duplicates found in tenant database '{$tenantDb}': {$dupeDetails}. Please correct duplicate numbers deliberately before running migrations."
+            );
+        }
+
+        // 3. Apply unique constraint
+        Schema::table($table, function (Blueprint $table) use ($column, $indexName) {
+            $table->unique($column, $indexName);
+        });
     }
 
     /**
@@ -54,31 +73,30 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (Schema::hasTable('measurements')) {
-            try {
-                Schema::table('measurements', function (Blueprint $table) {
-                    $table->dropUnique('measurements_number_unique');
-                });
-            } catch (Throwable $e) {
-                // Ignore if unique index was skipped due to existing duplicates
-            }
-        }
-
-        if (Schema::hasTable('boqs')) {
-            Schema::table('boqs', function (Blueprint $table) {
-                $table->dropUnique('boqs_number_unique');
-            });
-        }
-
-        if (Schema::hasTable('scopes')) {
-            Schema::table('scopes', function (Blueprint $table) {
-                $table->dropUnique('scopes_number_unique');
-            });
-        }
+        $this->dropUniqueConstraintSafely('measurements', 'measurements_number_unique');
+        $this->dropUniqueConstraintSafely('boqs', 'boqs_number_unique');
+        $this->dropUniqueConstraintSafely('scopes', 'scopes_number_unique');
 
         if (Schema::hasTable('estimations') && Schema::hasColumn('estimations', 'zero_cost_reason')) {
             Schema::table('estimations', function (Blueprint $table) {
                 $table->dropColumn('zero_cost_reason');
+            });
+        }
+    }
+
+    /**
+     * Drop unique constraint safely if it exists.
+     */
+    protected function dropUniqueConstraintSafely(string $table, string $indexName): void
+    {
+        if (! Schema::hasTable($table)) {
+            return;
+        }
+
+        $indexes = collect(DB::select("SHOW INDEXES FROM `{$table}` WHERE Key_name = ?", [$indexName]));
+        if ($indexes->isNotEmpty()) {
+            Schema::table($table, function (Blueprint $table) use ($indexName) {
+                $table->dropUnique($indexName);
             });
         }
     }

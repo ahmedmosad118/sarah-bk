@@ -246,6 +246,20 @@ class EstimationController extends CRUDController
             }
         }
 
+        // Preparation date: default to trusted server-side date; custom date requires manager permission
+        $preparedAt = Carbon::today()->toDateString();
+        if ($request->filled('prepared_at')) {
+            $requestedDate = Carbon::parse($request->input('prepared_at'))->toDateString();
+            if ($requestedDate !== $preparedAt) {
+                if (! $this->canAssignPreparer('estimations.approve')) {
+                    throw ValidationException::withMessages([
+                        'prepared_at' => [__('messages.unauthorized_to_assign_prepared_at')],
+                    ]);
+                }
+                $preparedAt = $requestedDate;
+            }
+        }
+
         // Rule 1: BOQ MUST be Approved
         if (! $boq->isApproved()) {
             throw ValidationException::withMessages([
@@ -289,7 +303,7 @@ class EstimationController extends CRUDController
 
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
             try {
-                $estimation = DB::transaction(function () use ($validated, $opportunity, $boq, $preparedBy, $overheadRate) {
+                $estimation = DB::transaction(function () use ($validated, $opportunity, $boq, $preparedBy, $preparedAt, $overheadRate) {
                     $number = $validated['estimation_number'] ?? $this->generateEstimationNumber($opportunity->id);
 
                     $estimation = Estimation::create([
@@ -300,7 +314,7 @@ class EstimationController extends CRUDController
                         'status' => 'Draft',
                         'title' => $validated['title'] ?? (__('messages.estimation_title_prefix').' '.$opportunity->title),
                         'prepared_by' => $preparedBy,
-                        'prepared_at' => $validated['prepared_at'] ?? Carbon::today()->toDateString(),
+                        'prepared_at' => $preparedAt,
                         'overhead_rate' => $overheadRate,
                         'notes' => $validated['notes'] ?? null,
                         'created_by' => auth()->id(),
@@ -435,6 +449,19 @@ class EstimationController extends CRUDController
             }
         }
 
+        // Preparation date check: modifying prepared_at requires manager/approval permission
+        if ($request->filled('prepared_at')) {
+            $requestedDate = Carbon::parse($request->input('prepared_at'))->toDateString();
+            $currentDate = $estimation->prepared_at ? Carbon::parse($estimation->prepared_at)->toDateString() : null;
+            if ($requestedDate !== $currentDate) {
+                if (! $this->canAssignPreparer('estimations.approve')) {
+                    throw ValidationException::withMessages([
+                        'prepared_at' => [__('messages.unauthorized_to_assign_prepared_at')],
+                    ]);
+                }
+            }
+        }
+
         $estimation = DB::transaction(function () use ($estimation, $validated, $itemsData, $request) {
             if (! empty($validated['estimation_number'])) {
                 $estimation->estimation_number = $validated['estimation_number'];
@@ -446,7 +473,7 @@ class EstimationController extends CRUDController
                 $estimation->prepared_by = $validated['prepared_by'];
             }
             if (isset($validated['prepared_at'])) {
-                $estimation->prepared_at = $validated['prepared_at'];
+                $estimation->prepared_at = Carbon::parse($validated['prepared_at'])->toDateString();
             }
             if (isset($validated['overhead_rate'])) {
                 $estimation->overhead_rate = (float) $validated['overhead_rate'];
@@ -582,6 +609,10 @@ class EstimationController extends CRUDController
         $this->authorizePermission('estimations.approve');
 
         return DB::transaction(function () use ($id, $request) {
+            // 0. Serialize approval at the Opportunity level using the stable parent Opportunity record
+            $target = Estimation::select(['id', 'opportunity_id'])->findOrFail($id);
+            Opportunity::where('id', $target->opportunity_id)->lockForUpdate()->firstOrFail();
+
             // 1. Lock the Estimation record for update
             $estimation = Estimation::with(['items.costs', 'boq'])
                 ->where('id', $id)
@@ -673,18 +704,20 @@ class EstimationController extends CRUDController
                 }
 
                 if ($zeroCostReason === 'Other — see notes') {
-                    $docNotes = trim((string) ($request->input('notes') ?? $estimation->notes));
-                    $hasMeaningfulDocNotes = strlen($docNotes) >= 10;
-                    $hasMeaningfulItemNotes = $estimation->items->contains(function ($it) {
-                        return strlen(trim((string) $it->notes)) >= 10;
-                    });
+                    $suppliedNotes = $request->filled('notes') ? trim((string) $request->input('notes')) : null;
+                    $effectiveNotes = $suppliedNotes ?? trim((string) $estimation->notes);
 
-                    // Cost component descriptions (e.g. "Labor", "Cement") alone must never count as justification!
-                    if (! $hasMeaningfulDocNotes && ! $hasMeaningfulItemNotes) {
+                    // Cost component descriptions alone must never count as justification! Meaningful non-whitespace notes required
+                    if (strlen($effectiveNotes) < 10) {
                         throw ValidationException::withMessages([
                             'notes' => [__('messages.zero_cost_requires_justification')],
                             'total_cost' => [__('messages.zero_cost_requires_justification')],
                         ]);
+                    }
+
+                    // Persist the supplied justification notes onto the Estimation record in the same transaction
+                    if ($suppliedNotes !== null) {
+                        $estimation->notes = $suppliedNotes;
                     }
                 }
 

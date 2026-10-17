@@ -170,6 +170,8 @@ return [
     'cannot_approve_stale_source_estimation' => 'لا يمكن اعتماد عرض سعر مرتبط بدراسة تسعير غير معتمدة أو تم استبدالها بإصدار أحدث.',
     'cannot_approve_superseded_quotation' => 'لا يمكن اعتماد هذا الإصدار لوجود إصدار أحدث معتمد بالفعل من عرض السعر.',
     'unauthorized_to_assign_preparer' => 'ليس لديك الصلاحية لتعيين أو تغيير مُعِد هذه الوثيقة.',
+    'unauthorized_to_assign_prepared_at' => 'ليس لديك الصلاحية لتخصيص أو تغيير تاريخ الإعداد.',
+    'unauthorized_to_assign_measured_at' => 'ليس لديك الصلاحية لتخصيص أو تغيير تاريخ الرفع والمقايسة.',
     'estimation_title_prefix' => 'دراسة تسعير وتكلفة',
     'estimation_revision_note' => 'مراجعة تسعير رقم (:version) مستخرجة من دراسة التسعير #:number.',
     'estimation_revision_activity' => 'تم إنشاء مراجعة دراسة تسعير جديدة رقم #:number (الإصدار :version).',
